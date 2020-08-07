@@ -1,7 +1,8 @@
 #using Pkg
 #Pkg.activate("fife_env")
 using Flux: onehot
-using Debugger
+using Flux
+#using Debugger
 println("Running fife")
 
 struct VMState
@@ -66,7 +67,6 @@ function instr_val(state::VMState, val, allvalues)
     )
     new_state
 end
-
 
 function main()
     #current_instruction = zeros(Float32, program_len,)::Vector{Float32}
