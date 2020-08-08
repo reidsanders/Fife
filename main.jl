@@ -22,16 +22,16 @@ function super_step(state::VMState, instructions)
     for instruction in instructions
         push!(new_states, instruction(state))
     end
-    new_state = merge_states(new_states, state.current_instruction)
+    new_state = merge_states(new_states, sum(program .* state.current_instruction', dims=2))
 end
 
 #function merge_states(states::Vector{VMState})
 function merge_states(states, weights)
-    # TODO merge states should be the weighted average (based on current instruction?)
+    # TODO merge states should be the weighted average (based on current instruction? and program! state prob is based on prob of that instr in program)
     new_state = states[1]
-    new_state.current_instruction * weights[1]
-    new_state.top_of_stack * weights[1]
-    new_state.stack * weights[1]
+    new_state.current_instruction = new_state.current_instruction * weights[1]
+    new_state.top_of_stack = new_state.top_of_stack * weights[1]
+    new_state.stack = new_state.stack * weights[1]
     for (state, weight) in zip(states[2:end], weights[2:end])
         new_state.current_instruction = new_state.current_instruction .+ (state.current_instruction * weight)
         new_state.top_of_stack = new_state.top_of_stack .+ (state.top_of_stack * weight)
@@ -45,6 +45,7 @@ function merge_states(states, weights)
     # new_state.current_instruction = softmax(new_state.current_instruction)
     # new_state.top_of_stack = softmax(new_state.top_of_stack)
     # new_state.stack = softmax(new_state.stack)
+    check_state_asserts(new_state)
     new_state
 end
 
@@ -52,6 +53,7 @@ end
 
 instr_pass(state::VMState) = state
 instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
+instr_2(state::VMState) = instr_val(state,2,allvalues) # TODO create lamdas for all
 
 function roll(a::Vector, increment)
     # Only vectors right now
@@ -90,8 +92,19 @@ function instr_val(state::VMState, val, allvalues)
         new_top_of_stack,
         new_stack,
     )
+    check_state_asserts(new_state)
     new_state
 end
+
+function check_state_asserts(state)
+
+    @assert sum(state.current_instruction) == 1.0
+    @assert sum(state.top_of_stack) == 1.0
+    for col in eachcol(state.stack)
+        @assert sum(col) == 1.0
+    end
+end
+
 
 function main()
     #current_instruction = zeros(Float32, program_len,)::Vector{Float32}
@@ -114,11 +127,12 @@ function main()
     state
 end
 
-data_stack_depth = 20
+data_stack_depth = 6
 program_len = 7
-max_ticks = 4
+max_ticks = 2
+instructions = [instr_2 instr_5]
 # instructions = [instr_pass instr_5]
-instructions = [instr_5]
+# instructions = [instr_5]
 num_instructions = length(instructions)
 # TODO define data possibilities
 allvalues = [["blank"]; [i for i in 0:6]]
