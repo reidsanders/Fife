@@ -1,11 +1,11 @@
-#using Pkg
-#Pkg.activate("fife_env")
+using Pkg
+Pkg.activate(".")
 using Flux: onehot
 using Flux
 #using Debugger
 println("Running fife")
 
-struct VMState
+mutable struct VMState
     #=
     All state for the virtual machine
     =#
@@ -22,43 +22,68 @@ function super_step(state::VMState, instructions)
     for instruction in instructions
         push!(new_states, instruction(state))
     end
-    merge_states(new_states)
+    new_state = merge_states(new_states, state.current_instruction)
 end
 
 #function merge_states(states::Vector{VMState})
-function merge_states(states)
+function merge_states(states, weights)
+    # TODO merge states should be the weighted average (based on current instruction?)
     new_state = states[1]
-    for state in states[2:end]
-        new_state.current_instruction .+ state.current_instruction
+    new_state.current_instruction * weights[1]
+    new_state.top_of_stack * weights[1]
+    new_state.stack * weights[1]
+    for (state, weight) in zip(states[2:end], weights[2:end])
+        new_state.current_instruction = new_state.current_instruction .+ (state.current_instruction * weight)
+        new_state.top_of_stack = new_state.top_of_stack .+ (state.top_of_stack * weight)
+        new_state.stack = new_state.stack .+ (state.stack * weight)
     end
+
+    # new_state.current_instruction = new_state.current_instruction / length(states)
+    # new_state.top_of_stack = new_state.top_of_stack / length(states)
+    # new_state.stack = new_state.stack / length(states)
+
+    # new_state.current_instruction = softmax(new_state.current_instruction)
+    # new_state.top_of_stack = softmax(new_state.top_of_stack)
+    # new_state.stack = softmax(new_state.stack)
     new_state
 end
+
+
 
 instr_pass(state::VMState) = state
 instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
 
-function roll(a, increment, dims=1)
-
+function roll(a::Vector, increment)
+    # Only vectors right now
+    # use hcat / vcat otherwise?
+    if increment <= 0
+        for i in 1:-increment
+            push!(a, a[1])
+            popfirst!(a)
+        end
+    else
+        for i in 1:increment
+            pushfirst!(a, a[end])
+            pop!(a)
+        end
+    end 
 end
 
 function instr_val(state::VMState, val, allvalues)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
+    # set return type
+    new_stack = similar(state.stack)
+    valhot = onehot(val, allvalues) 
+    for (i, col) in enumerate(eachcol(state.stack))
+        new_stack[:,i] = col .* (state.top_of_stack[i] * valhot)
+    end
+    #new_stack = softmax(new_stack, dims=1)
 
-    new_stack = state.stack .* onehot(val, allvalues)
-    new_stack = softmax(new_stack, dims=1)
-    #pushfirst!(state.current_instruction, 0.0)
-    #pop!(state.current_instruction)
-
-    pushfirst!(state.top_of_stack, 0.f0)
-    #println(new_top_of_stack)
-    pop!(state.top_of_stack)
-    #println(new_top_of_stack)
-    new_top_of_stack = softmax(state.top_of_stack)
-
-    pushfirst!(state.current_instruction, 0.f0)
-    pop!(state.current_instruction)
-    new_current_instruction = softmax(state.current_instruction)
+    new_top_of_stack = copy(state.top_of_stack)
+    roll(new_top_of_stack,1)
+    new_current_instruction = copy(state.current_instruction)
+    roll(new_current_instruction,1)
 
     new_state = VMState(
         new_current_instruction,
@@ -71,6 +96,8 @@ end
 function main()
     #current_instruction = zeros(Float32, program_len,)::Vector{Float32}
     stack = zeros(length(allvalues), data_stack_depth)
+    #stack = softmax(stack)
+    # stack = zeros(length(allvalues), data_stack_depth)
     stack[1,:] .= 1.f0
     state = VMState(
         zeros(Float32,program_len,),
@@ -81,14 +108,14 @@ function main()
     )
     state.current_instruction[1] = 1.f0
     state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
-    #for i in 1:max_ticks
-        #state = super_step(state, instructions)
-    #end
+    for i in 0:max_ticks
+        state = super_step(state, instructions)
+    end
     state
 end
 
-data_stack_depth = 4
-program_len = 1
+data_stack_depth = 20
+program_len = 7
 max_ticks = 1
 instructions = [instr_pass instr_5]
 num_instructions = length(instructions)
@@ -98,6 +125,10 @@ program = softmax(ones(num_instructions, program_len))
 
 
 state = @time main()
+
+state.stack
+
+
 
 
 ## Word definitions
@@ -178,5 +209,4 @@ state = @time main()
 # Program (array representing probability of symbols)
 # Trainable mask
 #
-
 
