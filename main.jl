@@ -76,7 +76,7 @@ function instr_val(state::VMState, val, allvalues)
     new_stack = similar(state.stack)
     valhot = onehot(val, allvalues) 
     for (i, col) in enumerate(eachcol(state.stack))
-        new_stack[:,i] = col .* (state.top_of_stack[i] * valhot)
+        new_stack[:,i] = (1.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
     end
     #new_stack = softmax(new_stack, dims=1)
 
@@ -108,7 +108,7 @@ function main()
     )
     state.current_instruction[1] = 1.f0
     state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
-    for i in 0:max_ticks
+    for i in 1:max_ticks
         state = super_step(state, instructions)
     end
     state
@@ -116,8 +116,9 @@ end
 
 data_stack_depth = 20
 program_len = 7
-max_ticks = 1
-instructions = [instr_pass instr_5]
+max_ticks = 4
+# instructions = [instr_pass instr_5]
+instructions = [instr_5]
 num_instructions = length(instructions)
 # TODO define data possibilities
 allvalues = [["blank"]; [i for i in 0:6]]
