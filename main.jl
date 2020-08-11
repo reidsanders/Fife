@@ -1,7 +1,12 @@
 using Pkg
 Pkg.activate(".")
-using Flux: onehot
+using Flux: onehot, onecold
 using Flux
+using CUDA
+using Zygote
+using Random
+
+CUDA.allowscalar(false)
 #using Debugger
 println("Running fife")
 
@@ -17,7 +22,7 @@ mutable struct VMState
     stack::Array{Float32}
 end
 
-function super_step(state::VMState, instructions)
+function super_step(state::VMState, program, instructions)
     new_states = []
     for instruction in instructions
         push!(new_states, instruction(state))
@@ -105,43 +110,83 @@ function check_state_asserts(state)
     end
 end
 
+function create_random_discrete_program(len, instructions)
+    program = [rand(instructions) for i in 1:len]
+end
 
-function main()
-    #current_instruction = zeros(Float32, program_len,)::Vector{Float32}
-    stack = zeros(length(allvalues), data_stack_depth)
-    #stack = softmax(stack)
-    # stack = zeros(length(allvalues), data_stack_depth)
-    stack[1,:] .= 1.f0
-    state = VMState(
-        zeros(Float32,program_len,),
-        zeros(Float32,data_stack_depth,),
-        stack,
-        #softmax(ones(length(allvalues), data_stack_depth), dims=1),
+# Set trainable parts of program.
+function create_trainable_mask(program_len, input_len)
+    mask = falses(program_len + input_len)
+    mask[input_len+1:end] .= true
+end
 
-    )
-    state.current_instruction[1] = 1.f0
-    state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
-    for i in 1:max_ticks
-        state = super_step(state, instructions)
+function create_example_batch(batch_size, program_len, input_len)
+    # Create input, output
+    #
+    for i in 1:batch_size
+        create_random_program
+    end
+end
+
+# TODO terminate all program in Null operator? Early stopping if that last instruction is large percentage?
+function run(state, program, instructions, ticks)
+    # TODO run (takes program superposition and runs it. returns state?)
+    for i in 1:ticks
+        state = super_step(state, program, instructions)
     end
     state
 end
 
-data_stack_depth = 6
-program_len = 7
-max_ticks = 2
+function train(program, train_mask, batch_size=32)
+end
+
+function loss(ŷ, y)
+    # TODO loss (takes y ŷ  stacks (?) and )
+    logitcrossentropy(ŷ, y)
+end
+
+function main()
+    #current_instruction = zeros(Float32, program_len,)::Vector{Float32}
+    # stack = CuArray(zeros(length(allvalues), data_stack_depth))
+    # current_instruction = CuArray(zeros(Float32,program_len,))
+    # top_of_stack = CuArray(zeros(Float32,data_stack_depth,))
+
+    stack = zeros(length(allvalues), data_stack_depth)
+    current_instruction = zeros(Float32,program_len,)
+    top_of_stack = zeros(Float32,data_stack_depth,)
+    stack[1,:] .= 1.f0
+    state = VMState(
+        current_instruction,
+        top_of_stack,
+        stack,
+    )
+    state.current_instruction[1] = 1.f0
+    state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
+
+    state = run(state, program, instructions, max_ticks)
+
+    collapsed_program = onecold(program)
+end
+
+data_stack_depth = 10
+program_len = 4
+input_len = 4
+max_ticks = 3
 instructions = [instr_2 instr_5]
 # instructions = [instr_pass instr_5]
 # instructions = [instr_5]
 num_instructions = length(instructions)
 # TODO define data possibilities
-allvalues = [["blank"]; [i for i in 0:6]]
+allvalues = [["blank"]; [i for i in 0:8]]
 program = softmax(ones(num_instructions, program_len))
 
+trainable_mask = create_trainable_mask(program_len, input_len)
+opt = ADAM()
+ps = params(@views program[:, trainable_mask])
 
-state = @time main()
+collapsed_program = @time main()
 
-state.stack
+collapsed_program
 
 
 
