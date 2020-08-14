@@ -1,10 +1,11 @@
 using Pkg
 Pkg.activate(".")
-using Flux: onehot, onecold
+using Flux: onehot, onehotbatch, crossentropy, logitcrossentropy, glorot_uniform
 using Flux
 using CUDA
 using Zygote
 using Random
+
 
 CUDA.allowscalar(false)
 #using Debugger
@@ -23,10 +24,18 @@ mutable struct VMState
 end
 
 function super_step(state::VMState, program, instructions)
-    new_states = []
-    for instruction in instructions
-        push!(new_states, instruction(state))
-    end
+    new_states = [instruction(state) for instruction in instructions]
+
+    # new_states = []
+    # for instruction in instructions
+    #     push!(new_states, instruction(state))
+    # end
+
+    # ps = params(program)
+    # gs = gradient(ps) do 
+    #     new_state = merge_states(new_states, sum(program .* state.current_instruction', dims=2))
+    #     return sum(new_state.stack)
+    # end
     new_state = merge_states(new_states, sum(program .* state.current_instruction', dims=2))
 end
 
@@ -60,10 +69,10 @@ instr_pass(state::VMState) = state
 instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
 instr_2(state::VMState) = instr_val(state,2,allvalues) # TODO create lamdas for all
 
-function roll(a::Vector, increment)
+function roll!(a::Vector, increment)
     # Only vectors right now
     # use hcat / vcat otherwise?
-    if increment <= 0
+    if increment < 0
         for i in 1:-increment
             push!(a, a[1])
             popfirst!(a)
@@ -75,6 +84,21 @@ function roll(a::Vector, increment)
         end
     end 
 end
+
+function roll(a::Vector, increment)
+    # Only vectors right now
+    # use hcat / vcat otherwise?
+    if increment == 0
+    elseif increment < 0
+        new = vcat(a[1-increment:end+increment], a[1:-increment])
+    else
+        new = vcat(a[end+increment-1:end], a[1+increment:end-increment])
+    end 
+    return new
+end
+
+# immutable ImArray <: AbstractArray
+#     data::
 
 function instr_val(state::VMState, val, allvalues)
     # This seems really inefficient...
@@ -116,8 +140,9 @@ end
 
 # Set trainable parts of program.
 function create_trainable_mask(program_len, input_len)
-    mask = falses(program_len + input_len)
+    mask = falses(program_len)
     mask[input_len+1:end] .= true
+    mask
 end
 
 function create_example_batch(batch_size, program_len, input_len)
@@ -137,20 +162,13 @@ function run(state, program, instructions, ticks)
     state
 end
 
-function train(program, train_mask, batch_size=32)
-end
-
 function loss(ŷ, y)
     # TODO loss (takes y ŷ  stacks (?) and )
-    logitcrossentropy(ŷ, y)
+    # use logitcrossentropy ? 
+    crossentropy(ŷ, y)
 end
 
-function main()
-    #current_instruction = zeros(Float32, program_len,)::Vector{Float32}
-    # stack = CuArray(zeros(length(allvalues), data_stack_depth))
-    # current_instruction = CuArray(zeros(Float32,program_len,))
-    # top_of_stack = CuArray(zeros(Float32,data_stack_depth,))
-
+function init_state(data_stack_depth, program_len)
     stack = zeros(length(allvalues), data_stack_depth)
     current_instruction = zeros(Float32,program_len,)
     top_of_stack = zeros(Float32,data_stack_depth,)
@@ -162,31 +180,147 @@ function main()
     )
     state.current_instruction[1] = 1.f0
     state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
+    state
+end
+function main()
+    # current_instruction = zeros(Float32, program_len,)::Vector{Float32}
+    # stack = CuArray(zeros(length(allvalues), data_stack_depth))
+    # current_instruction = CuArray(zeros(Float32,program_len,))
+    # top_of_stack = CuArray(zeros(Float32,data_stack_depth,))
 
+    # stack = zeros(length(allvalues), data_stack_depth)
+    # current_instruction = zeros(Float32,program_len,)
+    # top_of_stack = zeros(Float32,data_stack_depth,)
+    # stack[1,:] .= 1.f0
+    # state = VMState(
+    #     current_instruction,
+    #     top_of_stack,
+    #     stack,
+    # )
+    # state.current_instruction[1] = 1.f0
+    # state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
+
+    state = init_state(data_stack_depth, program_len)
     state = run(state, program, instructions, max_ticks)
 
     collapsed_program = onecold(program)
 end
 
+
+function custom_train!(loss, ps, data, opt)
+    # training_loss is declared local so it will be available for logging outside the gradient calculation.
+    local training_loss
+    ps = Params(ps)
+    for d in data
+      gs = gradient(ps) do
+        training_loss = loss(d...)
+        # Code inserted here will be differentiated, unless you need that gradient information
+        # it is better to do the work outside this block.
+        return training_loss
+      end
+      # Insert whatever code you want here that needs training_loss, e.g. logging.
+      # logging_callback(training_loss)
+      # Insert what ever code you want here that needs gradient.
+      # E.g. logging with TensorBoardLogger.jl as histogram so you can see if it is becoming huge.
+      update!(opt, ps, gs)
+      # Here you might like to check validation set accuracy, and break out to do early stopping.
+    end
+  end
+
+# Change target_program untrainable part
+function get_program_with_random_inputs(program, mask)
+    # Assumes columns are onehot
+    num_instructions = size(program)[1]
+    new_program = copy(program)
+    for (i,col) in enumerate(eachcol(new_program[:, mask]))
+        new_program[:,i] .= false
+        new_program[rand(1:num_instructions),i] = true
+        # col = rand(size(col))
+    end
+    new_program
+end
+
+function create_program_batch(startprogram, train_mask, batch_size)
+    program_batch = 
+    target_program = program()
+    for i in 1:batch_size
+        program
+    end
+end
+
 data_stack_depth = 10
-program_len = 4
-input_len = 4
+program_len = 14
+input_len = 4 # frozen
 max_ticks = 3
-instructions = [instr_2 instr_5]
+instructions = [instr_2, instr_5]
 # instructions = [instr_pass instr_5]
 # instructions = [instr_5]
 num_instructions = length(instructions)
 # TODO define data possibilities
 allvalues = [["blank"]; [i for i in 0:8]]
-program = softmax(ones(num_instructions, program_len))
+# program = softmax(ones(num_instructions, program_len))
 
-trainable_mask = create_trainable_mask(program_len, input_len)
-opt = ADAM()
-ps = params(@views program[:, trainable_mask])
 
-collapsed_program = @time main()
+# TODO set trainable part of program to random initialization
+# The true program
+# randomly generate instruction list, and translate into onehot superposition.
+# So "Trainable program" and "Correct Program". Then just run both.
+discrete_program = create_random_discrete_program(program_len, instructions)
+target_program = onehotbatch(discrete_program, instructions)
+target_program = convert(Array{Float32}, target_program)
+program = copy(target_program)
+train_mask = create_trainable_mask(program_len, input_len)
 
-collapsed_program
+#Initialize
+program[:, train_mask] = glorot_uniform(size(program[:, train_mask]))
+blank_state = init_state(data_stack_depth, program_len)
+# TODO Do we want it to be possible to move instruction pointer to "before" the input?
+
+
+
+# Training
+# TODO randomly reset input part of program?
+# target = run(blank_state, target_program, instructions, program_len)
+# pred = run(blank_state, program, instructions, input_len)
+# first_loss = loss(pred.stack, target.stack)
+# ps = params(@views program[:, train_mask])
+ps = params(program)
+
+
+
+# newtrainprogram = get_program_with_random_inputs(program, .~train_mask)
+# newtargetprogram = copy(target_program)
+# newtargetprogram[:, .~train_mask] = newtrainprogram[:, .~train_mask]
+
+# second_loss
+
+gs1 = gradient(ps) do 
+    new = instr_5(blank_state)
+    return sum(new.stack)
+end
+gs1
+
+# gs2 = gradient(ps) do 
+#     target = super_step(blank_state, target_program, instructions)
+#     return sum(target.stack)
+# end
+# gs2
+
+# gs = gradient(ps) do 
+#     target = run(blank_state, target_program, instructions, program_len)
+#     pred = run(blank_state, program, instructions, input_len)
+#     train_loss = loss(pred.stack, target.stack)
+#     return train_loss
+# end
+# gs
+# create_program_batch(program, train_mask, 16)
+
+# opt = ADAM()
+
+
+# collapsed_program = @time main()
+
+# collapsed_program
 
 
 
