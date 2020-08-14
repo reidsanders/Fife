@@ -5,7 +5,7 @@ using Flux
 using CUDA
 using Zygote
 using Random
-
+using LoopVectorization
 
 CUDA.allowscalar(false)
 #using Debugger
@@ -104,24 +104,29 @@ function instr_val(state::VMState, val, allvalues)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # set return type
+
     new_stack = similar(state.stack)
     valhot = onehot(val, allvalues) 
     for (i, col) in enumerate(eachcol(state.stack))
-        new_stack[:,i] = (1.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
+        new_stack[:,i] = (0.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
     end
+
+    # TODO convert to pure vectorized. Doesnt calc gradient as is
+    # 
+
     #new_stack = softmax(new_stack, dims=1)
 
-    new_top_of_stack = copy(state.top_of_stack)
-    roll(new_top_of_stack,1)
-    new_current_instruction = copy(state.current_instruction)
-    roll(new_current_instruction,1)
+    # new_stack = copy(state.stack)
+
+    new_top_of_stack = roll(state.top_of_stack,1)
+    new_current_instruction = roll(state.current_instruction,1)
 
     new_state = VMState(
         new_current_instruction,
         new_top_of_stack,
         new_stack,
     )
-    check_state_asserts(new_state)
+    # check_state_asserts(new_state)
     new_state
 end
 
