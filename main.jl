@@ -12,9 +12,6 @@ CUDA.allowscalar(false)
 # println("Running fife")
 
 struct VMState
-    #=
-    All state for the virtual machine
-    =#
     # instruction pointer (prob vector)
     current_instruction::Vector{Float32}
     ## top of stack pointer (prob vector)
@@ -25,43 +22,32 @@ end
 
 function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
-
-    # new_states = []
-    # for instruction in instructions
-    #     push!(new_states, instruction(state))
-    # end
-
-    # ps = params(program)
-    # gs = gradient(ps) do 
-    #     new_state = merge_states(new_states, sum(program .* state.current_instruction', dims=2))
-    #     return sum(new_state.stack)
-    # end
-    new_state = merge_states(new_states, sum(program .* state.current_instruction', dims=2))
+    reduce(+, sum(program .* state.current_instruction' .* new_states))
 end
 
-#function merge_states(states::Vector{VMState})
-function merge_states(states, weights)
-    # TODO merge states should be the weighted average (based on current instruction? and program! state prob is based on prob of that instr in program)
-    new_state = states[1]
-    new_state.current_instruction = new_state.current_instruction * weights[1]
-    new_state.top_of_stack = new_state.top_of_stack * weights[1]
-    new_state.stack = new_state.stack * weights[1]
-    for (state, weight) in zip(states[2:end], weights[2:end])
-        new_state.current_instruction = new_state.current_instruction .+ (state.current_instruction * weight)
-        new_state.top_of_stack = new_state.top_of_stack .+ (state.top_of_stack * weight)
-        new_state.stack = new_state.stack .+ (state.stack * weight)
-    end
+# function merge_states(states, weights)
+    
+#     # TODO merge states should be the weighted average (based on current instruction? and program! state prob is based on prob of that instr in program)
+#     new_state = states[1]
+#     new_state.current_instruction = new_state.current_instruction * weights[1]
+#     new_state.top_of_stack = new_state.top_of_stack * weights[1]
+#     new_state.stack = new_state.stack * weights[1]
+#     for (state, weight) in zip(states[2:end], weights[2:end])
+#         new_state.current_instruction = new_state.current_instruction .+ (state.current_instruction * weight)
+#         new_state.top_of_stack = new_state.top_of_stack .+ (state.top_of_stack * weight)
+#         new_state.stack = new_state.stack .+ (state.stack * weight)
+#     end
 
-    # new_state.current_instruction = new_state.current_instruction / length(states)
-    # new_state.top_of_stack = new_state.top_of_stack / length(states)
-    # new_state.stack = new_state.stack / length(states)
+#     # new_state.current_instruction = new_state.current_instruction / length(states)
+#     # new_state.top_of_stack = new_state.top_of_stack / length(states)
+#     # new_state.stack = new_state.stack / length(states)
 
-    # new_state.current_instruction = softmax(new_state.current_instruction)
-    # new_state.top_of_stack = softmax(new_state.top_of_stack)
-    # new_state.stack = softmax(new_state.stack)
-    check_state_asserts(new_state)
-    new_state
-end
+#     # new_state.current_instruction = softmax(new_state.current_instruction)
+#     # new_state.top_of_stack = softmax(new_state.top_of_stack)
+#     # new_state.stack = softmax(new_state.stack)
+#     check_state_asserts(new_state)
+#     new_state
+# end
 
 
 
@@ -287,7 +273,6 @@ blank_state = init_state(data_stack_depth, program_len, allvalues)
 # pred = run(blank_state, program, instructions, input_len)
 # first_loss = loss(pred.stack, target.stack)
 # ps = params(@views program[:, train_mask])
-ps = params(program)
 
 
 
@@ -298,36 +283,45 @@ ps = params(program)
 # second_loss
 
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
+a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
+a::VMState * b::Number = b * a
+a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction, a.top_of_stack + b.top_of_stack, a.stack + b.stack)
+a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 # new = instr_5(blank_state)
-# ps = params(program)
-# gs1 = gradient(ps) do 
-#     new = instr_5(blank_state)
-#     return sum(new.stack)
-# end
-# gs1
+ps = params(program)
+gs1 = gradient(ps) do 
+    new = instr_5(blank_state)
+    return sum(new.stack)
+end
+gs1
 
 # getstack(state) = state.stack
 # getinstr(state) = state.current_instruction
 # gettop(state) = state.top_of_stack
 
 
-sumloss(state) = sum(instr_5(state).stack)
-gradient(sumloss, blank_state)
+# sumloss(state) = sum(instr_5(state).stack)
+# gradient(sumloss, blank_state)
 
 
 
+# ps = params(program)
+# # target = run(blank_state, target_program, instructions, program_len)
 # gs2 = gradient(ps) do 
-#     target = super_step(blank_state, target_program, instructions)
-#     return sum(target.stack)
+#     pred = run(blank_state, program, instructions, program_len)
+#     # target = super_step(blank_state, target_program, instructions)
+#     return sum(pred.stack)
 # end
 # gs2
 
+# ps = params(program)
 # gs = gradient(ps) do 
 #     target = run(blank_state, target_program, instructions, program_len)
 #     pred = run(blank_state, program, instructions, input_len)
 #     loss(pred.stack, target.stack)
 # end
 # gs
+
 # create_program_batch(program, train_mask, 16)
 
 # opt = ADAM()
