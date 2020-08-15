@@ -9,9 +9,9 @@ using LoopVectorization
 
 CUDA.allowscalar(false)
 #using Debugger
-println("Running fife")
+# println("Running fife")
 
-mutable struct VMState
+struct VMState
     #=
     All state for the virtual machine
     =#
@@ -103,23 +103,21 @@ end
 function instr_val(state::VMState, val, allvalues)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
-    # set return type
+    # sizehint
+    # set return type to force allocation
 
-    new_stack = similar(state.stack)
+    # new_stack = similar(state.stack)
     valhot = onehot(val, allvalues) 
-    for (i, col) in enumerate(eachcol(state.stack))
-        new_stack[:,i] = (0.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
-    end
-
-    # TODO convert to pure vectorized. Doesnt calc gradient as is
-    # 
-
-    #new_stack = softmax(new_stack, dims=1)
-
-    # new_stack = copy(state.stack)
+    # for (i, col) in enumerate(eachcol(state.stack))
+    #     new_stack[:,i] = (0.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
+    # end
+    new_stack = state.stack .* (1.0 .- state.top_of_stack') .+ valhot * state.top_of_stack'
 
     new_top_of_stack = roll(state.top_of_stack,1)
     new_current_instruction = roll(state.current_instruction,1)
+    # new_stack = 1.0 .- state.stack
+
+    # print(new_stack)
 
     new_state = VMState(
         new_current_instruction,
@@ -173,7 +171,7 @@ function loss(ŷ, y)
     crossentropy(ŷ, y)
 end
 
-function init_state(data_stack_depth, program_len)
+function init_state(data_stack_depth, program_len, allvalues)
     stack = zeros(length(allvalues), data_stack_depth)
     current_instruction = zeros(Float32,program_len,)
     top_of_stack = zeros(Float32,data_stack_depth,)
@@ -253,16 +251,16 @@ function create_program_batch(startprogram, train_mask, batch_size)
     end
 end
 
-data_stack_depth = 10
-program_len = 14
-input_len = 4 # frozen
-max_ticks = 3
+data_stack_depth = 4
+program_len = 1
+input_len = 1 # frozen
+max_ticks = 1
 instructions = [instr_2, instr_5]
 # instructions = [instr_pass instr_5]
 # instructions = [instr_5]
 num_instructions = length(instructions)
 # TODO define data possibilities
-allvalues = [["blank"]; [i for i in 0:8]]
+allvalues = [["blank"]; [i for i in 0:5]]
 # program = softmax(ones(num_instructions, program_len))
 
 
@@ -278,7 +276,7 @@ train_mask = create_trainable_mask(program_len, input_len)
 
 #Initialize
 program[:, train_mask] = glorot_uniform(size(program[:, train_mask]))
-blank_state = init_state(data_stack_depth, program_len)
+blank_state = init_state(data_stack_depth, program_len, allvalues)
 # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
 
@@ -299,11 +297,24 @@ ps = params(program)
 
 # second_loss
 
-gs1 = gradient(ps) do 
-    new = instr_5(blank_state)
-    return sum(new.stack)
-end
-gs1
+Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
+# new = instr_5(blank_state)
+# ps = params(program)
+# gs1 = gradient(ps) do 
+#     new = instr_5(blank_state)
+#     return sum(new.stack)
+# end
+# gs1
+
+# getstack(state) = state.stack
+# getinstr(state) = state.current_instruction
+# gettop(state) = state.top_of_stack
+
+
+sumloss(state) = sum(instr_5(state).stack)
+gradient(sumloss, blank_state)
+
+
 
 # gs2 = gradient(ps) do 
 #     target = super_step(blank_state, target_program, instructions)
@@ -314,8 +325,7 @@ gs1
 # gs = gradient(ps) do 
 #     target = run(blank_state, target_program, instructions, program_len)
 #     pred = run(blank_state, program, instructions, input_len)
-#     train_loss = loss(pred.stack, target.stack)
-#     return train_loss
+#     loss(pred.stack, target.stack)
 # end
 # gs
 # create_program_batch(program, train_mask, 16)
