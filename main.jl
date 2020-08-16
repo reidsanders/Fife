@@ -262,6 +262,7 @@ gs = gradient(ps) do
     pred = run(blank_state, program, instructions, input_len)
     sum(pred.stack + target.stack)
     # loss(pred.stack, target.stack)
+    # crossentropy has domain error (root of negative) ??
     logitcrossentropy(pred.stack, target.stack)
 end
 gs
