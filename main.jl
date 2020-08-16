@@ -47,13 +47,14 @@ end
 function roll(a::Vector, increment)
     # Only vectors right now
     # use hcat / vcat otherwise?
+    increment = increment%length(a)
     if increment == 0
+        return a
     elseif increment < 0
-        new = vcat(a[1-increment:end+increment], a[1:-increment])
+        return vcat(a[1-increment:end], a[1:-increment])
     else
-        new = vcat(a[end+increment-1:end], a[1+increment:end-increment])
+        return vcat(a[end+increment-1:end], a[1:end-increment])
     end 
-    return new
 end
 
 # immutable ImArray <: AbstractArray
@@ -212,9 +213,9 @@ function create_program_batch(startprogram, train_mask, batch_size)
 end
 
 data_stack_depth = 10
-program_len = 1
-input_len = 1 # frozen
-max_ticks = 1
+program_len = 4
+input_len = 2 # frozen
+max_ticks = 2
 instructions = [instr_2, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
@@ -253,9 +254,14 @@ gradient(sumloss, blank_state)
 sumloss(state) = sum(super_step(state,program,instructions).stack)
 gradient(sumloss, blank_state)
 
+target = run(blank_state, target_program, instructions, program_len)
+pred = run(blank_state, program, instructions, input_len)
+
 gs = gradient(ps) do 
     target = run(blank_state, target_program, instructions, program_len)
     pred = run(blank_state, program, instructions, input_len)
-    loss(pred.stack, target.stack)
+    sum(pred.stack + target.stack)
+    # loss(pred.stack, target.stack)
+    logitcrossentropy(pred.stack, target.stack)
 end
 gs
