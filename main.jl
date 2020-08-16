@@ -6,6 +6,7 @@ using CUDA
 using Zygote
 using Random
 using LoopVectorization
+import Base: +,-,*
 
 CUDA.allowscalar(false)
 #using Debugger
@@ -22,7 +23,7 @@ end
 
 function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
-    reduce(+, sum(program .* state.current_instruction' .* new_states))
+    reduce(+, sum(program .* state.current_instruction') .* new_states)
 end
 
 # function merge_states(states, weights)
@@ -93,7 +94,8 @@ function instr_val(state::VMState, val, allvalues)
     # set return type to force allocation
 
     # new_stack = similar(state.stack)
-    valhot = onehot(val, allvalues) 
+    # valhot = convert(Vector{Float32},onehot(val, allvalues))
+    valhot = [i == val ? 1.0f0 : 0.0f0 for i in allvalues]
     # for (i, col) in enumerate(eachcol(state.stack))
     #     new_stack[:,i] = (0.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
     # end
@@ -299,14 +301,18 @@ gs1
 # getinstr(state) = state.current_instruction
 # gettop(state) = state.top_of_stack
 
+sumloss(state) = sum(instr_5(state).stack)
+gradient(sumloss, blank_state)
 
-# sumloss(state) = sum(instr_5(state).stack)
-# gradient(sumloss, blank_state)
+
+
+sumloss(state) = sum(super_step(state,program,instructions).stack)
+gradient(sumloss, blank_state)
 
 
 
 # ps = params(program)
-# # target = run(blank_state, target_program, instructions, program_len)
+# target = run(blank_state, target_program, instructions, program_len)
 # gs2 = gradient(ps) do 
 #     pred = run(blank_state, program, instructions, program_len)
 #     # target = super_step(blank_state, target_program, instructions)
@@ -314,102 +320,19 @@ gs1
 # end
 # gs2
 
-# ps = params(program)
-# gs = gradient(ps) do 
-#     target = run(blank_state, target_program, instructions, program_len)
-#     pred = run(blank_state, program, instructions, input_len)
-#     loss(pred.stack, target.stack)
+
+# gradient(loss(blank_state,blank_state))
+# gs2 = gradient(ps) do 
+#     pred = run(blank_state, blank_state)
+#     # target = super_step(blank_state, target_program, instructions)
+#     return sum(pred.stack)
 # end
-# gs
+# gs2
 
-# create_program_batch(program, train_mask, 16)
-
-# opt = ADAM()
-
-
-# collapsed_program = @time main()
-
-# collapsed_program
-
-
-
-
-## Word definitions
-#def dup(stack):
-    #"""
-    #DUP Should duplicate top of stack, and push to top of stack
-
-    #move data stack pointer vector up by 1 ?
-    #mult each row by corresponding  data stack vector entry (representing prob)
-
-    #prob of word * (Data_Stack array * Top of Stack pointer vector) + (Data_Stack shifted down 1)
-
-    #W * D * SP + D~1
-
-    #Shift stack Pointer?
-
-
-
-    #"""
-    #stack
-
-#def swap(stack):
-    #"""
-    #SWAP Swap top two elements in stack
-
-    #prob_of_word * (Data_Stack * Top of Stack )
-
-    #"""
-
-#def push(stack, value):
-    #"""
-    #push some value to top of stack
-
-    #Any value that has correct type will be pushed to top
-
-    #make matrix with one hot for value. Mult by top of stack, add to data stack, apply softmax
-    #"""
-    
-    #return stack
-    #
-
-
-
-
-# TODO impliment basic commands. Use JAX (?) to make superposition of probabilities, run autograd
-# basic stack manipulation commands to start?
-# Data stack with single uint8 ?
-# Any sequence of words is a program. 
-# 
-# Forth virtual machine:
-# Word dictionary
-# Current execution pointer
-# Data stack ( max_len, uint8)
-# return stack (? stack of command pointers ? ) skip for now
-# Heap (? skip for now)
-# A program takes in a stack (and top of stack pointer) and outputs a stack and pointer (thus is a pure function)
-#
-# For branching: Use GOTO? Maybe just SKIP?
-# DUP, SWAP, ROT, .
-# numbers < > = + - * /
-# 
-
-# Superposition
-# One hot for all possible entries.
-# data stack shape: (len, #data_type)
-# program shape: (len, #words)
-#
-# Should the inputs be initialized to random distributions, or lots of actual onehots?
-# How to decide termination? The current instruction vector will be moved down by 1 each tick. But the possibility of GOTO before the current instruction means possibly unlimited ticks. Maybe some balance of probability check? (with exponential increasing cooldown between checks?)
-#
-# Brute force: num_commands ^ prog_len (maybe pruned based on early stoppage, symmetry?)
-# superposition: num_ticks * prog_len * num_commands  (basically prog_len^2)
-#
-# Instead of "popping" have a data stack pointer 
-# Need a fairly large stack, and start in the middle ish?
-# Use np.roll ? So as to not lose info off the end? Of course you would get weird behavior if it rolled all the way back around...
-
-# Program (array representing probability of symbols)
-# Trainable mask
-#
-
+ps = params(program)
+gs = gradient(ps) do 
+    target = run(blank_state, target_program, instructions, program_len)
+    pred = run(blank_state, program, instructions, input_len)
+    loss(pred.stack, target.stack)
+end
+gs
