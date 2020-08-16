@@ -9,8 +9,6 @@ using LoopVectorization
 import Base: +,-,*
 
 CUDA.allowscalar(false)
-#using Debugger
-# println("Running fife")
 
 struct VMState
     # instruction pointer (prob vector)
@@ -25,32 +23,6 @@ function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
     reduce(+, sum(program .* state.current_instruction') .* new_states)
 end
-
-# function merge_states(states, weights)
-    
-#     # TODO merge states should be the weighted average (based on current instruction? and program! state prob is based on prob of that instr in program)
-#     new_state = states[1]
-#     new_state.current_instruction = new_state.current_instruction * weights[1]
-#     new_state.top_of_stack = new_state.top_of_stack * weights[1]
-#     new_state.stack = new_state.stack * weights[1]
-#     for (state, weight) in zip(states[2:end], weights[2:end])
-#         new_state.current_instruction = new_state.current_instruction .+ (state.current_instruction * weight)
-#         new_state.top_of_stack = new_state.top_of_stack .+ (state.top_of_stack * weight)
-#         new_state.stack = new_state.stack .+ (state.stack * weight)
-#     end
-
-#     # new_state.current_instruction = new_state.current_instruction / length(states)
-#     # new_state.top_of_stack = new_state.top_of_stack / length(states)
-#     # new_state.stack = new_state.stack / length(states)
-
-#     # new_state.current_instruction = softmax(new_state.current_instruction)
-#     # new_state.top_of_stack = softmax(new_state.top_of_stack)
-#     # new_state.stack = softmax(new_state.stack)
-#     check_state_asserts(new_state)
-#     new_state
-# end
-
-
 
 instr_pass(state::VMState) = state
 instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
@@ -239,23 +211,15 @@ function create_program_batch(startprogram, train_mask, batch_size)
     end
 end
 
-data_stack_depth = 4
+data_stack_depth = 10
 program_len = 1
 input_len = 1 # frozen
 max_ticks = 1
 instructions = [instr_2, instr_5]
-# instructions = [instr_pass instr_5]
-# instructions = [instr_5]
 num_instructions = length(instructions)
-# TODO define data possibilities
 allvalues = [["blank"]; [i for i in 0:5]]
-# program = softmax(ones(num_instructions, program_len))
 
 
-# TODO set trainable part of program to random initialization
-# The true program
-# randomly generate instruction list, and translate into onehot superposition.
-# So "Trainable program" and "Correct Program". Then just run both.
 discrete_program = create_random_discrete_program(program_len, instructions)
 target_program = onehotbatch(discrete_program, instructions)
 target_program = convert(Array{Float32}, target_program)
@@ -269,12 +233,7 @@ blank_state = init_state(data_stack_depth, program_len, allvalues)
 
 
 
-# Training
-# TODO randomly reset input part of program?
-# target = run(blank_state, target_program, instructions, program_len)
-# pred = run(blank_state, program, instructions, input_len)
-# first_loss = loss(pred.stack, target.stack)
-# ps = params(@views program[:, train_mask])
+ps = params(@views program[:, train_mask])
 
 
 
@@ -282,54 +241,18 @@ blank_state = init_state(data_stack_depth, program_len, allvalues)
 # newtargetprogram = copy(target_program)
 # newtargetprogram[:, .~train_mask] = newtrainprogram[:, .~train_mask]
 
-# second_loss
-
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
 a::VMState * b::Number = b * a
 a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction, a.top_of_stack + b.top_of_stack, a.stack + b.stack)
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
-# new = instr_5(blank_state)
-ps = params(program)
-gs1 = gradient(ps) do 
-    new = instr_5(blank_state)
-    return sum(new.stack)
-end
-gs1
-
-# getstack(state) = state.stack
-# getinstr(state) = state.current_instruction
-# gettop(state) = state.top_of_stack
 
 sumloss(state) = sum(instr_5(state).stack)
 gradient(sumloss, blank_state)
 
-
-
 sumloss(state) = sum(super_step(state,program,instructions).stack)
 gradient(sumloss, blank_state)
 
-
-
-# ps = params(program)
-# target = run(blank_state, target_program, instructions, program_len)
-# gs2 = gradient(ps) do 
-#     pred = run(blank_state, program, instructions, program_len)
-#     # target = super_step(blank_state, target_program, instructions)
-#     return sum(pred.stack)
-# end
-# gs2
-
-
-# gradient(loss(blank_state,blank_state))
-# gs2 = gradient(ps) do 
-#     pred = run(blank_state, blank_state)
-#     # target = super_step(blank_state, target_program, instructions)
-#     return sum(pred.stack)
-# end
-# gs2
-
-ps = params(program)
 gs = gradient(ps) do 
     target = run(blank_state, target_program, instructions, program_len)
     pred = run(blank_state, program, instructions, input_len)
