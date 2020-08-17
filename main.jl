@@ -1,15 +1,17 @@
 using Pkg
 Pkg.activate(".")
-using Flux: onehot, onehotbatch, crossentropy, logitcrossentropy, glorot_uniform
+using Flux: onehot, onehotbatch, crossentropy, logitcrossentropy, glorot_uniform, mse
 using Flux
 using CUDA
 using Zygote
 using Random
 using LoopVectorization
+using Base
 import Base: +,-,*
 
 CUDA.allowscalar(false)
-
+# TODO use GPU / Torch tensors for better performance
+# TODO use threads (if running program on cpu at least)
 struct VMState
     # instruction pointer (prob vector)
     current_instruction::Vector{Float32}
@@ -21,7 +23,7 @@ end
 
 function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
-    reduce(+, sum(program .* state.current_instruction') .* new_states)
+    reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states)
 end
 
 instr_pass(state::VMState) = state
@@ -143,7 +145,8 @@ function init_state(data_stack_depth, program_len, allvalues)
         stack,
     )
     state.current_instruction[1] = 1.f0
-    state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
+    # state.top_of_stack[fld(data_stack_depth,2)] = 1.f0
+    state.top_of_stack[1] = 1.f0
     state
 end
 function main()
@@ -212,9 +215,9 @@ function create_program_batch(startprogram, train_mask, batch_size)
     end
 end
 
-data_stack_depth = 10
-program_len = 4
-input_len = 2 # frozen
+data_stack_depth = 5
+program_len = 2
+input_len = 1 # frozen
 max_ticks = 2
 instructions = [instr_2, instr_5]
 num_instructions = length(instructions)
@@ -224,17 +227,17 @@ allvalues = [["blank"]; [i for i in 0:5]]
 discrete_program = create_random_discrete_program(program_len, instructions)
 target_program = onehotbatch(discrete_program, instructions)
 target_program = convert(Array{Float32}, target_program)
-program = copy(target_program)
+program = deepcopy(target_program)
 train_mask = create_trainable_mask(program_len, input_len)
 
 #Initialize
-program[:, train_mask] = glorot_uniform(size(program[:, train_mask]))
+program[:, train_mask] = softmax(glorot_uniform(size(program[:, train_mask])))
+# program[:, train_mask] = softmax(rand(size(program[:, train_mask])))
 blank_state = init_state(data_stack_depth, program_len, allvalues)
 # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
 
-
-ps = params(@views program[:, train_mask])
+# ps = params(@views program[:, train_mask])
 
 
 
@@ -248,21 +251,63 @@ a::VMState * b::Number = b * a
 a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction, a.top_of_stack + b.top_of_stack, a.stack + b.stack)
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 
-sumloss(state) = sum(instr_5(state).stack)
-gradient(sumloss, blank_state)
+# sumloss(state) = sum(instr_5(state).stack)
+# gradient(sumloss, blank_state)
 
-sumloss(state) = sum(super_step(state,program,instructions).stack)
-gradient(sumloss, blank_state)
+# sumloss(state) = sum(super_step(state,program,instructions).stack)
+# gradient(sumloss, blank_state)
 
 target = run(blank_state, target_program, instructions, program_len)
-pred = run(blank_state, program, instructions, input_len)
+prediction = run(blank_state, program, instructions, program_len)
+first_loss = crossentropy(prediction.stack, target.stack)
+
+trainable = @views program[:, train_mask]
+ps = params(program)
+# ps = params(trainable)
 
 gs = gradient(ps) do 
-    target = run(blank_state, target_program, instructions, program_len)
-    pred = run(blank_state, program, instructions, input_len)
-    sum(pred.stack + target.stack)
-    # loss(pred.stack, target.stack)
-    # crossentropy has domain error (root of negative) ??
-    logitcrossentropy(pred.stack, target.stack)
+    # target = run(blank_state, target_program, instructions, program_len)
+    pred = run(blank_state, program, instructions, program_len)
+    # logitcrossentropy(pred.stack, target.stack)
+    # crossentropy(pred.stack, target.stack)
+    mse(pred.stack, target.stack)
 end
-gs
+gs[program]
+
+using Flux.Optimise: update!
+
+first_program = deepcopy(program)
+opt = Descent(0.5) # Gradient descent with learning rate 0.1
+# trainable = @views program[:,train_mask]
+update!(opt, trainable, gs[program][:,train_mask])
+# program[:, train_mask] = softmax(program[:, train_mask]) 
+# TODO needs to be restricted to [0,1]... softmax is kinda appropriate, but needs to be stable under repeated application
+program[:, train_mask] = program[:, train_mask] / sum(program[:, train_mask],dims=1)
+prediction2 = run(blank_state, program, instructions, program_len)
+# second_loss = crossentropy(prediction2.stack, target.stack)
+second_loss = mse(prediction2.stack, target.stack)
+@show second_loss - first_loss
+program
+
+
+# ps = params(program)
+# gs2 = gradient(ps) do 
+#     pred = run(blank_state, program, instructions, program_len)
+#     crossentropy(pred.stack, target.stack)
+# end
+# gs2[program]
+
+
+# Switch to straight normed to 1 vs softmax? or keep program as a separate unconstrained value, and apply softmax before pushing it into run? Then use logitcrossentropy
+# function forward(state, program, target, instructions, program_len)
+#     pred = run(state, program, instructions, program_len)
+#     # mse(pred.stack, target.stack)
+#     crossentropy(pred.stack, target.stack)
+#     # logitcrossentropy(pred.stack, target.stack)
+# end
+
+# grad = gradient(forward,blank_state,program,target,instructions,program_len)
+
+
+# sumloss(state) = sum(super_step(state,program,instructions).stack)
+# gradient(sumloss, blank_state)
