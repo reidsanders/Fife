@@ -272,34 +272,53 @@ prediction = run(blank_state, program, instructions, program_len)
 first_loss = crossentropy(prediction.stack, target.stack)
 # first_loss = mse(prediction.stack, target.stack)
 
-# trainable = @views program[:, train_mask]
-ps = params(program)
-# ps = params(trainable)
+# # trainable = @views program[:, train_mask]
+# ps = params(program)
+# # ps = params(trainable)
 
-gs = gradient(ps) do 
-    # target = run(blank_state, target_program, instructions, program_len)
-    pred = run(blank_state, program, instructions, program_len)
-    # logitcrossentropy(pred.stack, target.stack)
-    crossentropy(pred.stack, target.stack)
-    # mse(pred.stack, target.stack)
-end
-gs[program]
+# gs = gradient(ps) do 
+#     # target = run(blank_state, target_program, instructions, program_len)
+#     pred = run(blank_state, program, instructions, program_len)
+#     # logitcrossentropy(pred.stack, target.stack)
+#     crossentropy(pred.stack, target.stack)
+#     # mse(pred.stack, target.stack)
+# end
+# gs[program]
 
 using Flux.Optimise: update!
 
-# first_program = deepcopy(program)
-# opt = Descent(0.05) # Gradient descent with learning rate 0.1
-# # trainable = @views program[:,train_mask]
-# update!(opt, trainable, gs[program][:,train_mask])
-# # program[:, train_mask] = softmax(program[:, train_mask]) 
-# # TODO needs to be restricted to [0,1]... softmax is kinda appropriate, but needs to be stable under repeated application
-# program[:, train_mask] = program[:, train_mask] / sum(program[:, train_mask],dims=1)
-# prediction2 = run(blank_state, program, instructions, program_len)
-# second_loss = crossentropy(prediction2.stack, target.stack)
-# # second_loss = mse(prediction2.stack, target.stack)
-# @show second_loss - first_loss
-# program
 
+function forward(state, hiddenprogram, target, instructions, program_len)
+    program = softmaxprog(hiddenprogram)
+    # program = softmaxmask(train_mask, hiddenprogram)
+    pred = run(state, program, instructions, program_len)
+    # mse(pred.stack, target.stack)
+    crossentropy(pred.stack, target.stack)
+    # logitcrossentropy(pred.stack, target.stack)
+end
+
+grad(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
+grad(hiddenprogram)
+
+first_program = deepcopy(program)
+opt = Descent(0.05) # Gradient descent with learning rate 0.1
+trainable = @views hiddenprogram[:,train_mask]
+
+
+@show first_loss
+function trainloop()
+    for i in 1:1000
+        update!(opt, trainable, grad(hiddenprogram)[:, train_mask])
+    end
+end
+trainloop()
+program = softmaxprog(hiddenprogram)
+prediction2 = run(blank_state, program, instructions, program_len)
+second_loss = crossentropy(prediction2.stack, target.stack)
+@show second_loss
+display(target_program)
+display(first_program)
+program
 #TODO why is crossentropy increasing loss
 # why is gradient sign neg for both instructions in program (for crossentrop)
 # why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
@@ -316,16 +335,5 @@ using Flux.Optimise: update!
 
 # Switch to straight normed to 1 vs softmax? or keep program as a separate unconstrained value, and apply softmax before pushing it into run? Then use logitcrossentropy
 # Eg add hidden program with unconstrained values
-function forward(state, hiddenprogram, target, instructions, program_len, train_mask)
-    program = softmaxprog(hiddenprogram)
-    # program = softmaxmask(train_mask, hiddenprogram)
-    pred = run(state, program, instructions, program_len)
-    # mse(pred.stack, target.stack)
-    crossentropy(pred.stack, target.stack)
-    # logitcrossentropy(pred.stack, target.stack)
-end
-
-grad(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len, train_mask)[2]
-grad(hiddenprogram)
 # sumloss(state) = sum(super_step(state,program,instructions).stack)
 # gradient(sumloss, blank_state)
