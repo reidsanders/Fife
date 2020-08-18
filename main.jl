@@ -227,11 +227,21 @@ allvalues = [["blank"]; [i for i in 0:5]]
 discrete_program = create_random_discrete_program(program_len, instructions)
 target_program = onehotbatch(discrete_program, instructions)
 target_program = convert(Array{Float32}, target_program)
-program = deepcopy(target_program)
+hiddenprogram = deepcopy(target_program)
 train_mask = create_trainable_mask(program_len, input_len)
 
 #Initialize
-program[:, train_mask] = softmax(glorot_uniform(size(program[:, train_mask])))
+function softmaxmask(mask, prog)
+    new = softmax(prog) .* mask' + prog .* (.~ mask)' 
+end
+function partial(f,a...)
+    ( (b...) -> f(a...,b...) )
+end
+softmaxprog = partial(softmaxmask, train_mask)
+
+hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
+program = softmaxprog(hiddenprogram)
+# program[:, train_mask] = softmax(glorot_uniform(size(program[:, train_mask])))
 # program[:, train_mask] = softmax(rand(size(program[:, train_mask])))
 blank_state = init_state(data_stack_depth, program_len, allvalues)
 # TODO Do we want it to be possible to move instruction pointer to "before" the input?
@@ -260,8 +270,9 @@ a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction,
 target = run(blank_state, target_program, instructions, program_len)
 prediction = run(blank_state, program, instructions, program_len)
 first_loss = crossentropy(prediction.stack, target.stack)
+# first_loss = mse(prediction.stack, target.stack)
 
-trainable = @views program[:, train_mask]
+# trainable = @views program[:, train_mask]
 ps = params(program)
 # ps = params(trainable)
 
@@ -269,25 +280,30 @@ gs = gradient(ps) do
     # target = run(blank_state, target_program, instructions, program_len)
     pred = run(blank_state, program, instructions, program_len)
     # logitcrossentropy(pred.stack, target.stack)
-    # crossentropy(pred.stack, target.stack)
-    mse(pred.stack, target.stack)
+    crossentropy(pred.stack, target.stack)
+    # mse(pred.stack, target.stack)
 end
 gs[program]
 
 using Flux.Optimise: update!
 
-first_program = deepcopy(program)
-opt = Descent(0.5) # Gradient descent with learning rate 0.1
-# trainable = @views program[:,train_mask]
-update!(opt, trainable, gs[program][:,train_mask])
-# program[:, train_mask] = softmax(program[:, train_mask]) 
-# TODO needs to be restricted to [0,1]... softmax is kinda appropriate, but needs to be stable under repeated application
-program[:, train_mask] = program[:, train_mask] / sum(program[:, train_mask],dims=1)
-prediction2 = run(blank_state, program, instructions, program_len)
+# first_program = deepcopy(program)
+# opt = Descent(0.05) # Gradient descent with learning rate 0.1
+# # trainable = @views program[:,train_mask]
+# update!(opt, trainable, gs[program][:,train_mask])
+# # program[:, train_mask] = softmax(program[:, train_mask]) 
+# # TODO needs to be restricted to [0,1]... softmax is kinda appropriate, but needs to be stable under repeated application
+# program[:, train_mask] = program[:, train_mask] / sum(program[:, train_mask],dims=1)
+# prediction2 = run(blank_state, program, instructions, program_len)
 # second_loss = crossentropy(prediction2.stack, target.stack)
-second_loss = mse(prediction2.stack, target.stack)
-@show second_loss - first_loss
-program
+# # second_loss = mse(prediction2.stack, target.stack)
+# @show second_loss - first_loss
+# program
+
+#TODO why is crossentropy increasing loss
+# why is gradient sign neg for both instructions in program (for crossentrop)
+# why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
+# TODO mult by top_of_stack before loss (it is relevant afterall)
 
 
 # ps = params(program)
@@ -299,15 +315,17 @@ program
 
 
 # Switch to straight normed to 1 vs softmax? or keep program as a separate unconstrained value, and apply softmax before pushing it into run? Then use logitcrossentropy
-# function forward(state, program, target, instructions, program_len)
-#     pred = run(state, program, instructions, program_len)
-#     # mse(pred.stack, target.stack)
-#     crossentropy(pred.stack, target.stack)
-#     # logitcrossentropy(pred.stack, target.stack)
-# end
+# Eg add hidden program with unconstrained values
+function forward(state, hiddenprogram, target, instructions, program_len, train_mask)
+    program = softmaxprog(hiddenprogram)
+    # program = softmaxmask(train_mask, hiddenprogram)
+    pred = run(state, program, instructions, program_len)
+    # mse(pred.stack, target.stack)
+    crossentropy(pred.stack, target.stack)
+    # logitcrossentropy(pred.stack, target.stack)
+end
 
-# grad = gradient(forward,blank_state,program,target,instructions,program_len)
-
-
+grad(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len, train_mask)[2]
+grad(hiddenprogram)
 # sumloss(state) = sum(super_step(state,program,instructions).stack)
 # gradient(sumloss, blank_state)
