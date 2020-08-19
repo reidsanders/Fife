@@ -45,9 +45,9 @@ function instr_dup(state::VMState)
     Shift stack Pointer?
     =#
     # TODO Roll first
-    new_stack = state.stack .* (1.0 .- state.top_of_stack') .+ valhot * state.top_of_stack'
-    new_current_instruction = roll(state.current_instruction,1)
-    new_top_of_stack = roll(state.top_of_stack,1)
+    new_top_of_stack = roll(state.top_of_stack,-1)
+    new_stack = state.stack .* (1.0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
+    new_current_instruction = roll(state.current_instruction,-1)
     VMState(
         new_current_instruction,
         new_top_of_stack,
@@ -267,7 +267,7 @@ data_stack_depth = 5
 program_len = 4
 input_len = 2 # frozen
 max_ticks = 4
-instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
+instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
 # instructions = [instr_3, instr_4, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
