@@ -2,6 +2,7 @@
 BangBang = "198e06fe-97b7-11e9-32a5-e1d131e6ad66"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Debugger = "31a5f54b-26ea-5ae9-a837-f05ce5417438"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 FunctionalCollections = "de31a74c-ac4f-5751-b3fd-e18cd04993ca"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"

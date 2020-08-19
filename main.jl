@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(".")
-using Flux: onehot, onehotbatch, crossentropy, logitcrossentropy, glorot_uniform, mse
+using Flux: onehot, onehotbatch, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Flux
 using CUDA
 using Zygote
@@ -8,6 +8,7 @@ using Random
 using LoopVectorization
 using Base
 import Base: +,-,*
+using Debugger
 
 CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
@@ -23,7 +24,7 @@ end
 
 function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
-    reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states)
+    reduce((norm ∘+), sum(program .* state.current_instruction',dims=2) .* new_states)
 end
 
 instr_pass(state::VMState) = state
@@ -131,7 +132,7 @@ end
 function loss(ŷ, y)
     # TODO loss (takes y ŷ  stacks (?) and )
     # use logitcrossentropy ? 
-    crossentropy(ŷ, y)
+    crossentropy(ŷ, y, ϵ=2*epseltype(ŷ))
 end
 
 function init_state(data_stack_depth, program_len, allvalues)
@@ -215,10 +216,10 @@ function create_program_batch(startprogram, train_mask, batch_size)
     end
 end
 
-data_stack_depth = 5
-program_len = 2
-input_len = 1 # frozen
-max_ticks = 2
+data_stack_depth = 50
+program_len = 20
+input_len = 10 # frozen
+max_ticks = 20
 instructions = [instr_2, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
@@ -236,6 +237,20 @@ function softmaxmask(mask, prog)
 end
 function partial(f,a...)
     ( (b...) -> f(a...,b...) )
+end
+
+function norm(a::Array, dims=1)
+    new = relu.(a)
+    new = new ./ sum(new, dims=dims)
+end
+
+function norm(a::VMState, dims=1)
+    VMState(
+        norm(a.current_instruction),
+        norm(a.top_of_stack),
+        norm(a.stack),
+    )
+
 end
 softmaxprog = partial(softmaxmask, train_mask)
 
@@ -269,7 +284,8 @@ a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction,
 
 target = run(blank_state, target_program, instructions, program_len)
 prediction = run(blank_state, program, instructions, program_len)
-first_loss = crossentropy(prediction.stack, target.stack)
+# first_loss = crossentropy(prediction.stack, target.stack)
+first_loss = loss(prediction.stack, target.stack)
 # first_loss = mse(prediction.stack, target.stack)
 
 # # trainable = @views program[:, train_mask]
@@ -293,32 +309,40 @@ function forward(state, hiddenprogram, target, instructions, program_len)
     # program = softmaxmask(train_mask, hiddenprogram)
     pred = run(state, program, instructions, program_len)
     # mse(pred.stack, target.stack)
-    crossentropy(pred.stack, target.stack)
+    # crossentropy(pred.stack, target.stack)
     # logitcrossentropy(pred.stack, target.stack)
+    loss(pred.stack, target.stack)
 end
 
-grad(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
-grad(hiddenprogram)
+gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
+gradprog(hiddenprogram)
 
 first_program = deepcopy(program)
-opt = Descent(0.05) # Gradient descent with learning rate 0.1
+# opt = Descent(0.05) # Gradient descent with learning rate 0.1
+opt = ADAM(0.05) # Gradient descent with learning rate 0.1
 trainable = @views hiddenprogram[:,train_mask]
 
 
 @show first_loss
 function trainloop()
     for i in 1:1000
-        update!(opt, trainable, grad(hiddenprogram)[:, train_mask])
+        display(i)
+        # display(hiddenprogram)
+        update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
+# @enter trainloop()
 trainloop()
+
+
 program = softmaxprog(hiddenprogram)
 prediction2 = run(blank_state, program, instructions, program_len)
-second_loss = crossentropy(prediction2.stack, target.stack)
+second_loss = loss(prediction2.stack, target.stack)
 @show second_loss
 display(target_program)
 display(first_program)
 program
+
 #TODO why is crossentropy increasing loss
 # why is gradient sign neg for both instructions in program (for crossentrop)
 # why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
