@@ -233,8 +233,8 @@ data_stack_depth = 5
 program_len = 4
 input_len = 2 # frozen
 max_ticks = 4
-# instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
-instructions = [instr_3, instr_4, instr_5]
+instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
+# instructions = [instr_3, instr_4, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
 
@@ -340,8 +340,8 @@ trainable = @views hiddenprogram[:,train_mask]
 @show first_loss
 function trainloop()
     for i in 1:1000
-        display(i)
-        display(hiddenprogram)
+        # display(i)
+        # display(hiddenprogram)
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
@@ -352,10 +352,11 @@ trainloop()
 program = softmaxprog(hiddenprogram)
 prediction2 = run(blank_state, program, instructions, program_len)
 second_loss = loss(prediction2.stack, target.stack)
-@show second_loss
 display(target_program)
 display(first_program)
-program
+display(program)
+@show second_loss
+@show second_loss - first_loss
 
 #TODO why is crossentropy increasing loss
 # why is gradient sign neg for both instructions in program (for crossentrop)
