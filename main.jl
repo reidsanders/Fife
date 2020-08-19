@@ -31,6 +31,40 @@ function super_step(state::VMState, program, instructions)
     norm(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
 end
 
+function instr_dup(state::VMState)
+    #=
+    DUP Should duplicate top of stack, and push to top of stack
+
+    move data stack pointer vector up by 1 ?
+    mult each row by corresponding  data stack vector entry (representing prob)
+
+    prob of word * (Data_Stack array * Top of Stack pointer vector) + (Data_Stack shifted down 1)
+
+    W * D * SP + D~1
+
+    Shift stack Pointer?
+    =#
+    # TODO Roll first
+    new_stack = state.stack .* (1.0 .- state.top_of_stack') .+ valhot * state.top_of_stack'
+    new_current_instruction = roll(state.current_instruction,1)
+    new_top_of_stack = roll(state.top_of_stack,1)
+    VMState(
+        new_current_instruction,
+        new_top_of_stack,
+        new_stack,
+    )
+    
+end
+
+#def swap(stack):
+    #"""
+    #SWAP Swap top two elements in stack
+
+    #prob_of_word * (Data_Stack * Top of Stack )
+
+    #"""
+
+
 instr_pass(state::VMState) = state
 instr_0(state::VMState) = instr_val(state,0,allvalues) # TODO create lamdas for all
 instr_1(state::VMState) = instr_val(state,1,allvalues) # TODO create lamdas for all
@@ -83,10 +117,10 @@ function instr_val(state::VMState, val, allvalues)
     # for (i, col) in enumerate(eachcol(state.stack))
     #     new_stack[:,i] = (0.0-state.top_of_stack[i]) .* col .+ (state.top_of_stack[i] .* valhot)
     # end
-    new_stack = state.stack .* (1.0 .- state.top_of_stack') .+ valhot * state.top_of_stack'
+    new_top_of_stack = roll(state.top_of_stack,-1)
+    new_current_instruction = roll(state.current_instruction,-1)
+    new_stack = state.stack .* (1.0 .- new_top_of_stack') .+ valhot * new_top_of_stack'
 
-    new_top_of_stack = roll(state.top_of_stack,1)
-    new_current_instruction = roll(state.current_instruction,1)
     # new_stack = 1.0 .- state.stack
 
     # print(new_stack)
