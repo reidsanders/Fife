@@ -1,6 +1,6 @@
 using Pkg
 Pkg.activate(".")
-using Flux: onehot, onehotbatch, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
+using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Flux
 using CUDA
 using Zygote
@@ -24,12 +24,20 @@ end
 
 function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
-    reduce((norm ∘+), sum(program .* state.current_instruction',dims=2) .* new_states)
+    # instruction_probs = sum(program .* state.current_instruction',dims=2) 
+    # scaled_states = instruction_probs .* new_states
+    # summed = reduce(+, scaled_states)
+    # normed = norm(summed)
+    norm(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
 end
 
 instr_pass(state::VMState) = state
-instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
+instr_0(state::VMState) = instr_val(state,0,allvalues) # TODO create lamdas for all
+instr_1(state::VMState) = instr_val(state,1,allvalues) # TODO create lamdas for all
 instr_2(state::VMState) = instr_val(state,2,allvalues) # TODO create lamdas for all
+instr_3(state::VMState) = instr_val(state,3,allvalues) # TODO create lamdas for all
+instr_4(state::VMState) = instr_val(state,4,allvalues) # TODO create lamdas for all
+instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
 
 function roll!(a::Vector, increment)
     # Only vectors right now
@@ -125,6 +133,11 @@ function run(state, program, instructions, ticks)
     # TODO run (takes program superposition and runs it. returns state?)
     for i in 1:ticks
         state = super_step(state, program, instructions)
+        # @assert !any(isnan.(program)) ## Damn, putting an assert removes the NaN
+        @assert !any(isnan.(state.stack)) ## Damn, putting an assert removes the NaN
+        @assert !any(isnan.(state.top_of_stack)) ## Damn, putting an assert removes the NaN
+        @assert !any(isnan.(state.current_instruction)) ## Damn, putting an assert removes the NaN
+        @assert !any(isnan.(program)) ## Damn, putting an assert removes the NaN
     end
     state
 end
@@ -216,11 +229,12 @@ function create_program_batch(startprogram, train_mask, batch_size)
     end
 end
 
-data_stack_depth = 50
-program_len = 20
-input_len = 10 # frozen
-max_ticks = 20
-instructions = [instr_2, instr_5]
+data_stack_depth = 5
+program_len = 4
+input_len = 2 # frozen
+max_ticks = 4
+# instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
+instructions = [instr_3, instr_4, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
 
@@ -319,7 +333,7 @@ gradprog(hiddenprogram)
 
 first_program = deepcopy(program)
 # opt = Descent(0.05) # Gradient descent with learning rate 0.1
-opt = ADAM(0.05) # Gradient descent with learning rate 0.1
+opt = ADAM(0.001) # Gradient descent with learning rate 0.1
 trainable = @views hiddenprogram[:,train_mask]
 
 
@@ -327,7 +341,7 @@ trainable = @views hiddenprogram[:,train_mask]
 function trainloop()
     for i in 1:1000
         display(i)
-        # display(hiddenprogram)
+        display(hiddenprogram)
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
