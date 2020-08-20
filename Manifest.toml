@@ -33,6 +33,12 @@ version = "0.3.29"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[BenchmarkTools]]
+deps = ["JSON", "Logging", "Printf", "Statistics", "UUIDs"]
+git-tree-sha1 = "9e62e66db34540a0c919d72172cc2f642ac71260"
+uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+version = "0.5.0"
+
 [[BinaryProvider]]
 deps = ["Libdl", "Logging", "SHA"]
 git-tree-sha1 = "ecdec412a9abc8db54c0efc5548c64dfce072058"
@@ -670,6 +676,18 @@ deps = ["Printf"]
 git-tree-sha1 = "f458ca23ff80e46a630922c555d838303e4b9603"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 version = "0.5.6"
+
+[[Torch]]
+deps = ["FillArrays", "Libdl", "LinearAlgebra", "NNlib", "Requires", "Statistics", "Torch_jll", "ZygoteRules"]
+git-tree-sha1 = "e95e70fccc6d8474ee0437f5ca9ee0fece2fcaf3"
+uuid = "6a2ea274-3061-11ea-0d63-ff850051a295"
+version = "0.1.2"
+
+[[Torch_jll]]
+deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
+git-tree-sha1 = "e5ba45e41a25b732f3bfd3d85b976f538d7d4ad6"
+uuid = "c12fb04c-f5e9-5c82-b5d6-b53f8f8d9a32"
+version = "1.4.0+0"
 
 [[TranscodingStreams]]
 deps = ["Random", "Test"]

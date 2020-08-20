@@ -261,11 +261,12 @@ function create_program_batch(startprogram, train_mask, batch_size)
     end
 end
 
-data_stack_depth = 5
-program_len = 4
-input_len = 2 # frozen
+data_stack_depth = 20
+program_len = 10
+input_len = 4 # frozen
 max_ticks = 4
-instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
+# instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
+instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 # instructions = [instr_3, instr_4, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
@@ -372,8 +373,8 @@ trainable = @views hiddenprogram[:,train_mask]
 @show first_loss
 function trainloop()
     for i in 1:1000
-        # display(i)
-        # display(hiddenprogram)
+        display(i)
+        display(hiddenprogram)
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
