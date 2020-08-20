@@ -8,8 +8,7 @@ using Random
 using LoopVectorization
 using Base
 import Base: +,-,*
-using Debugger
-
+using CuArrays
 CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
@@ -382,6 +381,7 @@ end
 # @enter trainloop()
 trainloop()
 
+runprog(prog) = run(blank_state, prog, instructions, program_len)
 
 program = softmaxprog(hiddenprogram)
 prediction2 = run(blank_state, program, instructions, program_len)
@@ -392,6 +392,7 @@ display(program)
 @show second_loss
 @show second_loss - first_loss
 
+# predictionbatch = runprog.([program, program, program])
 #TODO why is crossentropy increasing loss
 # why is gradient sign neg for both instructions in program (for crossentrop)
 # why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
