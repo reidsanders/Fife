@@ -8,7 +8,6 @@ using Random
 using LoopVectorization
 using Base
 import Base: +,-,*
-using CuArrays
 CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
@@ -286,16 +285,16 @@ function partial(f,a...)
     ( (b...) -> f(a...,b...) )
 end
 
-function norm(a::Array, dims=1)
+function norm(a::Array; dims=1)
     new = relu.(a)
     new = new ./ sum(new, dims=dims)
 end
 
-function norm(a::VMState, dims=1)
+function norm(a::VMState; dims=1)
     VMState(
-        norm(a.current_instruction),
-        norm(a.top_of_stack),
-        norm(a.stack),
+        norm(a.current_instruction, dims=dims),
+        norm(a.top_of_stack, dims=dims),
+        norm(a.stack, dims=dims),
     )
 
 end
