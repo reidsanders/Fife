@@ -13,9 +13,15 @@ CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
 struct VMState
-    current_instruction::Vector{Float32}
-    top_of_stack::Vector{Float32}
-    stack::Array{Float32}
+    # current_instruction::Union{Array{Float32},CuArray{Float32}}
+    # top_of_stack::Union{Array{Float32},CuArray{Float32}}
+    # stack::Union{Array{Float32},CuArray{Float32}}
+    # current_instruction::Array{Float32}
+    # top_of_stack::Array{Float32}
+    # stack::Array{Float32}
+    current_instruction::CuArray{Float32}
+    top_of_stack::CuArray{Float32}
+    stack::CuArray{Float32}
 end
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
@@ -25,7 +31,10 @@ a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction,
 
 function super_step(state::VMState, program, instructions)
     new_states = [instruction(state) for instruction in instructions]
-    normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
+    scaledstates = sum(program .* state.current_instruction',dims=2) .* new_states
+    reduced = reduce(+, scaledstates)
+    normed = normit(reduced)
+    # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
 end
 
 function instr_dup(state::VMState)
@@ -47,15 +56,19 @@ end
 # TODO normit after most instr (?)
 # TODO def normit for  all zero case
 
-instr_pass(state::VMState) = state
-instr_0(state::VMState) = instr_val(state,0,allvalues) # TODO create lamdas for all
-instr_1(state::VMState) = instr_val(state,1,allvalues) # TODO create lamdas for all
-instr_2(state::VMState) = instr_val(state,2,allvalues) # TODO create lamdas for all
-instr_3(state::VMState) = instr_val(state,3,allvalues) # TODO create lamdas for all
-instr_4(state::VMState) = instr_val(state,4,allvalues) # TODO create lamdas for all
-instr_5(state::VMState) = instr_val(state,5,allvalues) # TODO create lamdas for all
+function valhot(val, allvalues)
+    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
+end
 
-function roll(a::Vector, increment)
+instr_pass(state::VMState) = state
+instr_0(state::VMState) = instr_val(state, valhot(0,allvalues)) # TODO create lamdas for all
+instr_1(state::VMState) = instr_val(state, valhot(1,allvalues)) # TODO create lamdas for all
+instr_2(state::VMState) = instr_val(state, valhot(2,allvalues)) # TODO create lamdas for all
+instr_3(state::VMState) = instr_val(state, valhot(3,allvalues)) # TODO create lamdas for all
+instr_4(state::VMState) = instr_val(state, valhot(4,allvalues)) # TODO create lamdas for all
+instr_5(state::VMState) = instr_val(state, valhot(5,allvalues)) # TODO create lamdas for all
+
+function roll(a::Union{CuArray,Array}, increment)
     increment = increment%length(a)
     if increment == 0
         return a
@@ -65,16 +78,15 @@ function roll(a::Vector, increment)
         return vcat(a[end+increment-1:end], a[1:end-increment])
     end 
 end
-function instr_val(state::VMState, val, allvalues)
+function instr_val(state::VMState, valhotvec)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
     # set return type to force allocation
 
-    valhot = [i == val ? 1.0f0 : 0.0f0 for i in allvalues]
     new_top_of_stack = roll(state.top_of_stack,-1)
     new_current_instruction = roll(state.current_instruction,1)
-    new_stack = state.stack .* (1.0 .- new_top_of_stack') .+ valhot * new_top_of_stack'
+    new_stack = state.stack .* (1.0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
     VMState(
         new_current_instruction,
         new_top_of_stack,
@@ -100,6 +112,7 @@ function create_trainable_mask(program_len, input_len)
     mask
 end
 
+
 # TODO terminate all program in Null operator? Early stopping if that last instruction is large percentage?
 function run(state, program, instructions, ticks)
     for i in 1:ticks
@@ -118,13 +131,14 @@ function init_state(data_stack_depth, program_len, allvalues)
     current_instruction = zeros(Float32,program_len,)
     top_of_stack = zeros(Float32,data_stack_depth,)
     stack[1,:] .= 1.f0
+    current_instruction[1] = 1.f0
+    top_of_stack[1] = 1.f0
+    # @assert isbitstype(stack) == true
     state = VMState(
         current_instruction,
         top_of_stack,
         stack,
     )
-    state.current_instruction[1] = 1.f0
-    state.top_of_stack[1] = 1.f0
     state
 end
 
@@ -206,13 +220,24 @@ function forward(state, hiddenprogram, target, instructions, program_len)
     loss(pred.stack, target.stack)
 end
 
-function trainloop()
-    for i in 1:10
+function trainloop(numexamples)
+    for i in 1:numexamples
         display(i)
         display(hiddenprogram)
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
+
+
+use_cuda = true
+if use_cuda
+    device = gpu
+    @info "Training on GPU"
+else
+    device = cpu
+    @info "Training on CPU"
+end
+
 
 data_stack_depth = 20
 program_len = 10
@@ -226,7 +251,7 @@ allvalues = [["blank"]; [i for i in 0:5]]
 
 
 discrete_program = create_random_discrete_program(program_len, instructions)
-target_program = onehotbatch(discrete_program, instructions)
+target_program = onehotbatch(discrete_program, instructions) 
 target_program = convert(Array{Float32}, target_program)
 hiddenprogram = deepcopy(target_program)
 train_mask = create_trainable_mask(program_len, input_len)
@@ -235,7 +260,8 @@ train_mask = create_trainable_mask(program_len, input_len)
 softmaxprog = partial(softmaxmask, train_mask)
 
 hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
-program = softmaxprog(hiddenprogram)
+program = softmaxprog(hiddenprogram) |> device
+hiddenprogram = hiddenprogram |> device
 blank_state = init_state(data_stack_depth, program_len, allvalues)
 # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
@@ -257,7 +283,7 @@ first_program = deepcopy(program)
 opt = ADAM(0.001) # Gradient descent with learning rate 0.1
 trainable = @views hiddenprogram[:,train_mask]
 
-trainloop()
+trainloop(1000)
 runprog(prog) = run(blank_state, prog, instructions, program_len)
 
 program = softmaxprog(hiddenprogram)
