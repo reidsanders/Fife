@@ -35,7 +35,7 @@ a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction,
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 
 function super_step(state::VMState, program, instructions)
-    new_states = [instruction(state) for instruction in instructions] |> device
+    new_states = StructArray([instruction(state) for instruction in instructions])
     display(program)
     display(state.current_instruction)
     summed = sum(program .* state.current_instruction',dims=2)
