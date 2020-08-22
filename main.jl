@@ -8,7 +8,12 @@ using Zygote
 using Random
 using LoopVectorization
 using Base
+using Debugger
+using Random
 import Base: +,-,*
+
+Random.seed!(123);
+
 CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
@@ -30,8 +35,13 @@ a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction,
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 
 function super_step(state::VMState, program, instructions)
-    new_states = [instruction(state) for instruction in instructions]
-    scaledstates = sum(program .* state.current_instruction',dims=2) .* new_states
+    new_states = [instruction(state) for instruction in instructions] |> device
+    display(program)
+    display(state.current_instruction)
+    summed = sum(program .* state.current_instruction',dims=2)
+    display(summed)
+    display(new_states)
+    scaledstates = summed .* new_states
     reduced = reduce(+, scaledstates)
     normed = normit(reduced)
     # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
@@ -214,6 +224,7 @@ function assert_no_nans(state::VMState)
     @assert !any(isnan.(state.top_of_stack)) ## Damn, putting an assert removes the NaN
     @assert !any(isnan.(state.current_instruction)) ## Damn, putting an assert removes the NaN
 end
+
 function forward(state, hiddenprogram, target, instructions, program_len)
     program = softmaxprog(hiddenprogram)
     pred = run(state, program, instructions, program_len)
@@ -253,15 +264,18 @@ allvalues = [["blank"]; [i for i in 0:5]]
 discrete_program = create_random_discrete_program(program_len, instructions)
 target_program = onehotbatch(discrete_program, instructions) 
 target_program = convert(Array{Float32}, target_program)
-hiddenprogram = deepcopy(target_program)
 train_mask = create_trainable_mask(program_len, input_len)
+hiddenprogram = deepcopy(target_program)
+hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
 
 #Initialize
-softmaxprog = partial(softmaxmask, train_mask)
+softmaxprog = partial(softmaxmask, train_mask |> device)
 
-hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
-program = softmaxprog(hiddenprogram) |> device
 hiddenprogram = hiddenprogram |> device
+program = softmaxprog(hiddenprogram) |> device
+target_program = target_program |> device
+hiddenprogram = hiddenprogram |> device
+train_mask = train_mask |> device
 blank_state = init_state(data_stack_depth, program_len, allvalues)
 # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
