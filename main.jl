@@ -11,22 +11,22 @@ using Base
 using Debugger
 using Random
 import Base: +,-,*
-
+using StructArrays
 Random.seed!(123);
 
-CUDA.allowscalar(false)
+# CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
 struct VMState
     # current_instruction::Union{Array{Float32},CuArray{Float32}}
     # top_of_stack::Union{Array{Float32},CuArray{Float32}}
     # stack::Union{Array{Float32},CuArray{Float32}}
-    # current_instruction::Array{Float32}
-    # top_of_stack::Array{Float32}
-    # stack::Array{Float32}
-    current_instruction::CuArray{Float32}
-    top_of_stack::CuArray{Float32}
-    stack::CuArray{Float32}
+    current_instruction::Array{Float32}
+    top_of_stack::Array{Float32}
+    stack::Array{Float32}
+    # current_instruction::CuArray{Float32}
+    # top_of_stack::CuArray{Float32}
+    # stack::CuArray{Float32}
 end
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
@@ -35,13 +35,20 @@ a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction,
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 
 function super_step(state::VMState, program, instructions)
-    new_states = StructArray([instruction(state) for instruction in instructions])
-    display(program)
-    display(state.current_instruction)
+    # new_states = StructArray([instruction(state) for instruction in instructions])
+    new_states = [instruction(state) for instruction in instructions]
+    # display(program)
+    # display(state.current_instruction)
     summed = sum(program .* state.current_instruction',dims=2)
-    display(summed)
-    display(new_states)
+    # display(summed)
+    # display(new_states)
+    # scaledstates = similar(new_states)
+    # @avx for i in 1:length(summed)
+    #     scaledstates[i] = summed[i] * new_states[i]
+    # end
+
     scaledstates = summed .* new_states
+
     reduced = reduce(+, scaledstates)
     normed = normit(reduced)
     # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
@@ -52,7 +59,7 @@ function instr_dup(state::VMState)
     DUP Should duplicate top of stack, and push to top of stack
     =#
     new_top_of_stack = roll(state.top_of_stack,-1)
-    new_stack = state.stack .* (1.0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
+    new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
     new_current_instruction = roll(state.current_instruction,1)
 
     VMState(
@@ -96,7 +103,7 @@ function instr_val(state::VMState, valhotvec)
 
     new_top_of_stack = roll(state.top_of_stack,-1)
     new_current_instruction = roll(state.current_instruction,1)
-    new_stack = state.stack .* (1.0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
+    new_stack = state.stack .* (1.f0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
     VMState(
         new_current_instruction,
         new_top_of_stack,
@@ -137,7 +144,7 @@ function loss(ŷ, y)
 end
 
 function init_state(data_stack_depth, program_len, allvalues)
-    stack = zeros(length(allvalues), data_stack_depth)
+    stack = zeros(Float32,length(allvalues), data_stack_depth)
     current_instruction = zeros(Float32,program_len,)
     top_of_stack = zeros(Float32,data_stack_depth,)
     stack[1,:] .= 1.f0
@@ -153,13 +160,13 @@ function init_state(data_stack_depth, program_len, allvalues)
 end
 
 function softmaxmask(mask, prog)
-    new = softmax(prog) .* mask' + prog .* (.~ mask)' 
+    new = softmax(prog) .* mask' + prog .* (.! mask)' 
 end
 function partial(f,a...)
     ( (b...) -> f(a...,b...) )
 end
 
-function normit(a::Array; dims=1, ϵ=epseltype(a))
+function normit(a::Union{Array,CuArray}; dims=1, ϵ=epseltype(a))
     new = a .+ ϵ
     new ./ sum(new, dims=dims) 
     # TODO if sum to 0, 
@@ -233,14 +240,14 @@ end
 
 function trainloop(numexamples)
     for i in 1:numexamples
-        display(i)
-        display(hiddenprogram)
+        # display(i)
+        # display(hiddenprogram)
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
 
 
-use_cuda = true
+use_cuda = false
 if use_cuda
     device = gpu
     @info "Training on GPU"
