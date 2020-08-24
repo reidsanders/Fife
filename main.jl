@@ -40,17 +40,21 @@ function super_step(state::VMState, program, instructions)
     # TODO try named tuple instead of structs?
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     new_states = [instruction(state) for instruction in instructions]
-    # display(program)
+    # Split out states into array of stacks, etc here? Or define vectorized instructions application
+
+    # Check performance, but easiest to just send to cpu here
+    display(program)
     # display(state.current_instruction)
-    summed = sum(program .* state.current_instruction',dims=2)
-    # display(summed)
-    # display(new_states)
+    summed = sum(program .* state.current_instruction',dims=2) |> cpu
+    display(summed)
+    display(new_states)
     # scaledstates = similar(new_states)
     # @avx for i in 1:length(summed)
     #     scaledstates[i] = summed[i] * new_states[i]
     # end
 
     scaledstates = summed .* new_states
+    display(scaledstates)
 
     reduced = reduce(+, scaledstates)
     normed = normit(reduced)
@@ -103,11 +107,11 @@ function instr_val(state::VMState, valhotvec)
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
     # set return type to force allocation
-    display(state.top_of_stack)
+    # display(state.top_of_stack)
     new_top_of_stack = roll(state.top_of_stack,-1)
     new_current_instruction = roll(state.current_instruction,1)
-    display(valhotvec)
-    display(new_top_of_stack)
+    # display(valhotvec)
+    # display(new_top_of_stack)
     topscaled = valhotvec * new_top_of_stack'
     stackscaled = state.stack .* (1.f0 .- new_top_of_stack')
     # new_stack = state.stack .* (1.f0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
