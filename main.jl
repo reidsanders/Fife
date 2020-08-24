@@ -36,6 +36,9 @@ a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction,
 
 function super_step(state::VMState, program, instructions)
     # new_states = StructArray([instruction(state) for instruction in instructions])
+    # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
+    # TODO try named tuple instead of structs?
+    # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     new_states = [instruction(state) for instruction in instructions]
     # display(program)
     # display(state.current_instruction)
