@@ -18,12 +18,12 @@ Random.seed!(123);
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
 struct VMState
-    # current_instruction::Union{Array{Float32},CuArray{Float32}}
-    # top_of_stack::Union{Array{Float32},CuArray{Float32}}
-    # stack::Union{Array{Float32},CuArray{Float32}}
-    current_instruction::Array{Float32}
-    top_of_stack::Array{Float32}
-    stack::Array{Float32}
+    current_instruction::Union{Array{Float32},CuArray{Float32}}
+    top_of_stack::Union{Array{Float32},CuArray{Float32}}
+    stack::Union{Array{Float32},CuArray{Float32}}
+    # current_instruction::Array{Float32}
+    # top_of_stack::Array{Float32}
+    # stack::Array{Float32}
     # current_instruction::CuArray{Float32}
     # top_of_stack::CuArray{Float32}
     # stack::CuArray{Float32}
@@ -103,10 +103,15 @@ function instr_val(state::VMState, valhotvec)
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
     # set return type to force allocation
-
+    display(state.top_of_stack)
     new_top_of_stack = roll(state.top_of_stack,-1)
     new_current_instruction = roll(state.current_instruction,1)
-    new_stack = state.stack .* (1.f0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
+    display(valhotvec)
+    display(new_top_of_stack)
+    topscaled = valhotvec * new_top_of_stack'
+    stackscaled = state.stack .* (1.f0 .- new_top_of_stack')
+    # new_stack = state.stack .* (1.f0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
+    new_stack = stackscaled .* topscaled
     VMState(
         new_current_instruction,
         new_top_of_stack,
@@ -155,9 +160,9 @@ function init_state(data_stack_depth, program_len, allvalues)
     top_of_stack[1] = 1.f0
     # @assert isbitstype(stack) == true
     state = VMState(
-        current_instruction,
-        top_of_stack,
-        stack,
+        current_instruction |> device,
+        top_of_stack |> device,
+        stack |> device,
     )
     state
 end
@@ -250,7 +255,8 @@ function trainloop(numexamples)
 end
 
 
-use_cuda = false
+# use_cuda = false
+use_cuda = true
 if use_cuda
     device = gpu
     @info "Training on GPU"
