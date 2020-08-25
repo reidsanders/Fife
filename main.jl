@@ -43,18 +43,18 @@ function super_step(state::VMState, program, instructions)
     # Split out states into array of stacks, etc here? Or define vectorized instructions application
 
     # Check performance, but easiest to just send to cpu here
-    display(program)
+    # display(program)
     # display(state.current_instruction)
     summed = sum(program .* state.current_instruction',dims=2) |> cpu
-    display(summed)
-    display(new_states)
+    # display(summed)
+    # display(new_states)
     # scaledstates = similar(new_states)
     # @avx for i in 1:length(summed)
     #     scaledstates[i] = summed[i] * new_states[i]
     # end
 
     scaledstates = summed .* new_states
-    display(scaledstates)
+    # display(scaledstates)
 
     reduced = reduce(+, scaledstates)
     normed = normit(reduced)
@@ -172,7 +172,7 @@ function init_state(data_stack_depth, program_len, allvalues)
 end
 
 function softmaxmask(mask, prog)
-    new = softmax(prog) .* mask' + prog .* (.! mask)' 
+    new = softmax(prog) .* mask' + prog .* (1 .- mask)' 
 end
 function partial(f,a...)
     ( (b...) -> f(a...,b...) )

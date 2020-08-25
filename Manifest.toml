@@ -257,6 +257,11 @@ git-tree-sha1 = "1d090099fb82223abc48f7ce176d3f7696ede36d"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.12"
 
+[[FunctionWrappers]]
+git-tree-sha1 = "e4813d187be8c7b993cb7f85cbf2b7bfbaadc694"
+uuid = "069b7b12-0de2-55c6-9aab-29f3d0a68a2e"
+version = "1.1.1"
+
 [[FunctionalCollections]]
 deps = ["Test"]
 git-tree-sha1 = "04cb9cfaa6ba5311973994fe3496ddec19b6292a"
@@ -567,6 +572,12 @@ deps = ["UUIDs"]
 git-tree-sha1 = "d37400976e98018ee840e0ca4f9d20baa231dc6b"
 uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.0.1"
+
+[[ReverseDiff]]
+deps = ["DiffResults", "DiffRules", "ForwardDiff", "FunctionWrappers", "LinearAlgebra", "MacroTools", "NaNMath", "Random", "SpecialFunctions", "StaticArrays", "Statistics"]
+git-tree-sha1 = "a3a2fbc8af1fc993aca48ba01484444bbeb39bf7"
+uuid = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+version = "1.4.2"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
