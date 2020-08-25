@@ -45,10 +45,11 @@ function super_step(state::VMState, program, instructions)
     # Check performance, but easiest to just send to cpu here
     # display(program)
     # display(state.current_instruction)
-    current = program .* state.current_instruction'
+    @enter current = program .* state.current_instruction'
     display(current)
-    summed = sum(current, dims=2)
-    display(summed)
+    summed = sum(current, dims=2) 
+    summed = summed |> cpu
+    # display(summed)
     # summed = summed |> cpu
     # display(summed)
     # display(new_states)
