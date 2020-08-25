@@ -45,14 +45,19 @@ function super_step(state::VMState, program, instructions)
     # Check performance, but easiest to just send to cpu here
     # display(program)
     # display(state.current_instruction)
-    summed = sum(program .* state.current_instruction',dims=2) |> cpu
+    current = program .* state.current_instruction'
+    display(current)
+    summed = sum(current, dims=2)
+    display(summed)
+    # summed = summed |> cpu
     # display(summed)
     # display(new_states)
     # scaledstates = similar(new_states)
     # @avx for i in 1:length(summed)
     #     scaledstates[i] = summed[i] * new_states[i]
     # end
-
+    # @assert isbits(summed)
+    # @assert isbits(new_states)
     scaledstates = summed .* new_states
     # display(scaledstates)
 
@@ -146,7 +151,7 @@ end
 function run(state, program, instructions, ticks)
     for i in 1:ticks
         state = super_step(state, program, instructions)
-        assert_no_nans(state)
+        # assert_no_nans(state)
     end
     state
 end
@@ -270,10 +275,10 @@ else
 end
 
 
-data_stack_depth = 20
-program_len = 10
-input_len = 4 # frozen part
-max_ticks = 4
+data_stack_depth = 6
+program_len = 2
+input_len = 1 # frozen part
+max_ticks = 1
 instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 # instructions = [instr_3, instr_4, instr_5]
@@ -317,7 +322,7 @@ first_program = deepcopy(program)
 opt = ADAM(0.001) # Gradient descent with learning rate 0.1
 trainable = @views hiddenprogram[:,train_mask]
 
-trainloop(1000)
+trainloop(10)
 runprog(prog) = run(blank_state, prog, instructions, program_len)
 
 program = softmaxprog(hiddenprogram)
