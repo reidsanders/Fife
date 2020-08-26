@@ -35,6 +35,7 @@ struct VMSuperStates
     stacks::CuArray{Float32} # num instructions x stack
 end
 
+Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
 a::VMState * b::Number = b * a
@@ -50,14 +51,25 @@ function super_step(state::VMState, program, instructions)
     # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
     # TODO try named tuple instead of structs?
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
-    newstates = (instruction(state) for instruction in instructions)
-    display(newstates)
-    x = 2
+    newstates = [instruction(state) for instruction in instructions]
+    # display(newstates)
+    # display(newstates[1].stack)
+    # display(newstates[1].top_of_stack)
+    # display(newstates[1].current_instruction)
+    # display(length(newstates))
+    current_instructions = cat([x.current_instruction for x in newstates]..., dims=3)
+    top_of_stacks = cat([x.top_of_stack for x in newstates]..., dims=3)
+    stacks = cat([x.stack for x in newstates]..., dims=3)
     states = VMSuperStates(
-        cat([x.current_instruction for x in newstates]..., dims=3),
-        cat([x.top_of_stack for x in newstates]..., dims=3),
-        cat([x.stack for x in newstates]..., dims=3),
+        current_instructions,
+        top_of_stacks,
+        stacks,
     )
+    # states = VMSuperStates(
+    #     cat([x.current_instruction for x in newstates]..., dims=3),
+    #     cat([x.top_of_stack for x in newstates]..., dims=3),
+    #     cat([x.stack for x in newstates]..., dims=3),
+    # )
     # Split out states into array of stacks, etc here? Or define vectorized instructions application
 
     # Check performance, but easiest to just send to cpu here
@@ -66,7 +78,7 @@ function super_step(state::VMState, program, instructions)
     current = program .* state.current_instruction'
     summed = sum(current, dims=2) 
     summed = reshape(summed,(1,1,:))
-    # display(summed)
+    # display(typeof(states))
     # summed = summed |> cpu
     # display(states)
     # display(summed)
@@ -283,8 +295,8 @@ end
 
 function trainloop(numexamples)
     for i in 1:numexamples
-        # display(i)
-        # display(hiddenprogram)
+        display(i)
+        display(hiddenprogram)
         # display(hiddenprogram)
         # update!(opt, hiddenprogram, gradprog(hiddenprogram))
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
