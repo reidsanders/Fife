@@ -146,7 +146,7 @@ function instr_val(state::VMState, valhotvec)
     topscaled = valhotvec * new_top_of_stack'
     stackscaled = state.stack .* (1.f0 .- new_top_of_stack')
     # new_stack = state.stack .* (1.f0 .- new_top_of_stack') .+ valhotvec * new_top_of_stack'
-    new_stack = stackscaled .* topscaled
+    new_stack = stackscaled .+ topscaled
     VMState(
         new_current_instruction,
         new_top_of_stack,
@@ -296,10 +296,10 @@ end
 use_cuda = true
 if use_cuda
     device = gpu
-    @info "Training on GPU"
+    # @info "Training on GPU"
 else
     device = cpu
-    @info "Training on CPU"
+    # @info "Training on CPU"
 end
 
 
