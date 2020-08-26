@@ -52,6 +52,8 @@ function super_step(state::VMState, program, instructions)
     # TODO try named tuple instead of structs?
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     newstates = [instruction(state) for instruction in instructions]
+    # TODO Buffer ?  dropgrad?
+    # 
     # display(newstates)
     # display(newstates[1].stack)
     # display(newstates[1].top_of_stack)
