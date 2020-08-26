@@ -10,7 +10,7 @@ using LoopVectorization
 using Base
 using Debugger
 using Random
-import Base: +,-,*
+import Base: +,-,*,length
 using StructArrays
 Random.seed!(123);
 
@@ -28,29 +28,45 @@ struct VMState
     # top_of_stack::CuArray{Float32}
     # stack::CuArray{Float32}
 end
+
+struct VMSuperStates
+    current_instructions::CuArray{Float32}
+    top_of_stacks::CuArray{Float32}
+    stacks::CuArray{Float32} # num instructions x stack
+end
+
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
 a::VMState * b::Number = b * a
 a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction, a.top_of_stack + b.top_of_stack, a.stack + b.stack)
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 
+length(a::VMSuperStates) = size(a.current_instructions)[3]
+a::CuArray * b::VMSuperStates = VMSuperStates(a .* b.current_instructions, a .* b.top_of_stacks, a .* b.stacks)
+a::VMSuperStates * b::CuArray = b * a
+
 function super_step(state::VMState, program, instructions)
     # new_states = StructArray([instruction(state) for instruction in instructions])
     # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
     # TODO try named tuple instead of structs?
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
-    new_states = [instruction(state) for instruction in instructions]
+    newstates = (instruction(state) for instruction in instructions)
+    states = VMSuperStates(
+        cat([x.current_instruction for x in newstates]..., dims=3),
+        cat([x.top_of_stack for x in newstates]..., dims=3),
+        cat([x.stack for x in newstates]..., dims=3),
+    )
     # Split out states into array of stacks, etc here? Or define vectorized instructions application
 
     # Check performance, but easiest to just send to cpu here
     # display(program)
     # display(state.current_instruction)
-    @enter current = program .* state.current_instruction'
-    display(current)
+    current = program .* state.current_instruction'
     summed = sum(current, dims=2) 
-    summed = summed |> cpu
+    summed = reshape(summed,(1,1,:))
     # display(summed)
     # summed = summed |> cpu
+    # display(states)
     # display(summed)
     # display(new_states)
     # scaledstates = similar(new_states)
@@ -59,11 +75,16 @@ function super_step(state::VMState, program, instructions)
     # end
     # @assert isbits(summed)
     # @assert isbits(new_states)
-    scaledstates = summed .* new_states
+    scaledstates = summed * states 
     # display(scaledstates)
 
-    reduced = reduce(+, scaledstates)
-    normed = normit(reduced)
+    # reduced = reduce(+, scaledstates)
+    reduced = VMState( 
+        sum(scaledstates.current_instructions, dims=3)[:,:,1],
+        sum(scaledstates.top_of_stacks, dims=3)[:,:,1],
+        sum(scaledstates.stacks, dims=3)[:,:,1],
+    )
+    normit(reduced)
     # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
 end
 
@@ -98,6 +119,8 @@ instr_3(state::VMState) = instr_val(state, valhot(3,allvalues)) # TODO create la
 instr_4(state::VMState) = instr_val(state, valhot(4,allvalues)) # TODO create lamdas for all
 instr_5(state::VMState) = instr_val(state, valhot(5,allvalues)) # TODO create lamdas for all
 
+# Use circshift instead ?
+# Use cumsum (!) instead of sum
 function roll(a::Union{CuArray,Array}, increment)
     increment = increment%length(a)
     if increment == 0
@@ -260,6 +283,8 @@ function trainloop(numexamples)
     for i in 1:numexamples
         # display(i)
         # display(hiddenprogram)
+        # display(hiddenprogram)
+        # update!(opt, hiddenprogram, gradprog(hiddenprogram))
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
@@ -280,9 +305,9 @@ data_stack_depth = 6
 program_len = 2
 input_len = 1 # frozen part
 max_ticks = 1
-instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
+# instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
-# instructions = [instr_3, instr_4, instr_5]
+instructions = [instr_3, instr_4, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
 
@@ -301,7 +326,14 @@ hiddenprogram = hiddenprogram |> device
 program = softmaxprog(hiddenprogram) |> device
 target_program = target_program |> device
 hiddenprogram = hiddenprogram |> device
+
 train_mask = train_mask |> device
+
+
+# trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
+# reshape(x[yrep],(length(y),:))
+
+
 blank_state = init_state(data_stack_depth, program_len, allvalues)
 # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
@@ -323,7 +355,7 @@ first_program = deepcopy(program)
 opt = ADAM(0.001) # Gradient descent with learning rate 0.1
 trainable = @views hiddenprogram[:,train_mask]
 
-trainloop(10)
+trainloop(100)
 runprog(prog) = run(blank_state, prog, instructions, program_len)
 
 program = softmaxprog(hiddenprogram)
