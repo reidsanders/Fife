@@ -51,6 +51,8 @@ function super_step(state::VMState, program, instructions)
     # TODO try named tuple instead of structs?
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     newstates = (instruction(state) for instruction in instructions)
+    display(newstates)
+    x = 2
     states = VMSuperStates(
         cat([x.current_instruction for x in newstates]..., dims=3),
         cat([x.top_of_stack for x in newstates]..., dims=3),
@@ -341,6 +343,7 @@ blank_state = init_state(data_stack_depth, program_len, allvalues)
 # newtargetprogram = copy(target_program)
 # newtargetprogram[:, .~train_mask] = newtrainprogram[:, .~train_mask]
 
+tmp = instr_3(blank_state)
 
 target = run(blank_state, target_program, instructions, program_len)
 prediction = run(blank_state, program, instructions, program_len)
