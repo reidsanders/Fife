@@ -30,9 +30,9 @@ struct VMState
 end
 
 struct VMSuperStates
-    current_instructions::CuArray{Float32}
-    top_of_stacks::CuArray{Float32}
-    stacks::CuArray{Float32} # num instructions x stack
+    current_instructions::Union{Array{Float32},CuArray{Float32}}
+    top_of_stacks::Union{Array{Float32},CuArray{Float32}}
+    stacks::Union{Array{Float32},CuArray{Float32}} # num instructions x stack
 end
 
 Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
@@ -43,8 +43,8 @@ a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction,
 a::VMState - b::VMState = VMState(a.current_instruction - b.current_instruction, a.top_of_stack - b.top_of_stack, a.stack - b.stack)
 
 length(a::VMSuperStates) = size(a.current_instructions)[3]
-a::CuArray * b::VMSuperStates = VMSuperStates(a .* b.current_instructions, a .* b.top_of_stacks, a .* b.stacks)
-a::VMSuperStates * b::CuArray = b * a
+a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(a .* b.current_instructions, a .* b.top_of_stacks, a .* b.stacks)
+a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
 function super_step(state::VMState, program, instructions)
     # new_states = StructArray([instruction(state) for instruction in instructions])
@@ -60,8 +60,16 @@ function super_step(state::VMState, program, instructions)
     # display(newstates[1].current_instruction)
     # display(length(newstates))
     current_instructions = cat([x.current_instruction for x in newstates]..., dims=3)
+
+    # tmp = cat([x.top_of_stack for x in newstates]..., dims=3)
+    # top_of_stacks = similar(current_instructions)
+    # Zygote.ignore() do
+    #     top_of_stacks = cat([Zygote.dropgrad(x.top_of_stack) for x in newstates]..., dims=3)
+    # end
     top_of_stacks = cat([x.top_of_stack for x in newstates]..., dims=3)
+
     stacks = cat([x.stack for x in newstates]..., dims=3)
+
     states = VMSuperStates(
         current_instructions,
         top_of_stacks,
@@ -190,6 +198,7 @@ end
 # TODO terminate all program in Null operator? Early stopping if that last instruction is large percentage?
 function run(state, program, instructions, ticks)
     for i in 1:ticks
+        # display(i)
         state = super_step(state, program, instructions)
         # assert_no_nans(state)
     end
@@ -292,22 +301,25 @@ end
 function forward(state, hiddenprogram, target, instructions, program_len)
     program = softmaxprog(hiddenprogram)
     pred = run(state, program, instructions, program_len)
-    loss(pred.stack, target.stack)
+    # scale stack by top_of_stack? Need to use all things to work?
+    # TODO shouldn't the top_of_stack / current_instruction still count ????? its in hte calculation
+    loss(pred.stack, target.stack) + loss(pred.top_of_stack, target.top_of_stack) + loss(pred.current_instruction, target.current_instruction)
 end
 
 function trainloop(numexamples)
     for i in 1:numexamples
-        display(i)
-        display(hiddenprogram)
+        # display(i)
+        # display(hiddenprogram)
         # display(hiddenprogram)
         # update!(opt, hiddenprogram, gradprog(hiddenprogram))
+        # update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
         update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
     end
 end
 
 
-# use_cuda = false
-use_cuda = true
+use_cuda = false
+# use_cuda = true
 if use_cuda
     device = gpu
     # @info "Training on GPU"
@@ -318,9 +330,9 @@ end
 
 
 data_stack_depth = 6
-program_len = 2
-input_len = 1 # frozen part
-max_ticks = 1
+program_len = 4
+input_len = 2 # frozen part
+max_ticks = 4
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 instructions = [instr_3, instr_4, instr_5]
@@ -365,6 +377,13 @@ first_loss = loss(prediction.stack, target.stack)
 @show first_loss
 
 
+
+
+
+
+
+
+
 gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
 
 first_program = deepcopy(program)
@@ -372,7 +391,33 @@ first_program = deepcopy(program)
 opt = ADAM(0.001) # Gradient descent with learning rate 0.1
 trainable = @views hiddenprogram[:,train_mask]
 
-trainloop(100)
+
+
+ps = params(trainable)
+
+gs = gradient(ps) do 
+    forward(blank_state,hiddenprogram,target,instructions,program_len)
+end
+function trainloopps(numexamples)
+    for i in 1:numexamples
+        # display(i)
+        # display(hiddenprogram)
+        gs = gradient(ps) do 
+            forward(blank_state,hiddenprogram,target,instructions,program_len)
+        end
+        # gs[program]
+        # display(hiddenprogram)
+        # update!(opt, hiddenprogram, gradprog(hiddenprogram))
+        # update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
+        update!(opt, ps, gs)
+    end
+end
+
+
+# trainloopps(100)
+trainloop(1000)
+
+
 runprog(prog) = run(blank_state, prog, instructions, program_len)
 
 program = softmaxprog(hiddenprogram)
@@ -389,3 +434,6 @@ display(program)
 # why is gradient sign neg for both instructions in program (for crossentrop)
 # why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
 # TODO mult by top_of_stack before loss (it is relevant afterall)
+
+# TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
+#  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
