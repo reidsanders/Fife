@@ -12,6 +12,7 @@ using Debugger
 using Random
 import Base: +,-,*,length
 using StructArrays
+using BenchmarkTools
 Random.seed!(123);
 
 # CUDA.allowscalar(false)
@@ -226,7 +227,19 @@ function init_state(data_stack_depth, program_len, allvalues)
 end
 
 function softmaxmask(mask, prog)
-    new = softmax(prog) .* mask' + prog .* (1 .- mask)' 
+    Zygote.ignore() do
+        display(prog)
+        display(mask)
+    end
+    tmp = softmax(prog)
+    # print(tmp)
+    # TODO pass in function?
+    # apply mask in function?
+    trainable = tmp .* mask
+    # tmp = tmp .* mask'
+    frozen = prog .* (1 .- mask)
+    trainable .+ frozen
+    # new = softmax(prog) .* mask' + prog .* (1 .- mask)' 
 end
 function partial(f,a...)
     ( (b...) -> f(a...,b...) )
@@ -306,20 +319,30 @@ function forward(state, hiddenprogram, target, instructions, program_len)
     loss(pred.stack, target.stack) + loss(pred.top_of_stack, target.top_of_stack) + loss(pred.current_instruction, target.current_instruction)
 end
 
-function trainloop(numexamples)
+function trainloop(numexamples) # TODO make true function without globals
     for i in 1:numexamples
         # display(i)
         # display(hiddenprogram)
         # display(hiddenprogram)
         # update!(opt, hiddenprogram, gradprog(hiddenprogram))
         # update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
-        update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
+
+        # grads = gradprog(hiddenprogram)[:, train_mask]
+        grads = gradprog(hiddenprogram)
+        grads = applyfullmaskprog(grads)
+        # grads = reshape(grads,(size(hiddenprogram)[1],:))
+        update!(opt, trainable, grads)
     end
 end
 
+function applyfullmask(mask,prog)
+    out = prog[trainmaskfull]
+    reshape(out,(size(prog)[1],:))
+end
+applyfullmaskprog(program) = applyfullmask(trainmaskfull, program)
 
-use_cuda = false
-# use_cuda = true
+# use_cuda = false
+use_cuda = true
 if use_cuda
     device = gpu
     # @info "Training on GPU"
@@ -333,9 +356,9 @@ data_stack_depth = 6
 program_len = 4
 input_len = 2 # frozen part
 max_ticks = 4
-# instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
+instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
-instructions = [instr_3, instr_4, instr_5]
+# instructions = [instr_3, instr_4, instr_5]
 num_instructions = length(instructions)
 allvalues = [["blank"]; [i for i in 0:5]]
 
@@ -348,7 +371,6 @@ hiddenprogram = deepcopy(target_program)
 hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
 
 #Initialize
-softmaxprog = partial(softmaxmask, train_mask |> device)
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxprog(hiddenprogram) |> device
@@ -358,7 +380,9 @@ hiddenprogram = hiddenprogram |> device
 train_mask = train_mask |> device
 
 
-# trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
+trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
+
+softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 # reshape(x[yrep],(length(y),:))
 
 
@@ -393,7 +417,7 @@ trainable = @views hiddenprogram[:,train_mask]
 
 
 
-ps = params(trainable)
+ps = Params(trainable)
 
 gs = gradient(ps) do 
     forward(blank_state,hiddenprogram,target,instructions,program_len)
