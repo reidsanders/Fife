@@ -13,7 +13,7 @@ using Random
 import Base: +,-,*,length
 using StructArrays
 using BenchmarkTools
-# Random.seed!(123);
+Random.seed!(123);
 
 # CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
@@ -207,6 +207,7 @@ function run(state, program, instructions, ticks)
 end
 
 function loss(ŷ, y)
+    # TODO top of stack super position actual stack. add tiny amount of current_instruction just because
     crossentropy(ŷ, y)
 end
 
@@ -352,10 +353,10 @@ else
 end
 
 
-data_stack_depth = 6
-program_len = 4
-input_len = 2 # frozen part
-max_ticks = 4
+data_stack_depth = 4000
+program_len = 100
+input_len = 50 # frozen part
+max_ticks = 100
 instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 # instructions = [instr_3, instr_4, instr_5]
@@ -442,15 +443,14 @@ end
 @btime trainloop(100)
 
 
-runprog(prog) = run(blank_state, prog, instructions, program_len)
 
 program = softmaxprog(hiddenprogram)
 prediction2 = run(blank_state, program, instructions, program_len)
 second_loss = loss(prediction2.stack, target.stack)
-display(target_program)
-display(first_program)
-display(program)
-@show second_loss
+# display(target_program)
+# display(first_program)
+# display(program)
+# @show second_loss
 @show second_loss - first_loss
 
 # predictionbatch = runprog.([program, program, program])
@@ -461,3 +461,15 @@ display(program)
 
 # TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
 #  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
+
+function compare_programs(hidden, target, trainmaskfull)
+    # prog = softmaxprog(hidden)[trainmaskfull]
+    # # display(onecold(prog))
+    # samemax = onecold(prog) .== onecold(target[trainmaskfull])
+    # display(samemax)
+    # sum(samemax)
+    (sum(onecold(hiddenprogram) .== onecold(target_program))-sum(1 .- train_mask))/sum(train_mask)
+end
+x = compare_programs(hiddenprogram, target_program, trainmaskfull)
+runprog(prog) = run(blank_state, prog, instructions, program_len)
+x
