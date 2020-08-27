@@ -13,7 +13,7 @@ using Random
 import Base: +,-,*,length
 using StructArrays
 using BenchmarkTools
-Random.seed!(123);
+# Random.seed!(123);
 
 # CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
@@ -227,10 +227,10 @@ function init_state(data_stack_depth, program_len, allvalues)
 end
 
 function softmaxmask(mask, prog)
-    Zygote.ignore() do
-        display(prog)
-        display(mask)
-    end
+    # Zygote.ignore() do
+    #     display(prog)
+    #     display(mask)
+    # end
     tmp = softmax(prog)
     # print(tmp)
     # TODO pass in function?
@@ -372,6 +372,9 @@ hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask])
 
 #Initialize
 
+trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
+softmaxprog = partial(softmaxmask, trainmaskfull |> device)
+
 hiddenprogram = hiddenprogram |> device
 program = softmaxprog(hiddenprogram) |> device
 target_program = target_program |> device
@@ -380,9 +383,6 @@ hiddenprogram = hiddenprogram |> device
 train_mask = train_mask |> device
 
 
-trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
-
-softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 # reshape(x[yrep],(length(y),:))
 
 
@@ -439,7 +439,7 @@ end
 
 
 # trainloopps(100)
-trainloop(1000)
+@btime trainloop(100)
 
 
 runprog(prog) = run(blank_state, prog, instructions, program_len)
