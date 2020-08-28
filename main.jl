@@ -18,6 +18,15 @@ Random.seed!(123);
 # CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
+
+function partial(f,a...)
+    ( (b...) -> f(a...,b...) )
+end
+
+function valhot(val, allvalues)
+    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
+end
+
 struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
@@ -84,7 +93,8 @@ function instr_dup(state::VMState)
     
 end
 
-function instr_gotoifnotzero(state::VMState)
+    
+function instr_gotoifnotzerofull(zerovec, state::VMState)
     #=
     GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
 
@@ -98,7 +108,7 @@ function instr_gotoifnotzero(state::VMState)
     # new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
     # new_current_instruction = roll(state.current_instruction,1)
 
-    zerovec = valhot(0, allvalues) # TODO don't recalc 
+    # TODO don't recalc 
     stackscaled = state.stack .* state.top_of_stack'
     probofgoto = 1 .- sum(stackscaled .* zerovec, dims=1)
     firstpoptop = roll(state.top_of_stack,1)
@@ -112,6 +122,7 @@ function instr_gotoifnotzero(state::VMState)
     jumpvalprobs = jumpvalprobs[1:end]
     currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * roll(state.current_instruction,1)
     new_current_instruction = currentinstructionforward .+ jumpvalprobs[1:length(state.current_instruction)]
+    newtop = roll(firstpoptop,1)
 
     # jumpvalprobs[:end]
     # TODO set blank / zero to zero? zero goes to first? greater than length(program) goes to end?
@@ -121,8 +132,8 @@ function instr_gotoifnotzero(state::VMState)
     # TODO add jumpvalprobs to current_instruction? Then normalize?
 
     VMState(
-        state.current_instruction,
-        firstpoptop,
+        new_current_instruction,
+        newtop,
         state.stack,
     )
     
@@ -131,17 +142,14 @@ end
 # TODO normit after most instr (?)
 # TODO def normit for  all zero case
 
-function valhot(val, allvalues)
-    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
-end
 
 instr_pass(state::VMState) = state
-instr_0(state::VMState) = instr_val(state, valhot(0,allvalues)) # TODO create lamdas for all
-instr_1(state::VMState) = instr_val(state, valhot(1,allvalues)) # TODO create lamdas for all
-instr_2(state::VMState) = instr_val(state, valhot(2,allvalues)) # TODO create lamdas for all
-instr_3(state::VMState) = instr_val(state, valhot(3,allvalues)) # TODO create lamdas for all
-instr_4(state::VMState) = instr_val(state, valhot(4,allvalues)) # TODO create lamdas for all
-instr_5(state::VMState) = instr_val(state, valhot(5,allvalues)) # TODO create lamdas for all
+# instr_0(state::VMState) = instr_val(state, valhot(0,allvalues)) # TODO create lamdas for all
+# instr_1(state::VMState) = instr_val(state, valhot(1,allvalues)) # TODO create lamdas for all
+# instr_2(state::VMState) = instr_val(state, valhot(2,allvalues)) # TODO create lamdas for all
+# instr_3(state::VMState) = instr_val(state, valhot(3,allvalues)) # TODO create lamdas for all
+# instr_4(state::VMState) = instr_val(state, valhot(4,allvalues)) # TODO create lamdas for all
+# instr_5(state::VMState) = instr_val(state, valhot(5,allvalues)) # TODO create lamdas for all
 
 # Use circshift instead ?
 # Use cumsum (!) instead of sum
@@ -155,7 +163,7 @@ function roll(a::Union{CuArray,Array}, increment)
         return vcat(a[end+increment-1:end], a[1:end-increment])
     end 
 end
-function instr_val(state::VMState, valhotvec)
+function instr_val(valhotvec, state::VMState)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
@@ -241,9 +249,6 @@ function softmaxmask(mask, prog)
     trainable .+ frozen
     # new = softmax(prog) .* mask' + prog .* (1 .- mask)' 
 end
-function partial(f,a...)
-    ( (b...) -> f(a...,b...) )
-end
 
 function normit(a::Union{Array,CuArray}; dims=1, ϵ=epseltype(a))
     new = a .+ ϵ
@@ -320,7 +325,7 @@ function forward(state, hiddenprogram, target, instructions, program_len)
 end
 
 function trainloop(numexamples) # TODO make true function without globals
-    for i in 1:numexamples
+    @showprogress for i in 1:numexamples
         # display(i)
         # display(hiddenprogram)
         # display(hiddenprogram)
@@ -341,8 +346,8 @@ function applyfullmask(mask,prog)
 end
 applyfullmaskprog(program) = applyfullmask(trainmaskfull, program)
 
-use_cuda = false
-# use_cuda = true
+# use_cuda = false
+use_cuda = true
 if use_cuda
     device = gpu
     # @info "Training on GPU"
@@ -352,20 +357,24 @@ else
 end
 
 
-data_stack_depth = 5
-program_len = 2
-input_len = 1 # frozen part
-max_ticks = 10
-instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5, instr_dup]
+data_stack_depth = 100
+program_len = 50
+input_len = 10 # frozen part
+max_ticks = 20
+# instructions = [instr_dup, instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
+# instructions = [instr_gotoifnotzero, instr_dup, instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 # instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 # instructions = [instr_3, instr_4, instr_5]
-num_instructions = length(instructions)
-maxint = 5
+maxint = program_len
 intvalues = [i for i in 0:maxint]
 nonintvalues = ["blank"]
 allvalues = [nonintvalues; intvalues]
 
+instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues))
 
+instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
+instructions = [[instr_gotoifnotzero, instr_dup]; instructions]
+num_instructions = length(instructions)
 
 discrete_program = create_random_discrete_program(program_len, instructions)
 target_program = onehotbatch(discrete_program, instructions) 
@@ -400,16 +409,16 @@ blank_state = init_state(data_stack_depth, program_len, allvalues)
 tmp = instr_gotoifnotzero(blank_state)
 
 
-# target = run(blank_state, target_program, instructions, program_len)
-# prediction = run(blank_state, program, instructions, program_len)
-# first_loss = loss(prediction.stack, target.stack)
-# @show first_loss
-# gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
+target = run(blank_state, target_program, instructions, program_len)
+prediction = run(blank_state, program, instructions, program_len)
+first_loss = loss(prediction.stack, target.stack)
+@show first_loss
+gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
 
-# first_program = deepcopy(program)
-# # opt = Descent(0.05) # Gradient descent with learning rate 0.1
-# opt = ADAM(0.001) # Gradient descent with learning rate 0.1
-# trainable = @views hiddenprogram[:,train_mask]
+first_program = deepcopy(program)
+# opt = Descent(0.05) # Gradient descent with learning rate 0.1
+opt = ADAM(0.001) # Gradient descent with learning rate 0.1
+trainable = @views hiddenprogram[:,train_mask]
 
 
 
@@ -434,37 +443,40 @@ tmp = instr_gotoifnotzero(blank_state)
 # end
 
 
-# # trainloopps(100)
+# trainloopps(100)
 # @btime trainloop(10)
+trainloop(10)
 
 
 
-# program = softmaxprog(hiddenprogram)
-# prediction2 = run(blank_state, program, instructions, program_len)
-# second_loss = loss(prediction2.stack, target.stack)
-# # display(target_program)
-# # display(first_program)
-# # display(program)
-# # @show second_loss
-# @show second_loss - first_loss
+program = softmaxprog(hiddenprogram)
+prediction2 = run(blank_state, program, instructions, program_len)
+second_loss = loss(prediction2.stack, target.stack)
+# display(target_program)
+# display(first_program)
+# display(program)
+# @show second_loss
+@show second_loss - first_loss
 
-# # predictionbatch = runprog.([program, program, program])
-# #TODO why is crossentropy increasing loss
-# # why is gradient sign neg for both instructions in program (for crossentrop)
-# # why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
-# # TODO mult by top_of_stack before loss (it is relevant afterall)
+# predictionbatch = runprog.([program, program, program])
+#TODO why is crossentropy increasing loss
+# why is gradient sign neg for both instructions in program (for crossentrop)
+# why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
+# TODO mult by top_of_stack before loss (it is relevant afterall)
 
-# # TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
-# #  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
+# TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
+#  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
 
-# function compare_programs(hidden, target, trainmaskfull)
-#     # prog = softmaxprog(hidden)[trainmaskfull]
-#     # # display(onecold(prog))
-#     # samemax = onecold(prog) .== onecold(target[trainmaskfull])
-#     # display(samemax)
-#     # sum(samemax)
-#     (sum(onecold(hiddenprogram) .== onecold(target_program))-sum(1 .- train_mask))/sum(train_mask)
-# end
-# x = compare_programs(hiddenprogram, target_program, trainmaskfull)
-# runprog(prog) = run(blank_state, prog, instructions, program_len)
-# x
+function compare_programs(hidden, target, trainmaskfull)
+    # prog = softmaxprog(hidden)[trainmaskfull]
+    # # display(onecold(prog))
+    # samemax = onecold(prog) .== onecold(target[trainmaskfull])
+    # display(samemax)
+    # sum(samemax)
+    (sum(onecold(hiddenprogram) .== onecold(target_program))-sum(1 .- train_mask))/sum(train_mask)
+end
+x = compare_programs(hiddenprogram, target_program, trainmaskfull)
+runprog(prog) = run(blank_state, prog, instructions, program_len)
+x
+# TODO make last instr pass, make goto > max len goto end? Should pass move instr pointer or not? at end we don't want.
+# But during it may be better?
