@@ -13,6 +13,8 @@ using Random
 import Base: +,-,*,length
 using StructArrays
 using BenchmarkTools
+using ProgressMeter
+using Base.Threads: @threads
 Random.seed!(123);
 
 # CUDA.allowscalar(false)
@@ -326,6 +328,7 @@ end
 
 function trainloop(numexamples) # TODO make true function without globals
     @showprogress for i in 1:numexamples
+    # @threads for i in 1:numexamples
         # display(i)
         # display(hiddenprogram)
         # display(hiddenprogram)
@@ -344,7 +347,6 @@ function applyfullmask(mask,prog)
     out = prog[trainmaskfull]
     reshape(out,(size(prog)[1],:))
 end
-applyfullmaskprog(program) = applyfullmask(trainmaskfull, program)
 
 # use_cuda = false
 use_cuda = true
@@ -359,7 +361,7 @@ end
 
 data_stack_depth = 100
 program_len = 50
-input_len = 10 # frozen part
+input_len = 20 # frozen part
 max_ticks = 20
 # instructions = [instr_dup, instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
 # instructions = [instr_gotoifnotzero, instr_dup, instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
@@ -387,6 +389,7 @@ hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask])
 
 trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
 softmaxprog = partial(softmaxmask, trainmaskfull |> device)
+applyfullmaskprog = partial(applyfullmask, trainmaskfull)
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxprog(hiddenprogram) |> device
@@ -417,7 +420,8 @@ gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,progr
 
 first_program = deepcopy(program)
 # opt = Descent(0.05) # Gradient descent with learning rate 0.1
-opt = ADAM(0.001) # Gradient descent with learning rate 0.1
+opt = ADAM(0.002) # Gradient descent with learning rate 0.1
+
 trainable = @views hiddenprogram[:,train_mask]
 
 
@@ -445,6 +449,7 @@ trainable = @views hiddenprogram[:,train_mask]
 
 # trainloopps(100)
 # @btime trainloop(10)
+
 trainloop(10)
 
 
@@ -467,16 +472,29 @@ second_loss = loss(prediction2.stack, target.stack)
 # TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
 #  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
 
-function compare_programs(hidden, target, trainmaskfull)
+function compare_programs(hidden, target, trainmask)
     # prog = softmaxprog(hidden)[trainmaskfull]
-    # # display(onecold(prog))
-    # samemax = onecold(prog) .== onecold(target[trainmaskfull])
-    # display(samemax)
-    # sum(samemax)
-    (sum(onecold(hiddenprogram) .== onecold(target_program))-sum(1 .- train_mask))/sum(train_mask)
+    # display(onecold(hidden))
+    samemax = onecold(hidden) .== onecold(target)
+    all = sum(trainmaskfull)
+    result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
+    @show samemax
+    @show sum(samemax)
+    @show sum(trainmask)
+    result
+    # (sum(onecold(hidden) .== onecold(target)) - sum(1 .- trainmaskfull))/sum(trainmaskfull)
 end
-x = compare_programs(hiddenprogram, target_program, trainmaskfull)
-runprog(prog) = run(blank_state, prog, instructions, program_len)
-x
+correct = compare_programs(hiddenprogram |> cpu, target_program |> cpu, train_mask |> cpu)
+@show correct
+# runprog(prog) = run(blank_state, prog, instructions, program_len)
 # TODO make last instr pass, make goto > max len goto end? Should pass move instr pointer or not? at end we don't want.
 # But during it may be better?
+
+# TODO try threads.
+# TODO try profile ... so slow...
+# TODO run output program (with or without onecold? Or run as discrete program?)
+# print outputs?
+# is scalar operations for trainable the problem?
+
+# TODO require certain number of goto.
+# require if / comparison operator before goto?
