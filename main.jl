@@ -476,11 +476,12 @@ function compare_programs(hidden, target, trainmask)
     # prog = softmaxprog(hidden)[trainmaskfull]
     # display(onecold(hidden))
     samemax = onecold(hidden) .== onecold(target)
-    all = sum(trainmaskfull)
+    # all = sum(trainmask)
     result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
     @show samemax
     @show sum(samemax)
     @show sum(trainmask)
+    @show result
     result
     # (sum(onecold(hidden) .== onecold(target)) - sum(1 .- trainmaskfull))/sum(trainmaskfull)
 end
