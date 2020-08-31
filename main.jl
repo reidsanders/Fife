@@ -16,6 +16,7 @@ using BenchmarkTools
 using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
+using Profile
 Random.seed!(123);
 
 # CUDA.allowscalar(false)
@@ -34,9 +35,9 @@ end
     batchsize::Int = 32
     lr::Float32 = 2e-4
     epochs::Int = 50
-    data_stack_depth::Int = 100
-    program_len::Int = 50
-    input_len::Int = 20 # frozen part, assumed at front for now
+    stackdepth::Int = 100
+    programlen::Int = 50
+    inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 20
     usegpu::Bool = true
 end
@@ -108,7 +109,7 @@ function instr_dup(state::VMState)
 end
 
     
-function instr_gotoifnotzerofull(zerovec, state::VMState)
+function instr_gotoifnotzerofull(zerovec, nonintvalues, state::VMState)
     #=
     GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
 
@@ -210,9 +211,9 @@ function create_random_discrete_program(len, instructions)
     program = [rand(instructions) for i in 1:len]
 end
 
-function create_trainable_mask(program_len, input_len)
-    mask = falses(program_len)
-    mask[input_len+1:end] .= true
+function create_trainable_mask(programlen, inputlen)
+    mask = falses(programlen)
+    mask[inputlen+1:end] .= true
     mask
 end
 
@@ -232,10 +233,10 @@ function loss(ŷ, y)
     crossentropy(ŷ, y)
 end
 
-function init_state(data_stack_depth, program_len, allvalues)
-    stack = zeros(Float32,length(allvalues), data_stack_depth)
-    current_instruction = zeros(Float32,program_len,)
-    top_of_stack = zeros(Float32,data_stack_depth,)
+function init_state(stackdepth, programlen, allvalues)
+    stack = zeros(Float32,length(allvalues), stackdepth)
+    current_instruction = zeros(Float32,programlen,)
+    top_of_stack = zeros(Float32,stackdepth,)
     stack[1,:] .= 1.f0
     current_instruction[1] = 1.f0
     top_of_stack[1] = 1.f0
@@ -269,7 +270,7 @@ function normit(a::VMState; dims=1)
 
 end
 function main()
-    state = init_state(data_stack_depth, program_len)
+    state = init_state(stackdepth, programlen)
     state = run(state, program, instructions, max_ticks)
     collapsed_program = onecold(program)
 end
@@ -305,7 +306,7 @@ function get_program_with_random_inputs(program, mask)
     new_program
 end
 
-function create_program_batch(startprogram, train_mask, batch_size)
+function create_program_batch(startprogram, trainmask, batch_size)
     target_program = program()
     for i in 1:batch_size
         program
@@ -318,38 +319,38 @@ function assert_no_nans(state::VMState)
     @assert !any(isnan.(state.current_instruction)) ## Damn, putting an assert removes the NaN
 end
 
-function forward(state, hiddenprogram, target, instructions, program_len)
+function forward(state, hiddenprogram, target, instructions, programlen)
     program = softmaxprog(hiddenprogram)
-    pred = run(state, program, instructions, program_len)
+    pred = run(state, program, instructions, programlen)
     # scale stack by top_of_stack? Need to use all things to work?
     # TODO shouldn't the top_of_stack / current_instruction still count ????? its in hte calculation
     loss(pred.stack, target.stack) + loss(pred.top_of_stack, target.top_of_stack) + loss(pred.current_instruction, target.current_instruction)
 end
 
 
-function train(; kws...)
-    # Initialize the hyperparameters
-    args = Args(; kws...)
+# function train(; kws...)
+#     # Initialize the hyperparameters
+#     args = Args(; kws...)
 	
-    # Load the train, validation data 
-    train,val = get_programs(args)
+#     # Load the train, validation data 
+#     train,val = get_programs(args)
 
-    @info("Constructing Model")	
-    # Defining the loss and accuracy functions
-    m = vgg16()
+#     @info("Constructing Model")	
+#     # Defining the loss and accuracy functions
+#     m = vgg16()
 
-    loss(x, y) = logitcrossentropy(m(x), y)
+#     loss(x, y) = logitcrossentropy(m(x), y)
 
-    ## Training
-    # Defining the callback and the optimizer
-    evalcb = throttle(() -> @show(loss(val...)), args.throttle)
-    opt = ADAM(args.lr)
-    @info("Training....")
-    # Starting to train models
-    Flux.@epochs args.epochs Flux.train!(loss, params(m), train, opt, cb = evalcb)
+#     ## Training
+#     # Defining the callback and the optimizer
+#     evalcb = throttle(() -> @show(loss(val...)), args.throttle)
+#     opt = ADAM(args.lr)
+#     @info("Training....")
+#     # Starting to train models
+#     Flux.@epochs args.epochs Flux.train!(loss, params(m), train, opt, cb = evalcb)
 
-    return m
-end
+#     return m
+# end
 
 function trainloop(numexamples) # TODO make true function without globals
     @showprogress for i in 1:numexamples
@@ -358,9 +359,9 @@ function trainloop(numexamples) # TODO make true function without globals
         # display(hiddenprogram)
         # display(hiddenprogram)
         # update!(opt, hiddenprogram, gradprog(hiddenprogram))
-        # update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
+        # update!(opt, trainable, gradprog(hiddenprogram)[:, trainmask])
 
-        # grads = gradprog(hiddenprogram)[:, train_mask]
+        # grads = gradprog(hiddenprogram)[:, trainmask]
         grads = gradprog(hiddenprogram)
         grads = applyfullmaskprog(grads)
         # grads = reshape(grads,(size(hiddenprogram)[1],:))
@@ -390,19 +391,19 @@ end
 # ps = Params(trainable)
 
 # gs = gradient(ps) do 
-#     forward(blank_state,hiddenprogram,target,instructions,program_len)
+#     forward(blank_state,hiddenprogram,target,instructions,programlen)
 # end
 # function trainloopps(numexamples)
 #     for i in 1:numexamples
 #         # display(i)
 #         # display(hiddenprogram)
 #         gs = gradient(ps) do 
-#             forward(blank_state,hiddenprogram,target,instructions,program_len)
+#             forward(blank_state,hiddenprogram,target,instructions,programlen)
 #         end
 #         # gs[program]
 #         # display(hiddenprogram)
 #         # update!(opt, hiddenprogram, gradprog(hiddenprogram))
-#         # update!(opt, trainable, gradprog(hiddenprogram)[:, train_mask])
+#         # update!(opt, trainable, gradprog(hiddenprogram)[:, trainmask])
 #         update!(opt, ps, gs)
 #     end
 # end
@@ -411,43 +412,14 @@ end
 # trainloopps(100)
 # @btime trainloop(10)
 
-function init(args)
-end
 
-function train(; kws...)
-    args = Args(; kws...)
-
-    # use_cuda = false
-    if args.usegpu
-        device = gpu
-        # @info "Training on GPU"
-    else
-        device = cpu
-        # @info "Training on CPU"
-    end
-
-
-    maxint = program_len
-    intvalues = [i for i in 0:maxint]
-    nonintvalues = ["blank"]
-    allvalues = [nonintvalues; intvalues]
-
-    instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues))
-
-    instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
-    instructions = [[instr_gotoifnotzero, instr_dup]; instructions]
-    num_instructions = length(instructions)
-
-    discrete_program = create_random_discrete_program(program_len, instructions)
-    target_program = onehotbatch(discrete_program, instructions) 
-    target_program = convert(Array{Float32}, target_program)
-    train_mask = create_trainable_mask(program_len, input_len)
+function train(args)
     hiddenprogram = deepcopy(target_program)
-    hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
+    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
     #Initialize
 
-    trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
+    trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1))
     softmaxprog = partial(softmaxmask, trainmaskfull |> device)
     applyfullmaskprog = partial(applyfullmask, trainmaskfull)
 
@@ -455,39 +427,74 @@ function train(; kws...)
     program = softmaxprog(hiddenprogram) |> device
     target_program = target_program |> device
     hiddenprogram = hiddenprogram |> device
-    train_mask = train_mask |> device
+    trainmask = trainmask |> device
 
-    blank_state = init_state(data_stack_depth, program_len, allvalues)
+    blank_state = init_state(args.stackdepth, args.programlen, allvalues)
     # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
-    # newtrainprogram = get_program_with_random_inputs(program, .!train_mask)
+    # newtrainprogram = get_program_with_random_inputs(program, .!trainmask)
     # newtargetprogram = copy(target_program)
-    # newtargetprogram[:, .!train_mask] = newtrainprogram[:, .!train_mask]
+    # newtargetprogram[:, .!trainmask] = newtrainprogram[:, .!trainmask]
 
-    target = run(blank_state, target_program, instructions, program_len)
-    gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
+    target = run(blank_state, target_program, instructions, args.programlen)
+    gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2]
 
     first_program = deepcopy(program)
     opt = ADAM(0.002) # Gradient descent with learning rate 0.1
-    trainable = @views hiddenprogram[:,train_mask]
+    trainable = @views hiddenprogram[:,trainmask]
 
-    first_loss = test(hiddenprogram)
-    first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, train_mask |> cpu)
+    first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+    first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-    trainloop(20)
+    @profile trainloop(20)
 
-    second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, train_mask |> cpu)
+    second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+    second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
     @show second_loss - first_loss
     @show second_accuracy
 end
 
-function test(hiddenprogram)
+function test(hiddenprogram, target, blank_state, instructions, programlen)
     program = softmaxprog(hiddenprogram)
-    prediction2 = run(blank_state, program, instructions, program_len)
+    prediction2 = run(blank_state, program, instructions, programlen)
     loss(prediction2.stack, target.stack)
 end
 
-train()
+######################################
+# Global initialization
+######################################
+args = Args()
+
+# use_cuda = false
+if args.usegpu
+    global device = gpu
+    # @info "Training on GPU"
+else
+    global device = cpu
+    # @info "Training on CPU"
+end
+
+const maxint = args.programlen
+const intvalues = [i for i in 0:maxint]
+const nonintvalues = ["blank"]
+const allvalues = [nonintvalues; intvalues]
+
+instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues), nonintvalues)
+
+val_instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
+const instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
+const num_instructions = length(instructions)
+
+const discrete_program = create_random_discrete_program(args.programlen, instructions)
+const target_program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+const trainmask = create_trainable_mask(args.programlen, args.inputlen)
+
+######################################
+function create_batch(trainmask)
+end
+######################################
+train(args)
+######################################
 
 # TODO why is crossentropy increasing loss
 # why is gradient sign neg for both instructions in program (for crossentrop)
@@ -496,7 +503,7 @@ train()
 
 # TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
 #  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
-# runprog(prog) = run(blank_state, prog, instructions, program_len)
+# runprog(prog) = run(blank_state, prog, instructions, programlen)
 # TODO make last instr pass, make goto > max len goto end? Should pass move instr pointer or not? at end we don't want.
 # But during it may be better?
 
