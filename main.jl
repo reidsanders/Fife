@@ -15,6 +15,7 @@ using StructArrays
 using BenchmarkTools
 using ProgressMeter
 using Base.Threads: @threads
+using Parameters: @with_kw
 Random.seed!(123);
 
 # CUDA.allowscalar(false)
@@ -27,6 +28,17 @@ end
 
 function valhot(val, allvalues)
     [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
+end
+
+@with_kw mutable struct Args
+    batchsize::Int = 32
+    lr::Float32 = 2e-4
+    epochs::Int = 50
+    data_stack_depth::Int = 100
+    program_len::Int = 50
+    input_len::Int = 20 # frozen part, assumed at front for now
+    max_ticks::Int = 20
+    usegpu::Bool = true
 end
 
 struct VMState
@@ -237,27 +249,15 @@ function init_state(data_stack_depth, program_len, allvalues)
 end
 
 function softmaxmask(mask, prog)
-    # Zygote.ignore() do
-    #     display(prog)
-    #     display(mask)
-    # end
     tmp = softmax(prog)
-    # print(tmp)
-    # TODO pass in function?
-    # apply mask in function?
     trainable = tmp .* mask
-    # tmp = tmp .* mask'
     frozen = prog .* (1 .- mask)
     trainable .+ frozen
-    # new = softmax(prog) .* mask' + prog .* (1 .- mask)' 
 end
 
 function normit(a::Union{Array,CuArray}; dims=1, ϵ=epseltype(a))
     new = a .+ ϵ
     new ./ sum(new, dims=dims) 
-    # TODO if sum to 0, 
-    # new = relu.(a)
-    # new = new ./ sum(new, dims=dims)
 end
 
 function normit(a::VMState; dims=1)
@@ -326,6 +326,31 @@ function forward(state, hiddenprogram, target, instructions, program_len)
     loss(pred.stack, target.stack) + loss(pred.top_of_stack, target.top_of_stack) + loss(pred.current_instruction, target.current_instruction)
 end
 
+
+function train(; kws...)
+    # Initialize the hyperparameters
+    args = Args(; kws...)
+	
+    # Load the train, validation data 
+    train,val = get_programs(args)
+
+    @info("Constructing Model")	
+    # Defining the loss and accuracy functions
+    m = vgg16()
+
+    loss(x, y) = logitcrossentropy(m(x), y)
+
+    ## Training
+    # Defining the callback and the optimizer
+    evalcb = throttle(() -> @show(loss(val...)), args.throttle)
+    opt = ADAM(args.lr)
+    @info("Training....")
+    # Starting to train models
+    Flux.@epochs args.epochs Flux.train!(loss, params(m), train, opt, cb = evalcb)
+
+    return m
+end
+
 function trainloop(numexamples) # TODO make true function without globals
     @showprogress for i in 1:numexamples
     # @threads for i in 1:numexamples
@@ -348,81 +373,17 @@ function applyfullmask(mask,prog)
     reshape(out,(size(prog)[1],:))
 end
 
-# use_cuda = false
-use_cuda = true
-if use_cuda
-    device = gpu
-    # @info "Training on GPU"
-else
-    device = cpu
-    # @info "Training on CPU"
+
+function accuracy(hidden, target, trainmask)
+    # prog = softmaxprog(hidden)[trainmaskfull]
+    # display(onecold(hidden))
+    samemax = onecold(hidden) .== onecold(target)
+    # all = sum(trainmask)
+    result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
+    # (sum(onecold(hidden) .== onecold(target)) - sum(1 .- trainmaskfull))/sum(trainmaskfull)
 end
 
 
-data_stack_depth = 100
-program_len = 50
-input_len = 20 # frozen part
-max_ticks = 20
-# instructions = [instr_dup, instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
-# instructions = [instr_gotoifnotzero, instr_dup, instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
-# instructions = [instr_0, instr_1, instr_2, instr_3, instr_4, instr_5]
-# instructions = [instr_3, instr_4, instr_5]
-maxint = program_len
-intvalues = [i for i in 0:maxint]
-nonintvalues = ["blank"]
-allvalues = [nonintvalues; intvalues]
-
-instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues))
-
-instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
-instructions = [[instr_gotoifnotzero, instr_dup]; instructions]
-num_instructions = length(instructions)
-
-discrete_program = create_random_discrete_program(program_len, instructions)
-target_program = onehotbatch(discrete_program, instructions) 
-target_program = convert(Array{Float32}, target_program)
-train_mask = create_trainable_mask(program_len, input_len)
-hiddenprogram = deepcopy(target_program)
-hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
-
-#Initialize
-
-trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
-softmaxprog = partial(softmaxmask, trainmaskfull |> device)
-applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-
-hiddenprogram = hiddenprogram |> device
-program = softmaxprog(hiddenprogram) |> device
-target_program = target_program |> device
-hiddenprogram = hiddenprogram |> device
-
-train_mask = train_mask |> device
-
-
-# reshape(x[yrep],(length(y),:))
-
-
-blank_state = init_state(data_stack_depth, program_len, allvalues)
-# TODO Do we want it to be possible to move instruction pointer to "before" the input?
-
-# newtrainprogram = get_program_with_random_inputs(program, .!train_mask)
-# newtargetprogram = copy(target_program)
-# newtargetprogram[:, .!train_mask] = newtrainprogram[:, .!train_mask]
-
-tmp = instr_gotoifnotzero(blank_state)
-
-
-target = run(blank_state, target_program, instructions, program_len)
-prediction = run(blank_state, program, instructions, program_len)
-first_loss = loss(prediction.stack, target.stack)
-@show first_loss
-gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
-
-first_program = deepcopy(program)
-# opt = Descent(0.05) # Gradient descent with learning rate 0.1
-opt = ADAM(0.002) # Gradient descent with learning rate 0.1
-
-trainable = @views hiddenprogram[:,train_mask]
 
 
 
@@ -450,43 +411,91 @@ trainable = @views hiddenprogram[:,train_mask]
 # trainloopps(100)
 # @btime trainloop(10)
 
-trainloop(10)
+function init(args)
+end
+
+function train(; kws...)
+    args = Args(; kws...)
+
+    # use_cuda = false
+    if args.usegpu
+        device = gpu
+        # @info "Training on GPU"
+    else
+        device = cpu
+        # @info "Training on CPU"
+    end
 
 
+    maxint = program_len
+    intvalues = [i for i in 0:maxint]
+    nonintvalues = ["blank"]
+    allvalues = [nonintvalues; intvalues]
 
-program = softmaxprog(hiddenprogram)
-prediction2 = run(blank_state, program, instructions, program_len)
-second_loss = loss(prediction2.stack, target.stack)
-# display(target_program)
-# display(first_program)
-# display(program)
-# @show second_loss
-@show second_loss - first_loss
+    instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues))
 
-# predictionbatch = runprog.([program, program, program])
-#TODO why is crossentropy increasing loss
+    instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
+    instructions = [[instr_gotoifnotzero, instr_dup]; instructions]
+    num_instructions = length(instructions)
+
+    discrete_program = create_random_discrete_program(program_len, instructions)
+    target_program = onehotbatch(discrete_program, instructions) 
+    target_program = convert(Array{Float32}, target_program)
+    train_mask = create_trainable_mask(program_len, input_len)
+    hiddenprogram = deepcopy(target_program)
+    hiddenprogram[:, train_mask] = glorot_uniform(size(hiddenprogram[:, train_mask]))
+
+    #Initialize
+
+    trainmaskfull = repeat(train_mask', outer=(size(hiddenprogram)[1],1))
+    softmaxprog = partial(softmaxmask, trainmaskfull |> device)
+    applyfullmaskprog = partial(applyfullmask, trainmaskfull)
+
+    hiddenprogram = hiddenprogram |> device
+    program = softmaxprog(hiddenprogram) |> device
+    target_program = target_program |> device
+    hiddenprogram = hiddenprogram |> device
+    train_mask = train_mask |> device
+
+    blank_state = init_state(data_stack_depth, program_len, allvalues)
+    # TODO Do we want it to be possible to move instruction pointer to "before" the input?
+
+    # newtrainprogram = get_program_with_random_inputs(program, .!train_mask)
+    # newtargetprogram = copy(target_program)
+    # newtargetprogram[:, .!train_mask] = newtrainprogram[:, .!train_mask]
+
+    target = run(blank_state, target_program, instructions, program_len)
+    gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,program_len)[2]
+
+    first_program = deepcopy(program)
+    opt = ADAM(0.002) # Gradient descent with learning rate 0.1
+    trainable = @views hiddenprogram[:,train_mask]
+
+    first_loss = test(hiddenprogram)
+    first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, train_mask |> cpu)
+
+    trainloop(20)
+
+    second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, train_mask |> cpu)
+    @show second_loss - first_loss
+    @show second_accuracy
+end
+
+function test(hiddenprogram)
+    program = softmaxprog(hiddenprogram)
+    prediction2 = run(blank_state, program, instructions, program_len)
+    loss(prediction2.stack, target.stack)
+end
+
+train()
+
+# TODO why is crossentropy increasing loss
 # why is gradient sign neg for both instructions in program (for crossentrop)
 # why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
 # TODO mult by top_of_stack before loss (it is relevant afterall)
 
 # TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
 #  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
-
-function compare_programs(hidden, target, trainmask)
-    # prog = softmaxprog(hidden)[trainmaskfull]
-    # display(onecold(hidden))
-    samemax = onecold(hidden) .== onecold(target)
-    # all = sum(trainmask)
-    result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
-    @show samemax
-    @show sum(samemax)
-    @show sum(trainmask)
-    @show result
-    result
-    # (sum(onecold(hidden) .== onecold(target)) - sum(1 .- trainmaskfull))/sum(trainmaskfull)
-end
-correct = compare_programs(hiddenprogram |> cpu, target_program |> cpu, train_mask |> cpu)
-@show correct
 # runprog(prog) = run(blank_state, prog, instructions, program_len)
 # TODO make last instr pass, make goto > max len goto end? Should pass move instr pointer or not? at end we don't want.
 # But during it may be better?
@@ -499,3 +508,12 @@ correct = compare_programs(hiddenprogram |> cpu, target_program |> cpu, train_ma
 
 # TODO require certain number of goto.
 # require if / comparison operator before goto?
+
+# TODO make train / hyperparams
+# TODO make x and y (x hiddenprograms, an y target after passing through)..
+# need to set trainablemasked and frozenmasked such that .+ creates the hiddenprogram,
+# and targetmasked which is the target corresponding to trainable masked
+# targetmasked .+ frozenmasked = targetprogram
+# Have frozen, trainable, and random? Since there may be "known" properties, variable inputs, and trainable parameters
+
+# or instead of using view, just mult grads by trainmaskfull?
