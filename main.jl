@@ -230,7 +230,9 @@ end
 
 function loss(ŷ, y)
     # TODO top of stack super position actual stack. add tiny amount of current_instruction just because
-    crossentropy(ŷ, y)
+    crossentropy(ŷ.stack, y.stack) +
+    crossentropy(ŷ.top_of_stack, y.top_of_stack) +
+    crossentropy(ŷ.current_instruction, y.current_instruction)
 end
 
 function init_state(stackdepth, programlen, allvalues)
@@ -324,7 +326,7 @@ function forward(state, hiddenprogram, target, instructions, programlen)
     pred = run(state, program, instructions, programlen)
     # scale stack by top_of_stack? Need to use all things to work?
     # TODO shouldn't the top_of_stack / current_instruction still count ????? its in hte calculation
-    loss(pred.stack, target.stack) + loss(pred.top_of_stack, target.top_of_stack) + loss(pred.current_instruction, target.current_instruction)
+    loss(pred, target)
 end
 
 
@@ -413,51 +415,16 @@ end
 # @btime trainloop(10)
 
 
-function train(args)
-    hiddenprogram = deepcopy(target_program)
-    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+# function train(args, target_program, trainmask)
+#     # TODO Do we want it to be possible to move instruction pointer to "before" the input?
 
-    #Initialize
+# end
 
-    trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1))
-    softmaxprog = partial(softmaxmask, trainmaskfull |> device)
-    applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-
-    hiddenprogram = hiddenprogram |> device
-    program = softmaxprog(hiddenprogram) |> device
-    target_program = target_program |> device
-    hiddenprogram = hiddenprogram |> device
-    trainmask = trainmask |> device
-
-    blank_state = init_state(args.stackdepth, args.programlen, allvalues)
-    # TODO Do we want it to be possible to move instruction pointer to "before" the input?
-
-    # newtrainprogram = get_program_with_random_inputs(program, .!trainmask)
-    # newtargetprogram = copy(target_program)
-    # newtargetprogram[:, .!trainmask] = newtrainprogram[:, .!trainmask]
-
-    target = run(blank_state, target_program, instructions, args.programlen)
-    gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2]
-
-    first_program = deepcopy(program)
-    opt = ADAM(0.002) # Gradient descent with learning rate 0.1
-    trainable = @views hiddenprogram[:,trainmask]
-
-    first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
-    first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
-
-    @profile trainloop(20)
-
-    second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
-    second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
-    @show second_loss - first_loss
-    @show second_accuracy
-end
-
-function test(hiddenprogram, target, blank_state, instructions, programlen)
+function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
     program = softmaxprog(hiddenprogram)
-    prediction2 = run(blank_state, program, instructions, programlen)
-    loss(prediction2.stack, target.stack)
+    target = run(blank_state, targetprogram, instructions, programlen)
+    prediction = run(blank_state, program, instructions, programlen)
+    loss(prediction, target)
 end
 
 ######################################
@@ -474,26 +441,63 @@ else
     # @info "Training on CPU"
 end
 
-const maxint = args.programlen
-const intvalues = [i for i in 0:maxint]
-const nonintvalues = ["blank"]
-const allvalues = [nonintvalues; intvalues]
+maxint = args.programlen
+intvalues = [i for i in 0:maxint]
+nonintvalues = ["blank"]
+allvalues = [nonintvalues; intvalues]
 
 instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues), nonintvalues)
 
 val_instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
-const instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
-const num_instructions = length(instructions)
+instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
+num_instructions = length(instructions)
 
-const discrete_program = create_random_discrete_program(args.programlen, instructions)
-const target_program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
-const trainmask = create_trainable_mask(args.programlen, args.inputlen)
+discrete_program = create_random_discrete_program(args.programlen, instructions)
+target_program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+trainmask = create_trainable_mask(args.programlen, args.inputlen)
+hiddenprogram = deepcopy(target_program)
+hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+
+#Initialize
+
+trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1))
+softmaxprog = partial(softmaxmask, trainmaskfull |> device)
+applyfullmaskprog = partial(applyfullmask, trainmaskfull)
+
+hiddenprogram = hiddenprogram |> device
+program = softmaxprog(hiddenprogram) |> device
+target_program = target_program |> device
+hiddenprogram = hiddenprogram |> device
+trainmask = trainmask |> device
+
+
+blank_state = init_state(args.stackdepth, args.programlen, allvalues)
+target = run(blank_state, target_program, instructions, args.programlen)
+gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2]
+
+first_program = deepcopy(program)
+opt = ADAM(0.002) # Gradient descent with learning rate 0.1
+trainable = @views hiddenprogram[:,trainmask]
+
+first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
+
+@profile trainloop(20)
+
+second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
+@show second_loss - first_loss
+@show second_accuracy
+
 
 ######################################
-function create_batch(trainmask)
+function create_batch()
+    # newtrainprogram = get_program_with_random_inputs(program, .!trainmask)
+    # newtargetprogram = copy(target_program)
+    # newtargetprogram[:, .!trainmask] = newtrainprogram[:, .!trainmask]
 end
 ######################################
-train(args)
+# train(args, hiddenprogram, target_program)
 ######################################
 
 # TODO why is crossentropy increasing loss
