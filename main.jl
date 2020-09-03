@@ -326,6 +326,7 @@ function forward(state, hiddenprogram, target, instructions, programlen)
     pred = run(state, program, instructions, programlen)
     # scale stack by top_of_stack? Need to use all things to work?
     # TODO shouldn't the top_of_stack / current_instruction still count ????? its in hte calculation
+    # TODO shouldn't pass target, state to forward.
     loss(pred, target)
 end
 
@@ -354,7 +355,33 @@ end
 #     return m
 # end
 
-function trainloop(numexamples) # TODO make true function without globals
+# TODO loop over each example in batch
+# try gs[trainablemasked]
+# add grads together
+#  update
+# loop
+function trainloop(data; batchsize=16) # TODO make true function without globals
+    @showprogress for d in data
+        grads = applyfullmaskprog(gradprog(hiddenprogram))
+        for j in batchsize
+        # @threads for i in 1:numexamples
+            # display(i)
+            # display(hiddenprogram)
+            # display(hiddenprogram)
+            # update!(opt, hiddenprogram, gradprog(hiddenprogram))
+            # update!(opt, trainable, gradprog(hiddenprogram)[:, trainmask])
+
+            # grads = gradprog(hiddenprogram)[:, trainmask]
+            newgrads = gradprog(hiddenprogram)
+            grads = grads .+ applyfullmaskprog(newgrads)
+            # grads = reshape(grads,(size(hiddenprogram)[1],:))
+            # TODO update trainablemasked only? instead of trainable views
+        end
+        update!(opt, trainable, grads)
+    end
+end
+
+function trainloopsingle(numexamples) # TODO make true function without globals
     @showprogress for i in 1:numexamples
     # @threads for i in 1:numexamples
         # display(i)
@@ -368,12 +395,13 @@ function trainloop(numexamples) # TODO make true function without globals
         grads = applyfullmaskprog(grads)
         # grads = reshape(grads,(size(hiddenprogram)[1],:))
         update!(opt, trainable, grads)
+        # TODO update trainablemasked only? instead of trainable views
     end
 end
 
-function applyfullmask(mask,prog)
-    out = prog[trainmaskfull]
-    reshape(out,(size(prog)[1],:))
+function applyfullmask(mask, prog)
+    out = prog[mask]
+    reshape(out, (size(prog)[1], :))
 end
 
 
@@ -460,7 +488,7 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
 #Initialize
 
-trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1))
+trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1)) |> device
 softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 applyfullmaskprog = partial(applyfullmask, trainmaskfull)
 
@@ -473,7 +501,7 @@ trainmask = trainmask |> device
 
 blank_state = init_state(args.stackdepth, args.programlen, allvalues)
 target = run(blank_state, target_program, instructions, args.programlen)
-gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2]
+gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2] # Partial?
 
 first_program = deepcopy(program)
 opt = ADAM(0.002) # Gradient descent with learning rate 0.1
@@ -482,7 +510,8 @@ trainable = @views hiddenprogram[:,trainmask]
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@profile trainloop(20)
+# @profile trainloop(5)
+trainloopsingle(5)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
@@ -490,12 +519,60 @@ second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmas
 @show second_accuracy
 
 
-######################################
-function create_batch()
-    # newtrainprogram = get_program_with_random_inputs(program, .!trainmask)
-    # newtargetprogram = copy(target_program)
-    # newtargetprogram[:, .!trainmask] = newtrainprogram[:, .!trainmask]
+trainablemasked = trainmaskfull .* hiddenprogram
+targetmasked = trainmaskfull .* target_program
+variablemasked = (1 .- trainmaskfull) .* hiddenprogram
+
+
+
+trainloop(5)
+
+function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
+    variablemasked = (1 .- trainmaskfull) .* hiddenprogram
+    variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
+    for i in 1:numexamples
+        newvariablemasked = copy(variablemasked)
+        for col in eachcol(newvariablemasked)
+            shuffle!(col)
+        end
+        variablemaskeds[:,:,i] = newvariablemasked
+    end
+    variablemaskeds
 end
+
+
+
+variablemaskeds = create_examples(hiddenprogram, trainmaskfull)
+
+
+# TODO add new instr with all batched operations?
+function new_train!(loss, ps, data, opt, trainablemasked)
+    # data = (xbatch,ybatch)
+    hiddenprograms = variablemaskeds .+ trainablemasked
+    local training_loss
+    ps = Params(ps)
+    for d in data
+        gs = gradient(ps) do
+            training_loss = loss(d...)
+            # Code inserted here will be differentiated, unless you need that gradient information
+            # it is better to do the work outside this block.
+            return training_loss
+        end
+        # Insert whatever code you want here that needs training_loss, e.g. logging.
+        # logging_callback(training_loss)
+        # Insert what ever code you want here that needs gradient.
+        # E.g. logging with TensorBoardLogger.jl as histogram so you can see if it is becoming huge.
+        update!(opt, ps, gs)
+        # Here you might like to check validation set accuracy, and break out to do early stopping.
+    end
+end
+
+# new_train(variablemaskeds, trainablemasked)
+
+# knownmasked = (1 .- trainmaskfull) .* hiddenprogram 
+# targetprogram = variablemasked .+ targetmasked
+# hiddenprogram = variablemasked .+ trainablemasked
+######################################
 ######################################
 # train(args, hiddenprogram, target_program)
 ######################################
