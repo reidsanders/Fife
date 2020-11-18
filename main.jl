@@ -315,6 +315,23 @@ function create_program_batch(startprogram, trainmask, batch_size)
     end
 end
 
+function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
+    variablemasked = (1 .- trainmaskfull) .* hiddenprogram
+    # variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
+    variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
+    # variablemaskeds = []
+    for i in 1:numexamples
+        newvariablemasked = copy(variablemasked)
+        for col in eachcol(newvariablemasked)
+            shuffle!(col)
+        end
+        # variablemaskeds[i] = newvariablemasked
+        variablemaskeds[:,:,i] = newvariablemasked  # Batch
+    end
+    variablemaskeds
+end
+
+
 function assert_no_nans(state::VMState)
     @assert !any(isnan.(state.stack)) ## Damn, putting an assert removes the NaN
     @assert !any(isnan.(state.top_of_stack)) ## Damn, putting an assert removes the NaN
@@ -342,35 +359,6 @@ function runboth(state, variablemasked, trainablemasked, targetmasked, instructi
     loss(pred, target)
 end
 
-# function train(; kws...)
-#     # Initialize the hyperparameters
-#     args = Args(; kws...)
-	
-#     # Load the train, validation data 
-#     train,val = get_programs(args)
-
-#     @info("Constructing Model")	
-#     # Defining the loss and accuracy functions
-#     m = vgg16()
-
-#     loss(x, y) = logitcrossentropy(m(x), y)
-
-#     ## Training
-#     # Defining the callback and the optimizer
-#     evalcb = throttle(() -> @show(loss(val...)), args.throttle)
-#     opt = ADAM(args.lr)
-#     @info("Training....")
-#     # Starting to train models
-#     Flux.@epochs args.epochs Flux.train!(loss, params(m), train, opt, cb = evalcb)
-
-#     return m
-# end
-
-# TODO loop over each example in batch
-# try gs[trainablemasked]
-# add grads together
-#  update
-# loop
 function trainloop(variablemaskeds; batchsize=4) # TODO make true function without globals
     # (xbatch, ybatch)
     # grads = applyfullmaskprog(gradprog(data[1][1]))
@@ -413,40 +401,6 @@ function accuracy(hidden, target, trainmask)
     # (sum(onecold(hidden) .== onecold(target)) - sum(1 .- trainmaskfull))/sum(trainmaskfull)
 end
 
-
-
-
-
-# ps = Params(trainable)
-
-# gs = gradient(ps) do 
-#     forward(blank_state,hiddenprogram,target,instructions,programlen)
-# end
-# function trainloopps(numexamples)
-#     for i in 1:numexamples
-#         # display(i)
-#         # display(hiddenprogram)
-#         gs = gradient(ps) do 
-#             forward(blank_state,hiddenprogram,target,instructions,programlen)
-#         end
-#         # gs[program]
-#         # display(hiddenprogram)
-#         # update!(opt, hiddenprogram, gradprog(hiddenprogram))
-#         # update!(opt, trainable, gradprog(hiddenprogram)[:, trainmask])
-#         update!(opt, ps, gs)
-#     end
-# end
-
-
-# trainloopps(100)
-# @btime trainloop(10)
-
-
-# function train(args, target_program, trainmask)
-#     # TODO Do we want it to be possible to move instruction pointer to "before" the input?
-
-# end
-
 function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
     program = softmaxprog(hiddenprogram)
     target = run(blank_state, targetprogram, instructions, programlen)
@@ -485,7 +439,7 @@ trainmask = create_trainable_mask(args.programlen, args.inputlen)
 hiddenprogram = deepcopy(target_program)
 hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
-#Initialize
+# Initialize
 
 trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1)) |> device
 softmaxprog = partial(softmaxmask, trainmaskfull |> device)
@@ -502,22 +456,27 @@ blank_state = init_state(args.stackdepth, args.programlen, allvalues)
 target = run(blank_state, target_program, instructions, args.programlen)
 
 # TODO create forward that takes variablemasked, targetmasked and trainablemasked. combines to form hiddenprogram and targetprogram, run
+# create gradient of forward step 
 gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2] # Partial?
 
 
 first_program = deepcopy(program)
-opt = ADAM(0.002) # Gradient descent with learning rate 0.1
+# opt = ADAM(0.002) 
+opt = Descent(0.05) 
 trainable = @views hiddenprogram[:,trainmask]
 
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
 # @profile trainloop(5)
-trainloopsingle(numexamples=5)
+for i in 1:100
+    trainloopsingle(numexamples=30)
+end
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
+@show first_accuracy
 @show second_accuracy
 
 
@@ -528,54 +487,15 @@ variablemasked = (1 .- trainmaskfull) .* hiddenprogram
 
 
 
-function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
-    variablemasked = (1 .- trainmaskfull) .* hiddenprogram
-    # variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
-    variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
-    # variablemaskeds = []
-    for i in 1:numexamples
-        newvariablemasked = copy(variablemasked)
-        for col in eachcol(newvariablemasked)
-            shuffle!(col)
-        end
-        # variablemaskeds[i] = newvariablemasked
-        variablemaskeds[:,:,i] = newvariablemasked  # Batch
-    end
-    variablemaskeds
-end
+#variablemaskeds = create_examples(hiddenprogram, trainmaskfull)
+#trainloop(variablemaskeds)
 
-variablemaskeds = create_examples(hiddenprogram, trainmaskfull)
-trainloop(variablemaskeds)
-
-
-# TODO add new instr with all batched operations?
-function new_train!(loss, ps, data, opt, trainablemasked)
-    # data = (xbatch,ybatch)
-    hiddenprograms = variablemaskeds .+ trainablemasked
-    local training_loss
-    ps = Params(ps)
-    for d in data
-        gs = gradient(ps) do
-            training_loss = loss(d...)
-            # Code inserted here will be differentiated, unless you need that gradient information
-            # it is better to do the work outside this block.
-            return training_loss
-        end
-        # Insert whatever code you want here that needs training_loss, e.g. logging.
-        # logging_callback(training_loss)
-        # Insert what ever code you want here that needs gradient.
-        # E.g. logging with TensorBoardLogger.jl as histogram so you can see if it is becoming huge.
-        update!(opt, ps, gs)
-        # Here you might like to check validation set accuracy, and break out to do early stopping.
-    end
-end
 
 # new_train(variablemaskeds, trainablemasked)
 
 # knownmasked = (1 .- trainmaskfull) .* hiddenprogram 
 # targetprogram = variablemasked .+ targetmasked
 # hiddenprogram = variablemasked .+ trainablemasked
-######################################
 ######################################
 # train(args, hiddenprogram, target_program)
 ######################################
