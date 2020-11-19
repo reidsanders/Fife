@@ -19,7 +19,7 @@ using Parameters: @with_kw
 using Profile
 Random.seed!(123);
 
-# CUDA.allowscalar(false)
+CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
 
@@ -159,14 +159,8 @@ end
 
 
 instr_pass(state::VMState) = state
-# instr_0(state::VMState) = instr_val(state, valhot(0,allvalues)) # TODO create lamdas for all
-# instr_1(state::VMState) = instr_val(state, valhot(1,allvalues)) # TODO create lamdas for all
-# instr_2(state::VMState) = instr_val(state, valhot(2,allvalues)) # TODO create lamdas for all
-# instr_3(state::VMState) = instr_val(state, valhot(3,allvalues)) # TODO create lamdas for all
-# instr_4(state::VMState) = instr_val(state, valhot(4,allvalues)) # TODO create lamdas for all
-# instr_5(state::VMState) = instr_val(state, valhot(5,allvalues)) # TODO create lamdas for all
 
-# Use circshift instead ?
+# Use circshift instead roll?
 # Use cumsum (!) instead of sum
 function roll(a::Union{CuArray,Array}, increment)
     increment = increment%length(a)
@@ -230,6 +224,7 @@ end
 
 function loss(ŷ, y)
     # TODO top of stack super position actual stack. add tiny amount of current_instruction just because
+    # Technically current instruction doesn't really matter
     crossentropy(ŷ.stack, y.stack) +
     crossentropy(ŷ.top_of_stack, y.top_of_stack) +
     crossentropy(ŷ.current_instruction, y.current_instruction)
@@ -462,14 +457,14 @@ gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
-opt = Descent(0.05) 
-trainable = @views hiddenprogram[:,trainmask]
+opt = Descent(0.1) 
+# trainable = @views hiddenprogram[:,trainmask]
 
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
 # @profile trainloop(5)
-for i in 1:100
+for i in 1:2
     trainloopsingle(numexamples=30)
 end
 
@@ -511,6 +506,7 @@ variablemasked = (1 .- trainmaskfull) .* hiddenprogram
 # TODO make last instr pass, make goto > max len goto end? Should pass move instr pointer or not? at end we don't want.
 # But during it may be better?
 
+
 # TODO try threads.
 # TODO try profile ... so slow...
 # TODO run output program (with or without onecold? Or run as discrete program?)
@@ -527,4 +523,4 @@ variablemasked = (1 .- trainmaskfull) .* hiddenprogram
 # targetmasked .+ frozenmasked = targetprogram
 # Have frozen, trainable, and random? Since there may be "known" properties, variable inputs, and trainable parameters
 
-# or instead of using view, just mult grads by trainmaskfull?
+# or instead of using view, just broadcast mult grads by trainmaskfull?
