@@ -2,7 +2,8 @@ using Pkg
 Pkg.activate(".")
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Flux
-using Flux.Optimise: update!
+#using Flux.Optimise: update!
+using Flux: Optimise
 using CUDA
 using Zygote
 using Random
@@ -19,7 +20,7 @@ using Parameters: @with_kw
 using Profile
 Random.seed!(123);
 
-CUDA.allowscalar(false)
+# CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
 
@@ -39,7 +40,8 @@ end
     programlen::Int = 50
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 20
-    usegpu::Bool = true
+    maxint::Int = 50
+    usegpu::Bool = false
 end
 
 struct VMState
@@ -288,7 +290,7 @@ function custom_train!(loss, ps, data, opt)
       # logging_callback(training_loss)
       # Insert what ever code you want here that needs gradient.
       # E.g. logging with TensorBoardLogger.jl as histogram so you can see if it is becoming huge.
-      update!(opt, ps, gs)
+      Optimise.update!(opt, ps, gs)
       # Here you might like to check validation set accuracy, and break out to do early stopping.
     end
   end
@@ -361,14 +363,13 @@ function trainloop(variablemaskeds; batchsize=4) # TODO make true function witho
     # targetprograms = varmasked .+ targetmasked 
     grads = zeros(Float32, size(applyfullmaskprog(hiddenprogram)))
     @showprogress for i in 1:size(variablemaskeds)[3]
+        # newgrads = gradient(runboth,blank_state,variablemaskeds[i],trainablemasked,targetmasked,instructions,args.programlen)[3]
+        newgrads = gradprog(hiddenprogram)
+        grads = grads .+ applyfullmaskprog(newgrads)
         if i > 0 & i%batchsize == 0 
-            update!(opt, trainablemasked, grads)
+            Optimise.update!(opt, trainablemasked, grads)
             grads .= 0
         end
-        newgrads = gradient(runboth,blank_state,variablemaskeds[i],trainablemasked,targetmasked,instructions,args.programlen)[3]
-        # grads = grads .+ applyfullmaskprog(newgrads)
-        grads = grads .+ applyfullmaskprog(newgrads)
-        # TODO update trainablemasked only? instead of trainable views
     end
 end
 
@@ -376,7 +377,8 @@ function trainloopsingle(; numexamples=4) # TODO make true function without glob
     @showprogress for i in 1:numexamples
         grads = gradprog(hiddenprogram)
         grads = applyfullmaskprog(grads)
-        update!(opt, trainable, grads)
+        # Optimise.update!(opt, trainable, grads)
+        Optimise.update!(opt, trainable, grads)
         # TODO update trainablemasked only? instead of trainable views
     end
 end
@@ -388,12 +390,8 @@ end
 
 
 function accuracy(hidden, target, trainmask)
-    # prog = softmaxprog(hidden)[trainmaskfull]
-    # display(onecold(hidden))
     samemax = onecold(hidden) .== onecold(target)
-    # all = sum(trainmask)
     result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
-    # (sum(onecold(hidden) .== onecold(target)) - sum(1 .- trainmaskfull))/sum(trainmaskfull)
 end
 
 function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
@@ -402,6 +400,7 @@ function test(hiddenprogram, targetprogram, blank_state, instructions, programle
     prediction = run(blank_state, program, instructions, programlen)
     loss(prediction, target)
 end
+
 
 ######################################
 # Global initialization
@@ -417,8 +416,7 @@ else
     # @info "Training on CPU"
 end
 
-maxint = args.programlen
-intvalues = [i for i in 0:maxint]
+intvalues = [i for i in 0:args.maxint]
 nonintvalues = ["blank"]
 allvalues = [nonintvalues; intvalues]
 
@@ -450,6 +448,7 @@ trainmask = trainmask |> device
 blank_state = init_state(args.stackdepth, args.programlen, allvalues)
 target = run(blank_state, target_program, instructions, args.programlen)
 
+
 # TODO create forward that takes variablemasked, targetmasked and trainablemasked. combines to form hiddenprogram and targetprogram, run
 # create gradient of forward step 
 gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2] # Partial?
@@ -458,15 +457,13 @@ gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
 opt = Descent(0.1) 
-# trainable = @views hiddenprogram[:,trainmask]
+trainable = @views hiddenprogram[:,trainmask]
 
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
 # @profile trainloop(5)
-for i in 1:2
-    trainloopsingle(numexamples=30)
-end
+trainloopsingle(numexamples=10)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
@@ -507,7 +504,7 @@ variablemasked = (1 .- trainmaskfull) .* hiddenprogram
 # But during it may be better?
 
 
-# TODO try threads.
+
 # TODO try profile ... so slow...
 # TODO run output program (with or without onecold? Or run as discrete program?)
 # print outputs?
