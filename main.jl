@@ -20,7 +20,7 @@ using Parameters: @with_kw
 using Profile
 Random.seed!(123);
 
-# CUDA.allowscalar(false)
+CUDA.allowscalar(false)
 # TODO use GPU / Torch tensors for better performance
 # TODO use threads (if running program on cpu at least)
 
@@ -39,7 +39,7 @@ end
     stackdepth::Int = 100
     programlen::Int = 50
     inputlen::Int = 20 # frozen part, assumed at front for now
-    max_ticks::Int = 20
+    max_ticks::Int = 40
     maxint::Int = 50
     usegpu::Bool = false
 end
@@ -275,26 +275,6 @@ function main()
 end
 
 
-function custom_train!(loss, ps, data, opt)
-    # training_loss is declared local so it will be available for logging outside the gradient calculation.
-    local training_loss
-    ps = Params(ps)
-    for d in data
-      gs = gradient(ps) do
-        training_loss = loss(d...)
-        # Code inserted here will be differentiated, unless you need that gradient information
-        # it is better to do the work outside this block.
-        return training_loss
-      end
-      # Insert whatever code you want here that needs training_loss, e.g. logging.
-      # logging_callback(training_loss)
-      # Insert what ever code you want here that needs gradient.
-      # E.g. logging with TensorBoardLogger.jl as histogram so you can see if it is becoming huge.
-      Optimise.update!(opt, ps, gs)
-      # Here you might like to check validation set accuracy, and break out to do early stopping.
-    end
-  end
-
 function get_program_with_random_inputs(program, mask)
     num_instructions = size(program)[1]
     new_program = copy(program)
@@ -335,7 +315,7 @@ function assert_no_nans(state::VMState)
     @assert !any(isnan.(state.current_instruction)) ## Damn, putting an assert removes the NaN
 end
 
-function forward(state, hiddenprogram, target, instructions, programlen)
+function forward(state, target, instructions, programlen, hiddenprogram)
     program = softmaxprog(hiddenprogram)
     pred = run(state, program, instructions, programlen)
     # scale stack by top_of_stack? Need to use all things to work?
@@ -343,6 +323,13 @@ function forward(state, hiddenprogram, target, instructions, programlen)
     # TODO shouldn't pass target, state to forward.
     loss(pred, target)
 end
+
+function forward2(state, target, instructions, programlen, hiddenprogram)
+    program = softmaxprog(hiddenprogram)
+    pred = run(state, program, instructions, programlen)
+    loss(pred, target)
+end
+
 
 function runboth(state, variablemasked, trainablemasked, targetmasked, instructions, programlen)
     hiddenprogram = variablemasked .+ trainablemasked
@@ -432,11 +419,13 @@ trainmask = create_trainable_mask(args.programlen, args.inputlen)
 hiddenprogram = deepcopy(target_program)
 hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
+
 # Initialize
 
 trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1)) |> device
 softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 applyfullmaskprog = partial(applyfullmask, trainmaskfull)
+applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxprog(hiddenprogram) |> device
@@ -451,73 +440,32 @@ target = run(blank_state, target_program, instructions, args.programlen)
 
 # TODO create forward that takes variablemasked, targetmasked and trainablemasked. combines to form hiddenprogram and targetprogram, run
 # create gradient of forward step 
-gradprog(hidden) = gradient(forward,blank_state,hidden,target,instructions,args.programlen)[2] # Partial?
+gradprog(hidden) = gradient(forward,blank_state,target,instructions,args.programlen,hidden)[end] # Partial?
 
+gradprogpart = partial(gradient,forward2,blank_state,target,instructions,args.programlen) # Partial?
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
 opt = Descent(0.1) 
-trainable = @views hiddenprogram[:,trainmask]
+
+
+function trainloopsingle2(hiddenprogram; numexamples=4) # TODO make true function without globals
+    @showprogress for i in 1:numexamples
+        grads = gradprogpart(hiddenprogram)[end]
+        grads = applyfullmasktohidden(grads)
+        Optimise.update!(opt, hiddenprogram, grads)
+    end
+end
+
+
 
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-# @profile trainloop(5)
-trainloopsingle(numexamples=10)
+@time trainloopsingle2(hiddenprogram, numexamples=100)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
-
-
-trainablemasked = trainmaskfull .* hiddenprogram
-targetmasked = trainmaskfull .* target_program
-variablemasked = (1 .- trainmaskfull) .* hiddenprogram
-
-
-
-
-#variablemaskeds = create_examples(hiddenprogram, trainmaskfull)
-#trainloop(variablemaskeds)
-
-
-# new_train(variablemaskeds, trainablemasked)
-
-# knownmasked = (1 .- trainmaskfull) .* hiddenprogram 
-# targetprogram = variablemasked .+ targetmasked
-# hiddenprogram = variablemasked .+ trainablemasked
-######################################
-# train(args, hiddenprogram, target_program)
-######################################
-
-# TODO why is crossentropy increasing loss
-# why is gradient sign neg for both instructions in program (for crossentrop)
-# why do both losses have a gradient for first instruction (which is exactly accurate so should be 0!)
-# TODO mult by top_of_stack before loss (it is relevant afterall)
-
-# TODO top_of_stack isnt used in gradient, so it gets iterate nothing?
-#  ignore(), use Params, dropgrad ? calc loss with current_instruction and top_of_stack?
-# runprog(prog) = run(blank_state, prog, instructions, programlen)
-# TODO make last instr pass, make goto > max len goto end? Should pass move instr pointer or not? at end we don't want.
-# But during it may be better?
-
-
-
-# TODO try profile ... so slow...
-# TODO run output program (with or without onecold? Or run as discrete program?)
-# print outputs?
-# is scalar operations for trainable the problem?
-
-# TODO require certain number of goto.
-# require if / comparison operator before goto?
-
-# TODO make train / hyperparams
-# TODO make x and y (x hiddenprograms, an y target after passing through)..
-# need to set trainablemasked and frozenmasked such that .+ creates the hiddenprogram,
-# and targetmasked which is the target corresponding to trainable masked
-# targetmasked .+ frozenmasked = targetprogram
-# Have frozen, trainable, and random? Since there may be "known" properties, variable inputs, and trainable parameters
-
-# or instead of using view, just broadcast mult grads by trainmaskfull?
