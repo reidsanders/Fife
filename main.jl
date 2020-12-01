@@ -318,28 +318,6 @@ end
 function forward(state, target, instructions, programlen, hiddenprogram)
     program = softmaxprog(hiddenprogram)
     pred = run(state, program, instructions, programlen)
-    # scale stack by top_of_stack? Need to use all things to work?
-    # TODO shouldn't the top_of_stack / current_instruction still count ????? its in hte calculation
-    # TODO shouldn't pass target, state to forward.
-    loss(pred, target)
-end
-
-function forward2(state, target, instructions, programlen, hiddenprogram)
-    program = softmaxprog(hiddenprogram)
-    pred = run(state, program, instructions, programlen)
-    loss(pred, target)
-end
-
-
-function runboth(state, variablemasked, trainablemasked, targetmasked, instructions, programlen)
-    hiddenprogram = variablemasked .+ trainablemasked
-    targetprogram = variablemasked .+ targetmasked
-    program = softmaxprog(hiddenprogram)
-    pred = run(state, program, instructions, programlen)
-    target = run(state, targetprogram, instructions, programlen)
-    # scale stack by top_of_stack? Need to use all things to work?
-    # TODO shouldn't the top_of_stack / current_instruction still count ????? its in hte calculation
-    # TODO shouldn't pass target, state to forward.
     loss(pred, target)
 end
 
@@ -350,7 +328,6 @@ function trainloop(variablemaskeds; batchsize=4) # TODO make true function witho
     # targetprograms = varmasked .+ targetmasked 
     grads = zeros(Float32, size(applyfullmaskprog(hiddenprogram)))
     @showprogress for i in 1:size(variablemaskeds)[3]
-        # newgrads = gradient(runboth,blank_state,variablemaskeds[i],trainablemasked,targetmasked,instructions,args.programlen)[3]
         newgrads = gradprog(hiddenprogram)
         grads = grads .+ applyfullmaskprog(newgrads)
         if i > 0 & i%batchsize == 0 
@@ -438,18 +415,15 @@ blank_state = init_state(args.stackdepth, args.programlen, allvalues)
 target = run(blank_state, target_program, instructions, args.programlen)
 
 
-# TODO create forward that takes variablemasked, targetmasked and trainablemasked. combines to form hiddenprogram and targetprogram, run
-# create gradient of forward step 
-gradprog(hidden) = gradient(forward,blank_state,target,instructions,args.programlen,hidden)[end] # Partial?
 
-gradprogpart = partial(gradient,forward2,blank_state,target,instructions,args.programlen) # Partial?
+gradprogpart = partial(gradient,forward,blank_state,target,instructions,args.programlen) # Partial?
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
 opt = Descent(0.1) 
 
 
-function trainloopsingle2(hiddenprogram; numexamples=4) # TODO make true function without globals
+function trainloopsingle(hiddenprogram; numexamples=4) # TODO make true function without globals
     @showprogress for i in 1:numexamples
         grads = gradprogpart(hiddenprogram)[end]
         grads = applyfullmasktohidden(grads)
@@ -458,14 +432,26 @@ function trainloopsingle2(hiddenprogram; numexamples=4) # TODO make true functio
 end
 
 
-
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle2(hiddenprogram, numexamples=100)
+trainloopsingle(hiddenprogram, numexamples=1)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
+
+
+
+##############
+state = blank_state
+programlen = args.programlen
+
+@time trainloopsingle(hiddenprogram, numexamples=1)
+@time grads = gradprogpart(hiddenprogram)[end]
+
+@time program = softmaxprog(hiddenprogram)
+@time pred = run(state, program, instructions, programlen)
+@time loss(pred, target)
