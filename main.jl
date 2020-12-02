@@ -44,7 +44,7 @@ end
     usegpu::Bool = false
 end
 
-struct VMState
+mutable struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
@@ -55,6 +55,8 @@ struct VMSuperStates
     top_of_stacks::Union{Array{Float32},CuArray{Float32}}
     stacks::Union{Array{Float32},CuArray{Float32}} # num instructions x stack
 end
+
+
 
 Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
 Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
@@ -68,6 +70,33 @@ a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(a .* b.current_instru
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
 function super_step(state::VMState, program, instructions)
+    # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
+    # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
+    newstates = [instruction(state) for instruction in instructions]
+    current_instructions = cat([x.current_instruction for x in newstates]..., dims=3)
+    top_of_stacks = cat([x.top_of_stack for x in newstates]..., dims=3)
+
+    stacks = cat([x.stack for x in newstates]..., dims=3)
+
+    states = VMSuperStates(
+        current_instructions,
+        top_of_stacks,
+        stacks,
+    )
+    current = program .* state.current_instruction'
+    summed = sum(current, dims=2) 
+    summed = reshape(summed,(1,1,:))
+    scaledstates = summed * states 
+    reduced = VMState( 
+        sum(scaledstates.current_instructions, dims=3)[:,:,1],
+        sum(scaledstates.top_of_stacks, dims=3)[:,:,1],
+        sum(scaledstates.stacks, dims=3)[:,:,1],
+    )
+    normit(reduced)
+    # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
+end
+
+function super_step2(state::VMState, program, instructions)
     # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     newstates = [instruction(state) for instruction in instructions]
@@ -337,6 +366,7 @@ function trainloop(variablemaskeds; batchsize=4) # TODO make true function witho
     end
 end
 
+#=
 function trainloopsingle(; numexamples=4) # TODO make true function without globals
     @showprogress for i in 1:numexamples
         grads = gradprog(hiddenprogram)
@@ -346,7 +376,7 @@ function trainloopsingle(; numexamples=4) # TODO make true function without glob
         # TODO update trainablemasked only? instead of trainable views
     end
 end
-
+=#
 function applyfullmask(mask, prog)
     out = prog[mask]
     reshape(out, (size(prog)[1], :))
@@ -435,7 +465,7 @@ end
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-trainloopsingle(hiddenprogram, numexamples=1)
+#trainloopsingle(hiddenprogram, numexamples=1)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
@@ -449,9 +479,21 @@ second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmas
 state = blank_state
 programlen = args.programlen
 
-@time trainloopsingle(hiddenprogram, numexamples=1)
+#@time trainloopsingle(hiddenprogram, numexamples=1)
 @time grads = gradprogpart(hiddenprogram)[end]
 
 @time program = softmaxprog(hiddenprogram)
 @time pred = run(state, program, instructions, programlen)
 @time loss(pred, target)
+
+
+#@time trainloopsingle(hiddenprogram, numexamples=1)
+
+    
+program = softmaxprog(hiddenprogram)
+
+@time super_step(blank_state, hiddenprogram, instructions)
+@time super_step2(blank_state, hiddenprogram, instructions)
+
+
+@code_warntype trainloopsingle(hiddenprogram, numexamples=1)
