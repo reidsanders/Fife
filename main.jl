@@ -44,7 +44,7 @@ end
     usegpu::Bool = false
 end
 
-mutable struct VMState
+struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
