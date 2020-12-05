@@ -44,7 +44,7 @@ end
     usegpu::Bool = false
 end
 
-struct VMState
+mutable struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
@@ -474,32 +474,12 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
     end
 end
 
-function custom_train!(loss, ps, data, opt)
-    # training_loss is declared local so it will be available for logging outside the gradient calculation.
-    local training_loss
-    ps = Params(ps)
-    for d in data
-      gs = gradient(ps) do
-        training_loss = loss(d...)
-        # Code inserted here will be differentiated, unless you need that gradient information
-        # it is better to do the work outside this block.
-        return training_loss
-      end
-      # Insert whatever code you want here that needs training_loss, e.g. logging.
-      # logging_callback(training_loss)
-      # Insert what ever code you want here that needs gradient.
-      # E.g. logging with TensorBoardLogger.jl as histogram so you can see if it is becoming huge.
-      Optimise.update!(opt, ps, gs)
-      # Here you might like to check validation set accuracy, and break out to do early stopping.
-    end
-end
-
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
 #trainloopsingle(hiddenprogram, numexamples=1)
 
-second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+second_loss = test(hiddenprogram, target_program, blank_state, instructions, argsprogramlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
