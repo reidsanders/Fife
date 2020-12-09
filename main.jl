@@ -40,10 +40,10 @@ end
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 40
     maxint::Int = 50
-    usegpu::Bool = false
+    usegpu::Bool =  true
 end
 
-struct VMState
+mutable struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
@@ -57,8 +57,8 @@ end
 
 
 
-Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
-Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
+#Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
+#Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
 a::VMState * b::Number = b * a
 a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction, a.top_of_stack + b.top_of_stack, a.stack + b.stack)
