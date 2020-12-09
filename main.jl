@@ -10,7 +10,6 @@ using Random
 using LoopVectorization
 using Base
 using Debugger
-using Random
 import Base: +,-,*,length
 using StructArrays
 using BenchmarkTools
@@ -44,7 +43,7 @@ end
     usegpu::Bool = false
 end
 
-mutable struct VMState
+struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
@@ -236,6 +235,10 @@ function create_random_discrete_program(len, instructions)
     program = [rand(instructions) for i in 1:len]
 end
 
+function create_random_inputs(len, instructions)
+    program = [rand(instructions) for i in 1:len]
+end
+
 function create_trainable_mask(programlen, inputlen)
     mask = falses(programlen)
     mask[inputlen+1:end] .= true
@@ -336,6 +339,11 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
     end
     variablemaskeds
 end
+
+# TODO create runbatch function ?
+# add variablemaskeds to create hidden program
+# runbatch to create targetoutputs
+# Should target be full state, or just the stack (scaled by top_of_stack?)
 
 
 function assert_no_nans(state::VMState)
@@ -442,6 +450,8 @@ trainmask = trainmask |> device
 
 
 blank_state = init_state(args.stackdepth, args.programlen, allvalues)
+
+
 target = run(blank_state, target_program, instructions, args.programlen)
 
 
@@ -465,6 +475,7 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
     local training_loss
     grads = zeros(Float32, size(hiddenprogram[0]))
     @showprogress for d in data
+        # TODO split hiddenprogram from data ?
         newgrads = gradprogpart(hiddenprogram)[end]
         grads = grads .+ applyfullmasktohidden(newgrads)
         if i > 0 & i%batchsize == 0 
@@ -477,35 +488,11 @@ end
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-#trainloopsingle(hiddenprogram, numexamples=1)
+trainloopsingle(hiddenprogram, numexamples=10)
 
-second_loss = test(hiddenprogram, target_program, blank_state, instructions, argsprogramlen)
+second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
 
-
-
-##############
-state = blank_state
-programlen = args.programlen
-
-#@time trainloopsingle(hiddenprogram, numexamples=1)
-@time grads = gradprogpart(hiddenprogram)[end]
-
-@time program = softmaxprog(hiddenprogram)
-@time pred = run(state, program, instructions, programlen)
-@time loss(pred, target)
-
-
-#@time trainloopsingle(hiddenprogram, numexamples=1)
-
-    
-program = softmaxprog(hiddenprogram)
-
-@time super_step(blank_state, hiddenprogram, instructions)
-@time super_step2(blank_state, hiddenprogram, instructions)
-
-
-#@code_warntype trainloopsingle(hiddenprogram, numexamples=1)
