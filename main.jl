@@ -40,7 +40,7 @@ end
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 40
     maxint::Int = 50
-    usegpu::Bool =  true
+    usegpu::Bool = false
 end
 
 mutable struct VMState
@@ -340,11 +340,6 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
     variablemaskeds
 end
 
-# TODO create runbatch function ?
-# add variablemaskeds to create hidden program
-# runbatch to create targetoutputs
-# Should target be full state, or just the stack (scaled by top_of_stack?)
-
 
 function assert_no_nans(state::VMState)
     @assert !any(isnan.(state.stack)) ## Damn, putting an assert removes the NaN
@@ -488,7 +483,7 @@ end
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-trainloopsingle(hiddenprogram, numexamples=10)
+@time trainloopsingle(hiddenprogram, numexamples=10)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
