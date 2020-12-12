@@ -1,7 +1,7 @@
 using Pkg
 Pkg.activate(".")
-using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Flux
+using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 #using Flux.Optimise: update!
 using Flux: Optimise
 using CUDA
@@ -40,7 +40,7 @@ end
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 40
     maxint::Int = 50
-    usegpu::Bool = false
+    usegpu::Bool = true
 end
 
 mutable struct VMState
@@ -54,7 +54,7 @@ struct VMSuperStates
     top_of_stacks::Union{Array{Float32},CuArray{Float32}}
     stacks::Union{Array{Float32},CuArray{Float32}} # num instructions x stack
 end
-
+# TODO just have an array of structs? maybe easier to make mutable, instructions can directly modify 
 
 
 #Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
