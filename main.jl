@@ -8,8 +8,8 @@ using CUDA
 using Zygote
 using Random
 using LoopVectorization
-using Base
 using Debugger
+using Base
 import Base: +,-,*,length
 using StructArrays
 using BenchmarkTools
