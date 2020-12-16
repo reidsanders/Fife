@@ -2,7 +2,6 @@ using Pkg
 Pkg.activate(".")
 using Flux
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
-#using Flux.Optimise: update!
 using Flux: Optimise
 using CUDA
 using Zygote
@@ -20,15 +19,9 @@ using Profile
 Random.seed!(123);
 
 CUDA.allowscalar(false)
-# TODO use GPU / Torch tensors for better performance
-# TODO use threads (if running program on cpu at least)
 
 function partial(f,a...)
     ( (b...) -> f(a...,b...) )
-end
-
-function valhot(val, allvalues)
-    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
 end
 
 @with_kw mutable struct Args
@@ -95,6 +88,10 @@ function super_step(state::VMState, program, instructions)
     # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
 end
 
+###############################
+# Instructions
+###############################
+
 function instr_dup(state::VMState)
     #=
     DUP Should duplicate top of stack, and push to top of stack
@@ -121,10 +118,6 @@ function instr_gotoifnotzerofull(zerovec, nonintvalues, state::VMState)
     Apply top of stack prob?
     
     =#
-
-    # new_top_of_stack = roll(state.top_of_stack,2)
-    # new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
-    # new_current_instruction = roll(state.current_instruction,1)
 
     # TODO don't recalc 
     stackscaled = state.stack .* state.top_of_stack'
@@ -163,18 +156,7 @@ end
 
 instr_pass(state::VMState) = state
 
-# Use circshift instead roll?
-# Use cumsum (!) instead of sum
-function roll(a::Union{CuArray,Array}, increment)
-    increment = increment%length(a)
-    if increment == 0
-        return a
-    elseif increment < 0
-        return vcat(a[1-increment:end], a[1:-increment])
-    else
-        return vcat(a[end+increment-1:end], a[1:end-increment])
-    end 
-end
+
 function instr_val(valhotvec, state::VMState)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
@@ -196,15 +178,25 @@ function instr_val(valhotvec, state::VMState)
     )
 end
 
-function instr_val!(valhotvec, newstate::VMState, state::VMState)
-    new_top_of_stack = roll(state.top_of_stack,-1)
-    new_current_instruction = roll(state.current_instruction,1)
-    topscaled = valhotvec * new_top_of_stack'
-    stackscaled = state.stack .* (1.f0 .- new_top_of_stack')
+###############################
+# Utility functions 
+###############################
 
-    newstate.current_instruction = new_current_instruction
-    newstate.top_of_stack = new_top_of_stack
-    newstate.stack = stackscaled .+ topscaled
+function valhot(val, allvalues)
+    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
+end
+
+# Use circshift instead roll?
+# Use cumsum (!) instead of sum
+function roll(a::Union{CuArray,Array}, increment)
+    increment = increment%length(a)
+    if increment == 0
+        return a
+    elseif increment < 0
+        return vcat(a[1-increment:end], a[1:-increment])
+    else
+        return vcat(a[end+increment-1:end], a[1:end-increment])
+    end 
 end
 
 function check_state_asserts(state)
@@ -215,53 +207,10 @@ function check_state_asserts(state)
     end
 end
 
-function create_random_discrete_program(len, instructions)
-    program = [rand(instructions) for i in 1:len]
-end
-
-function create_random_inputs(len, instructions)
-    program = [rand(instructions) for i in 1:len]
-end
-
-function create_trainable_mask(programlen, inputlen)
-    mask = falses(programlen)
-    mask[inputlen+1:end] .= true
-    mask
-end
-
-
-# TODO terminate all program in Null operator? Early stopping if that last instruction is large percentage?
-function run(state, program, instructions, ticks)
-    for i in 1:ticks
-        # display(i)
-        state = super_step(state, program, instructions)
-        # assert_no_nans(state)
-    end
-    state
-end
-
-function loss(ŷ, y)
-    # TODO top of stack super position actual stack. add tiny amount of current_instruction just because
-    # Technically current instruction doesn't really matter
-    crossentropy(ŷ.stack, y.stack) +
-    crossentropy(ŷ.top_of_stack, y.top_of_stack) +
-    crossentropy(ŷ.current_instruction, y.current_instruction)
-end
-
-function init_state(stackdepth, programlen, allvalues)
-    stack = zeros(Float32,length(allvalues), stackdepth)
-    current_instruction = zeros(Float32,programlen,)
-    top_of_stack = zeros(Float32,stackdepth,)
-    stack[1,:] .= 1.f0
-    current_instruction[1] = 1.f0
-    top_of_stack[1] = 1.f0
-    # @assert isbitstype(stack) == true
-    state = VMState(
-        current_instruction |> device,
-        top_of_stack |> device,
-        stack |> device,
-    )
-    state
+function assert_no_nans(state::VMState)
+    @assert !any(isnan.(state.stack)) ## Damn, putting an assert removes the NaN
+    @assert !any(isnan.(state.top_of_stack)) ## Damn, putting an assert removes the NaN
+    @assert !any(isnan.(state.current_instruction)) ## Damn, putting an assert removes the NaN
 end
 
 function softmaxmask(mask, prog)
@@ -282,14 +231,53 @@ function normit(a::VMState; dims=1)
         normit(a.top_of_stack, dims=dims),
         normit(a.stack, dims=dims),
     )
-
 end
+
 function main()
     state = init_state(stackdepth, programlen)
     state = run(state, program, instructions, max_ticks)
     collapsed_program = onecold(program)
 end
 
+function applyfullmask(mask, prog)
+    out = prog[mask]
+    reshape(out, (size(prog)[1], :))
+end
+
+###############################
+# Initialization functions
+###############################
+
+function create_random_discrete_program(len, instructions)
+    program = [rand(instructions) for i in 1:len]
+end
+
+function create_random_inputs(len, instructions)
+    program = [rand(instructions) for i in 1:len]
+end
+
+function create_trainable_mask(programlen, inputlen)
+    mask = falses(programlen)
+    mask[inputlen+1:end] .= true
+    mask
+end
+
+
+function init_state(stackdepth, programlen, allvalues)
+    stack = zeros(Float32,length(allvalues), stackdepth)
+    current_instruction = zeros(Float32,programlen,)
+    top_of_stack = zeros(Float32,stackdepth,)
+    stack[1,:] .= 1.f0
+    current_instruction[1] = 1.f0
+    top_of_stack[1] = 1.f0
+    # @assert isbitstype(stack) == true
+    state = VMState(
+        current_instruction |> device,
+        top_of_stack |> device,
+        stack |> device,
+    )
+    state
+end
 
 function get_program_with_random_inputs(program, mask)
     num_instructions = size(program)[1]
@@ -324,11 +312,34 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
     variablemaskeds
 end
 
+# TODO terminate all program in Null operator? Early stopping if that last instruction is large percentage?
+function run(state, program, instructions, ticks)
+    for i in 1:ticks
+        # display(i)
+        state = super_step(state, program, instructions)
+        # assert_no_nans(state)
+    end
+    state
+end
 
-function assert_no_nans(state::VMState)
-    @assert !any(isnan.(state.stack)) ## Damn, putting an assert removes the NaN
-    @assert !any(isnan.(state.top_of_stack)) ## Damn, putting an assert removes the NaN
-    @assert !any(isnan.(state.current_instruction)) ## Damn, putting an assert removes the NaN
+function loss(ŷ, y)
+    # TODO top of stack super position actual stack. add tiny amount of current_instruction just because
+    # Technically current instruction doesn't really matter
+    crossentropy(ŷ.stack, y.stack) +
+    crossentropy(ŷ.top_of_stack, y.top_of_stack) +
+    crossentropy(ŷ.current_instruction, y.current_instruction)
+end
+
+function accuracy(hidden, target, trainmask)
+    samemax = onecold(hidden) .== onecold(target)
+    result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
+end
+
+function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
+    program = softmaxprog(hiddenprogram)
+    target = run(blank_state, targetprogram, instructions, programlen)
+    prediction = run(blank_state, program, instructions, programlen)
+    loss(prediction, target)
 end
 
 function forward(state, target, instructions, programlen, hiddenprogram)
@@ -337,7 +348,8 @@ function forward(state, target, instructions, programlen, hiddenprogram)
     loss(pred, target)
 end
 
-function trainloop(variablemaskeds; batchsize=4) # TODO make true function without globals
+function trainloop(variablemaskeds; batchsize=4) 
+    # TODO make true function without globals
     # (xbatch, ybatch)
     # grads = applyfullmaskprog(gradprog(data[1][1]))
     # hiddenprograms = varmasked .+ trainablemasked 
@@ -353,33 +365,26 @@ function trainloop(variablemaskeds; batchsize=4) # TODO make true function witho
     end
 end
 
-#=
-function trainloopsingle(; numexamples=4) # TODO make true function without globals
+function trainloopsingle(hiddenprogram; numexamples=4) # TODO make true function without globals
     @showprogress for i in 1:numexamples
-        grads = gradprog(hiddenprogram)
-        grads = applyfullmaskprog(grads)
-        # Optimise.update!(opt, trainable, grads)
-        Optimise.update!(opt, trainable, grads)
-        # TODO update trainablemasked only? instead of trainable views
+        grads = gradprogpart(hiddenprogram)[end]
+        grads = applyfullmasktohidden(grads)
+        Optimise.update!(opt, hiddenprogram, grads)
     end
 end
-=#
-function applyfullmask(mask, prog)
-    out = prog[mask]
-    reshape(out, (size(prog)[1], :))
-end
 
-
-function accuracy(hidden, target, trainmask)
-    samemax = onecold(hidden) .== onecold(target)
-    result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
-end
-
-function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
-    program = softmaxprog(hiddenprogram)
-    target = run(blank_state, targetprogram, instructions, programlen)
-    prediction = run(blank_state, program, instructions, programlen)
-    loss(prediction, target)
+function trainbatch!(data; batchsize=8) # TODO make true function without globals
+    local training_loss
+    grads = zeros(Float32, size(hiddenprogram[0]))
+    @showprogress for d in data
+        # TODO split hiddenprogram from data ?
+        newgrads = gradprogpart(hiddenprogram)[end]
+        grads = grads .+ applyfullmasktohidden(newgrads)
+        if i > 0 & i%batchsize == 0 
+            Optimise.update!(opt, hiddenprogram, grads)
+            grads .= 0
+        end
+    end
 end
 
 
@@ -443,28 +448,10 @@ first_program = deepcopy(program)
 opt = Descent(0.1) 
 
 
-function trainloopsingle(hiddenprogram; numexamples=4) # TODO make true function without globals
-    @showprogress for i in 1:numexamples
-        grads = gradprogpart(hiddenprogram)[end]
-        grads = applyfullmasktohidden(grads)
-        Optimise.update!(opt, hiddenprogram, grads)
-    end
-end
 
-function trainbatch!(data; batchsize=8) # TODO make true function without globals
-    local training_loss
-    grads = zeros(Float32, size(hiddenprogram[0]))
-    @showprogress for d in data
-        # TODO split hiddenprogram from data ?
-        newgrads = gradprogpart(hiddenprogram)[end]
-        grads = grads .+ applyfullmasktohidden(newgrads)
-        if i > 0 & i%batchsize == 0 
-            Optimise.update!(opt, hiddenprogram, grads)
-            grads .= 0
-        end
-    end
-end
-
+######################################
+# Run program train
+######################################
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
