@@ -40,10 +40,10 @@ end
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 40
     maxint::Int = 50
-    usegpu::Bool = true
+    usegpu::Bool = false
 end
 
-mutable struct VMState
+struct VMState
     current_instruction::Union{Array{Float32},CuArray{Float32}}
     top_of_stack::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
@@ -69,33 +69,6 @@ a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(a .* b.current_instru
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
 function super_step(state::VMState, program, instructions)
-    # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
-    # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
-    newstates = [instruction(state) for instruction in instructions]
-    current_instructions = cat([x.current_instruction for x in newstates]..., dims=3)
-    top_of_stacks = cat([x.top_of_stack for x in newstates]..., dims=3)
-
-    stacks = cat([x.stack for x in newstates]..., dims=3)
-
-    states = VMSuperStates(
-        current_instructions,
-        top_of_stacks,
-        stacks,
-    )
-    current = program .* state.current_instruction'
-    summed = sum(current, dims=2) 
-    summed = reshape(summed,(1,1,:))
-    scaledstates = summed * states 
-    reduced = VMState( 
-        sum(scaledstates.current_instructions, dims=3)[:,:,1],
-        sum(scaledstates.top_of_stacks, dims=3)[:,:,1],
-        sum(scaledstates.stacks, dims=3)[:,:,1],
-    )
-    normit(reduced)
-    # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
-end
-
-function super_step2(state::VMState, program, instructions)
     # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
     # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     newstates = [instruction(state) for instruction in instructions]
@@ -221,6 +194,17 @@ function instr_val(valhotvec, state::VMState)
         new_top_of_stack,
         new_stack,
     )
+end
+
+function instr_val!(valhotvec, newstate::VMState, state::VMState)
+    new_top_of_stack = roll(state.top_of_stack,-1)
+    new_current_instruction = roll(state.current_instruction,1)
+    topscaled = valhotvec * new_top_of_stack'
+    stackscaled = state.stack .* (1.f0 .- new_top_of_stack')
+
+    newstate.current_instruction = new_current_instruction
+    newstate.top_of_stack = new_top_of_stack
+    newstate.stack = stackscaled .+ topscaled
 end
 
 function check_state_asserts(state)
@@ -445,6 +429,7 @@ trainmask = trainmask |> device
 
 
 blank_state = init_state(args.stackdepth, args.programlen, allvalues)
+blank_state2 = init_state(args.stackdepth, args.programlen, allvalues)
 
 
 target = run(blank_state, target_program, instructions, args.programlen)
@@ -483,11 +468,12 @@ end
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(hiddenprogram, numexamples=10)
+#@time trainloopsingle(hiddenprogram, numexamples=10)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
+
 
