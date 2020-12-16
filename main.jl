@@ -20,8 +20,8 @@ Random.seed!(123);
 
 CUDA.allowscalar(false)
 
-function partial(f,a...)
-    ( (b...) -> f(a...,b...) )
+function partial(f, a...)
+    ( (b...) -> f(a..., b...) )
 end
 
 @with_kw mutable struct Args
@@ -50,8 +50,8 @@ end
 # TODO just have an array of structs? maybe easier to make mutable, instructions can directly modify 
 
 
-#Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
-#Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
+# Zygote.@adjoint VMSuperStates(x,y,z) = VMSuperStates(x,y,z), di -> (di.current_instructions, di.top_of_stacks, di.stacks)
+# Zygote.@adjoint VMState(x,y,z) = VMState(x,y,z), di -> (di.current_instruction, di.top_of_stack, di.stack)
 a::Number * b::VMState = VMState(a * b.current_instruction, a * b.top_of_stack, a * b.stack)
 a::VMState * b::Number = b * a
 a::VMState + b::VMState = VMState(a.current_instruction + b.current_instruction, a.top_of_stack + b.top_of_stack, a.stack + b.stack)
@@ -77,7 +77,7 @@ function super_step(state::VMState, program, instructions)
     )
     current = program .* state.current_instruction'
     summed = sum(current, dims=2) 
-    summed = reshape(summed,(1,1,:))
+    summed = reshape(summed, (1, 1, :))
     scaledstates = summed * states 
     reduced = VMState( 
         sum(scaledstates.current_instructions, dims=3)[:,:,1],
@@ -85,7 +85,6 @@ function super_step(state::VMState, program, instructions)
         sum(scaledstates.stacks, dims=3)[:,:,1],
     )
     normit(reduced)
-    # normit(reduce(+, sum(program .* state.current_instruction',dims=2) .* new_states))
 end
 
 ###############################
@@ -93,12 +92,11 @@ end
 ###############################
 
 function instr_dup(state::VMState)
-    #=
-    DUP Should duplicate top of stack, and push to top of stack
-    =#
-    new_top_of_stack = roll(state.top_of_stack,-1)
+    #= 
+    DUP Should duplicate top of stack, and push to top of stack =#
+    new_top_of_stack = roll(state.top_of_stack, -1)
     new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
-    new_current_instruction = roll(state.current_instruction,1)
+    new_current_instruction = roll(state.current_instruction, 1)
 
     VMState(
         new_current_instruction,
@@ -108,32 +106,46 @@ function instr_dup(state::VMState)
     
 end
 
+function instr_swap(state::VMState)
+    #= 
+    DUP Should duplicate top of stack, and push to top of stack =#
+    new_top_of_stack = roll(state.top_of_stack, -1)
+    new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
+    new_current_instruction = roll(state.current_instruction, 1)
+
+    VMState(
+        new_current_instruction,
+        new_top_of_stack,
+        new_stack,
+    )
+    
+end
+
+
     
 function instr_gotoifnotzerofull(zerovec, nonintvalues, state::VMState)
-    #=
+    #= 
     GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
 
     take stack. apply bitmask for 0 / mult by zero onehot (or select col by index, but slow on gpu)
     1.- , then mult as prob vector. 
-    Apply top of stack prob?
-    
-    =#
+    Apply top of stack prob? =#
 
     # TODO don't recalc 
     stackscaled = state.stack .* state.top_of_stack'
     probofgoto = 1 .- sum(stackscaled .* zerovec, dims=1)
-    firstpoptop = roll(state.top_of_stack,1)
+    firstpoptop = roll(state.top_of_stack, 1)
     secondstackscaled = state.stack .* firstpoptop' 
     jumpvalprobs = sum(secondstackscaled, dims=2)
 
     # Assume ints start at 0 should skip 0?
     # Constraint -- length(intvalues) > length of current instruction ?
-    jumpvalprobs = jumpvalprobs[length(nonintvalues)+1:end]
+    jumpvalprobs = jumpvalprobs[length(nonintvalues) + 1:end]
     # TODO length(current_instruction) compare and truncate
     jumpvalprobs = jumpvalprobs[1:end]
-    currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * roll(state.current_instruction,1)
+    currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * roll(state.current_instruction, 1)
     new_current_instruction = currentinstructionforward .+ jumpvalprobs[1:length(state.current_instruction)]
-    newtop = roll(firstpoptop,1)
+    newtop = roll(firstpoptop, 1)
 
     # jumpvalprobs[:end]
     # TODO set blank / zero to zero? zero goes to first? greater than length(program) goes to end?
@@ -163,8 +175,8 @@ function instr_val(valhotvec, state::VMState)
     # sizehint
     # set return type to force allocation
     # display(state.top_of_stack)
-    new_top_of_stack = roll(state.top_of_stack,-1)
-    new_current_instruction = roll(state.current_instruction,1)
+    new_top_of_stack = roll(state.top_of_stack, -1)
+    new_current_instruction = roll(state.current_instruction, 1)
     # display(valhotvec)
     # display(new_top_of_stack)
     topscaled = valhotvec * new_top_of_stack'
@@ -189,13 +201,13 @@ end
 # Use circshift instead roll?
 # Use cumsum (!) instead of sum
 function roll(a::Union{CuArray,Array}, increment)
-    increment = increment%length(a)
+    increment = increment % length(a)
     if increment == 0
         return a
     elseif increment < 0
-        return vcat(a[1-increment:end], a[1:-increment])
+        return vcat(a[1 - increment:end], a[1:-increment])
     else
-        return vcat(a[end+increment-1:end], a[1:end-increment])
+        return vcat(a[end + increment - 1:end], a[1:end - increment])
     end 
 end
 
@@ -258,15 +270,15 @@ end
 
 function create_trainable_mask(programlen, inputlen)
     mask = falses(programlen)
-    mask[inputlen+1:end] .= true
+    mask[inputlen + 1:end] .= true
     mask
 end
 
 
 function init_state(stackdepth, programlen, allvalues)
-    stack = zeros(Float32,length(allvalues), stackdepth)
-    current_instruction = zeros(Float32,programlen,)
-    top_of_stack = zeros(Float32,stackdepth,)
+    stack = zeros(Float32, length(allvalues), stackdepth)
+    current_instruction = zeros(Float32, programlen, )
+    top_of_stack = zeros(Float32, stackdepth, )
     stack[1,:] .= 1.f0
     current_instruction[1] = 1.f0
     top_of_stack[1] = 1.f0
@@ -282,7 +294,7 @@ end
 function get_program_with_random_inputs(program, mask)
     num_instructions = size(program)[1]
     new_program = copy(program)
-    for (i,col) in enumerate(eachcol(new_program[:, mask]))
+    for (i, col) in enumerate(eachcol(new_program[:, mask]))
         new_program[:,i] .= false
         new_program[rand(1:num_instructions),i] = true
     end
@@ -300,22 +312,18 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples=16)
     variablemasked = (1 .- trainmaskfull) .* hiddenprogram
     # variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
     variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
-    # variablemaskeds = []
     for i in 1:numexamples
         newvariablemasked = copy(variablemasked)
         for col in eachcol(newvariablemasked)
             shuffle!(col)
         end
-        # variablemaskeds[i] = newvariablemasked
         variablemaskeds[:,:,i] = newvariablemasked  # Batch
     end
     variablemaskeds
 end
 
-# TODO terminate all program in Null operator? Early stopping if that last instruction is large percentage?
 function run(state, program, instructions, ticks)
     for i in 1:ticks
-        # display(i)
         state = super_step(state, program, instructions)
         # assert_no_nans(state)
     end
@@ -332,7 +340,7 @@ end
 
 function accuracy(hidden, target, trainmask)
     samemax = onecold(hidden) .== onecold(target)
-    result = (sum(samemax) - sum(1 .- trainmask))/ sum(trainmask)
+    result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
 function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
@@ -358,7 +366,7 @@ function trainloop(variablemaskeds; batchsize=4)
     @showprogress for i in 1:size(variablemaskeds)[3]
         newgrads = gradprog(hiddenprogram)
         grads = grads .+ applyfullmaskprog(newgrads)
-        if i > 0 & i%batchsize == 0 
+        if i > 0 & i % batchsize == 0 
             Optimise.update!(opt, trainablemasked, grads)
             grads .= 0
         end
@@ -380,13 +388,12 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
         # TODO split hiddenprogram from data ?
         newgrads = gradprogpart(hiddenprogram)[end]
         grads = grads .+ applyfullmasktohidden(newgrads)
-        if i > 0 & i%batchsize == 0 
+        if i > 0 & i % batchsize == 0 
             Optimise.update!(opt, hiddenprogram, grads)
             grads .= 0
         end
     end
 end
-
 
 ######################################
 # Global initialization
@@ -406,9 +413,9 @@ intvalues = [i for i in 0:args.maxint]
 nonintvalues = ["blank"]
 allvalues = [nonintvalues; intvalues]
 
-instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0,allvalues), nonintvalues)
+instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0, allvalues), nonintvalues)
 
-val_instructions = [partial(instr_val, valhot(i,allvalues)) for i in intvalues]
+val_instructions = [partial(instr_val, valhot(i, allvalues)) for i in intvalues]
 instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
 num_instructions = length(instructions)
 
@@ -421,7 +428,7 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
 # Initialize
 
-trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1],1)) |> device
+trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1], 1)) |> device
 softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 applyfullmaskprog = partial(applyfullmask, trainmaskfull)
 applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
@@ -439,15 +446,11 @@ blank_state2 = init_state(args.stackdepth, args.programlen, allvalues)
 
 target = run(blank_state, target_program, instructions, args.programlen)
 
-
-
-gradprogpart = partial(gradient,forward,blank_state,target,instructions,args.programlen) # Partial?
+gradprogpart = partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
 opt = Descent(0.1) 
-
-
 
 ######################################
 # Run program train
@@ -455,7 +458,7 @@ opt = Descent(0.1)
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-#@time trainloopsingle(hiddenprogram, numexamples=10)
+# @time trainloopsingle(hiddenprogram, numexamples=10)
 
 second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
