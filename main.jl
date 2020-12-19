@@ -93,7 +93,8 @@ end
 
 function instr_dup(state::VMState)
     #= 
-    DUP Should duplicate top of stack, and push to top of stack =#
+    DUP Should duplicate top of stack, and push to top of stack 
+    =#
     new_top_of_stack = roll(state.top_of_stack, -1)
     new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
     new_current_instruction = roll(state.current_instruction, 1)
@@ -108,7 +109,8 @@ end
 
 function instr_swap(state::VMState)
     #= 
-    DUP Should duplicate top of stack, and push to top of stack =#
+    SWAP Should swap top of stack with second to top of stack
+    =#
     new_top_of_stack = roll(state.top_of_stack, -1)
     new_stack = state.stack .* (1.f0 .- state.top_of_stack') .+ state.stack .* new_top_of_stack'
     new_current_instruction = roll(state.current_instruction, 1)
@@ -394,76 +396,3 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
         end
     end
 end
-
-######################################
-# Global initialization
-######################################
-args = Args()
-
-# use_cuda = false
-if args.usegpu
-    global device = gpu
-    # @info "Training on GPU"
-else
-    global device = cpu
-    # @info "Training on CPU"
-end
-
-intvalues = [i for i in 0:args.maxint]
-nonintvalues = ["blank"]
-allvalues = [nonintvalues; intvalues]
-
-instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0, allvalues), nonintvalues)
-
-val_instructions = [partial(instr_val, valhot(i, allvalues)) for i in intvalues]
-instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
-num_instructions = length(instructions)
-
-discrete_program = create_random_discrete_program(args.programlen, instructions)
-target_program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
-trainmask = create_trainable_mask(args.programlen, args.inputlen)
-hiddenprogram = deepcopy(target_program)
-hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
-
-
-# Initialize
-
-trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1], 1)) |> device
-softmaxprog = partial(softmaxmask, trainmaskfull |> device)
-applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
-
-hiddenprogram = hiddenprogram |> device
-program = softmaxprog(hiddenprogram) |> device
-target_program = target_program |> device
-hiddenprogram = hiddenprogram |> device
-trainmask = trainmask |> device
-
-
-blank_state = init_state(args.stackdepth, args.programlen, allvalues)
-blank_state2 = init_state(args.stackdepth, args.programlen, allvalues)
-
-
-target = run(blank_state, target_program, instructions, args.programlen)
-
-gradprogpart = partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
-
-first_program = deepcopy(program)
-# opt = ADAM(0.002) 
-opt = Descent(0.1) 
-
-######################################
-# Run program train
-######################################
-first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
-first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
-
-# @time trainloopsingle(hiddenprogram, numexamples=10)
-
-second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
-second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
-@show second_loss - first_loss
-@show first_accuracy
-@show second_accuracy
-
-
