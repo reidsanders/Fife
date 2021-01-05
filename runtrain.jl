@@ -62,6 +62,7 @@ trainmask = trainmask |> device
 blank_state = init_state(args.stackdepth, args.programlen, allvalues)
 blank_state2 = init_state(args.stackdepth, args.programlen, allvalues)
 
+check_state_asserts(blank_state)
 
 target = run(blank_state, target_program, instructions, args.programlen)
 

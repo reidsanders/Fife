@@ -242,6 +242,9 @@ git-tree-sha1 = "eea043eb9e9087e53815e9587e9106027c3c6b14"
 uuid = "48062228-2e41-5def-b9a4-89aafe57970f"
 version = "0.9.5"
 
+[[FileWatching]]
+uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
+
 [[FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays"]
 git-tree-sha1 = "4863cbb7910079369e258dee4add9d06ead5063a"
@@ -609,6 +612,12 @@ deps = ["DiffResults", "DiffRules", "ForwardDiff", "FunctionWrappers", "LinearAl
 git-tree-sha1 = "a3a2fbc8af1fc993aca48ba01484444bbeb39bf7"
 uuid = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 version = "1.4.2"
+
+[[Revise]]
+deps = ["Distributed", "FileWatching", "InteractiveUtils", "LibGit2", "OrderedCollections", "Pkg", "REPL", "Random", "Test", "UUIDs", "Unicode"]
+git-tree-sha1 = "180959294ae0733fbca94c24611c97af5d7fb936"
+uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
+version = "1.0.3"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"

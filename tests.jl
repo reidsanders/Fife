@@ -20,34 +20,28 @@ end
 
 args = Args()
 
+# use_cuda = false
+if args.usegpu
+    global device = gpu
+    @info "Training on GPU"
+else
+    global device = cpu
+    @info "Training on CPU"
+end
+
 function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
-    stack = normit(stack)
-    current_instruction = zeros(Float32, programlen, )
-    top_of_stack = zeros(Float32, stackdepth, )
-    stack[1,:] .= 1.f0
-    current_instruction[1] = 1.f0
-    top_of_stack[1] = 1.f0
-    # @assert isbitstype(stack) == true
+    current_instruction = rand(Float32, programlen, )
+    top_of_stack = rand(Float32, stackdepth, )
     state = VMState(
         current_instruction |> device,
         top_of_stack |> device,
         stack |> device,
     )
-    state
+    normit(state)
 end
 
 function test_instr_dup()
-
-    # use_cuda = false
-    if args.usegpu
-        global device = gpu
-        # @info "Training on GPU"
-    else
-        global device = cpu
-        # @info "Training on CPU"
-    end
-
     intvalues = [i for i in 0:args.maxint]
     nonintvalues = ["blank"]
     allvalues = [nonintvalues; intvalues]
@@ -82,10 +76,13 @@ function test_instr_dup()
     blank_state = init_state(args.stackdepth, args.programlen, allvalues)
     blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues)
 
-    check_state_asserts(blank_state)
-    check_state_asserts(blank_state_random)
-
     instr_dup(blank_state)
 end
 
-new_state = test_instr_dup()
+
+blank_state = init_state(10, 12, [i for i in 0:10])
+blank_state_random = init_random_state(10, 12, [i for i in 0:10])
+check_state_asserts(blank_state)
+check_state_asserts(blank_state_random)
+
+#new_state = test_instr_dup()

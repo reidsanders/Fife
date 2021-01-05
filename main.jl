@@ -202,10 +202,10 @@ function roll(a::Union{CuArray,Array}, increment)
 end
 
 function check_state_asserts(state)
-    @assert sum(state.current_instruction) == 1.0
-    @assert sum(state.top_of_stack) == 1.0
+    @assert isapprox(sum(state.current_instruction), 1.0)
+    @assert isapprox(sum(state.top_of_stack), 1.0)
     for col in eachcol(state.stack)
-        @assert sum(col) == 1.0
+        @assert isapprox(sum(col), 1.0)
     end
 end
 
