@@ -3,6 +3,20 @@ include("main.jl")
 ######################################
 # Global initialization
 ######################################
+
+
+@with_kw mutable struct Args
+    batchsize::Int = 32
+    lr::Float32 = 2e-4
+    epochs::Int = 50
+    stackdepth::Int = 100
+    programlen::Int = 50
+    inputlen::Int = 20 # frozen part, assumed at front for now
+    max_ticks::Int = 40
+    maxint::Int = 50
+    usegpu::Bool = false
+end
+
 args = Args()
 
 # use_cuda = false
