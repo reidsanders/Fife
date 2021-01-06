@@ -31,8 +31,12 @@ end
 
 function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
-    current_instruction = rand(Float32, programlen, )
-    top_of_stack = rand(Float32, stackdepth, )
+    current_instruction = zeros(Float32, programlen, )
+    top_of_stack = zeros(Float32, stackdepth, )
+    #current_instruction = rand(Float32, programlen, )
+    #top_of_stack = rand(Float32, stackdepth, )
+    current_instruction[1] = 1.f0
+    top_of_stack[1] = 1.f0
     state = VMState(
         current_instruction |> device,
         top_of_stack |> device,
@@ -40,7 +44,7 @@ function init_random_state(stackdepth, programlen, allvalues)
     )
     normit(state)
 end
-
+#=
 function test_instr_dup()
     intvalues = [i for i in 0:args.maxint]
     nonintvalues = ["blank"]
@@ -78,11 +82,13 @@ function test_instr_dup()
 
     instr_dup(blank_state)
 end
+=#
 
-
-blank_state = init_state(10, 12, [i for i in 0:10])
-blank_state_random = init_random_state(10, 12, [i for i in 0:10])
+blank_state = init_state(3, 4, [i for i in 0:3])
+blank_state_random = init_random_state(3, 4, [i for i in 0:3])
 check_state_asserts(blank_state)
 check_state_asserts(blank_state_random)
+
+newstate = instr_dup(blank_state_random)
 
 #new_state = test_instr_dup()
