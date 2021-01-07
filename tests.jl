@@ -35,6 +35,7 @@ function init_random_state(stackdepth, programlen, allvalues)
     stackpointer = zeros(Float32, stackdepth, )
     #instructionpointer = rand(Float32, programlen, )
     #stackpointer = rand(Float32, stackdepth, )
+    stack = normit(stack)
     instructionpointer[1] = 1.f0
     stackpointer[1] = 1.f0
     state = VMState(
@@ -42,12 +43,19 @@ function init_random_state(stackdepth, programlen, allvalues)
         stackpointer |> device,
         stack |> device,
     )
-    normit(state)
+    #normit(state)
 end
 
-blank_state = init_state(3, 4, [i for i in 0:3])
-blank_state_random = init_random_state(3, 4, [i for i in 0:3])
+allvalues = [i for i in 0:5]
+instr_2 = partial(instr_val, valhot(2, allvalues))
+
+blank_state = init_state(3, 4, allvalues)
+blank_state_random = init_random_state(3, 4, allvalues)
 check_state_asserts(blank_state)
 check_state_asserts(blank_state_random)
 
 newstate = instr_dup(blank_state_random)
+newstate_instr2 = instr_2(blank_state_random)
+
+check_state_asserts(newstate)
+check_state_asserts(newstate_instr2)
