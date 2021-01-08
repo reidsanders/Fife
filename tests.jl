@@ -57,5 +57,5 @@ check_state_asserts(blank_state_random)
 newstate = instr_dup(blank_state_random)
 newstate_instr2 = instr_2(blank_state_random)
 
-check_state_asserts(newstate)
+#check_state_asserts(newstate)
 check_state_asserts(newstate_instr2)
