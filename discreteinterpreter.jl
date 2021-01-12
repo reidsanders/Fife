@@ -152,6 +152,26 @@ function test_instr_halt()
     @test state.ishalted
 end
 
+function instr_goto!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    # Verification of non zero, positive integer?
+    if x > 0
+        state.instructionpointer = x
+    else
+        state.instructionpointer += 1
+    end
+end
+
+function instr_gotoif!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    if x != 0 && y > 0
+        state.instructionpointer = y
+    else
+        state.instructionpointer += 1
+    end
+end
+
 function test_instr_add()
     state = DiscreteVMState()
     instr_pushval!(3,state)
@@ -211,6 +231,35 @@ function test_instr_and()
     @test last(state.stack) == 0
 end
 
+function test_instr_goto()
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_goto!(state)
+    @test state.instructionpointer == 6
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(-1,state)
+    instr_goto!(state)
+    @test state.instructionpointer == 3
+end
+
+function test_instr_gotoif()
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(3,state)
+    instr_gotoif!(state)
+    @test state.instructionpointer == 6
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(0,state)
+    instr_gotoif!(state)
+    @test state.instructionpointer == 4
+end
+
+
 
 test_instr_pushval()
 test_instr_halt()
@@ -222,3 +271,5 @@ test_instr_not()
 test_instr_and()
 test_instr_dup()
 test_instr_swap()
+test_instr_goto()
+test_instr_gotoif()
