@@ -29,8 +29,19 @@ end
 
 instr_pass(state::DiscreteVMState) = state
 
+
+function instr_halt!(state::DiscreteVMState)
+    state.ishalted = true
+    state.instructionpointer += 1
+end
+
 function instr_pushval!(value::Integer, state::DiscreteVMState)
     push!(state.stack, value)
+    state.instructionpointer += 1
+end
+
+function instr_pop!(state::DiscreteVMState)
+    pop!(state.stack)
     state.instructionpointer += 1
 end
 
@@ -56,15 +67,29 @@ function instr_div!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
-function instr_halt!(state::DiscreteVMState)
-    state.ishalted = true
+function instr_not!(state::DiscreteVMState)
+    # 0 is false, anything else is true.
+    # but if true still set to 1
+    x = pop!(state.stack) 
+    notx = 1 * (x != 0)
+    push!(state.stack, notx)
     state.instructionpointer += 1
 end
+
 
 function test_instr_pushval()
     state = DiscreteVMState()
     instr_pushval!(3,state)
     @test state.instructionpointer == 2
+    @test last(state.stack) == 3
+end
+
+function test_instr_pop()
+    state = DiscreteVMState()
+    instr_pushval!(3,state)
+    instr_pushval!(5,state)
+    instr_pop!(state)
+    @test state.instructionpointer == 4
     @test last(state.stack) == 3
 end
 
@@ -102,8 +127,26 @@ function test_instr_div()
     @test last(state.stack) == 2
 end
 
+function test_instr_not()
+    state = DiscreteVMState()
+    # test true
+    instr_pushval!(3,state)
+    instr_not!(state)
+    @test state.instructionpointer == 3
+    @test last(state.stack) == 1
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(0,state)
+    instr_not!(state)
+    @test state.instructionpointer == 3
+    @test last(state.stack) == 0
+end
+
+
 test_instr_pushval()
 test_instr_halt()
 test_instr_add()
 test_instr_mult()
 test_instr_div()
+test_instr_pop()
+test_instr_not()
