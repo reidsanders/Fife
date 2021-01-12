@@ -45,6 +45,21 @@ function instr_pop!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
+function instr_dup!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    push!(state.stack, x)
+    push!(state.stack, x)
+    state.instructionpointer += 1
+end
+
+function instr_swap!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    push!(state.stack, x)
+    push!(state.stack, y)
+    state.instructionpointer += 1
+end
+
 function instr_add!(state::DiscreteVMState)
     x = pop!(state.stack) 
     y = pop!(state.stack) 
@@ -76,6 +91,21 @@ function instr_not!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
+function instr_and!(state::DiscreteVMState)
+    x = pop!(state.stack) 
+    y = pop!(state.stack) 
+    res = 1 * (x!=0 && y!=0)
+    push!(state.stack, res)
+    state.instructionpointer += 1
+end
+
+function instr_or!(state::DiscreteVMState)
+    x = pop!(state.stack) 
+    y = pop!(state.stack) 
+    res = 1 * (x!=0 || y!=0)
+    push!(state.stack, res)
+    state.instructionpointer += 1
+end
 
 function test_instr_pushval()
     state = DiscreteVMState()
@@ -91,6 +121,28 @@ function test_instr_pop()
     instr_pop!(state)
     @test state.instructionpointer == 4
     @test last(state.stack) == 3
+end
+
+function test_instr_dup()
+    state = DiscreteVMState()
+    instr_pushval!(3,state)
+    instr_pushval!(5,state)
+    instr_dup!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 5
+    pop!(state.stack)
+    @test last(state.stack) == 5
+end
+
+function test_instr_swap()
+    state = DiscreteVMState()
+    instr_pushval!(3,state)
+    instr_pushval!(5,state)
+    instr_swap!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 3
+    pop!(state.stack)
+    @test last(state.stack) == 5
 end
 
 function test_instr_halt()
@@ -142,6 +194,23 @@ function test_instr_not()
     @test last(state.stack) == 0
 end
 
+function test_instr_and()
+    state = DiscreteVMState()
+    # test true
+    instr_pushval!(3,state)
+    instr_pushval!(1,state)
+    instr_and!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 1
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(3,state)
+    instr_pushval!(0,state)
+    instr_and!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 0
+end
+
 
 test_instr_pushval()
 test_instr_halt()
@@ -150,3 +219,6 @@ test_instr_mult()
 test_instr_div()
 test_instr_pop()
 test_instr_not()
+test_instr_and()
+test_instr_dup()
+test_instr_swap()
