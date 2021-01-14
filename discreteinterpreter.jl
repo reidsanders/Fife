@@ -145,6 +145,28 @@ function instr_iseq!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
+function instr_isgt!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    if x > y
+        push!(state.stack, 1)
+    else
+        push!(state.stack, 0)
+    end
+    state.instructionpointer += 1
+end
+
+function instr_isge!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    if x >= y
+        push!(state.stack, 1)
+    else
+        push!(state.stack, 0)
+    end
+    state.instructionpointer += 1
+end
+
 function test_instr_halt()
     state = DiscreteVMState()
     instr_halt!(state)
@@ -303,6 +325,47 @@ function test_instr_iseq()
     @test last(state.stack) == 0
 end
 
+function test_instr_isgt()
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(6,state)
+    instr_isgt!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 0
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(3,state)
+    instr_pushval!(6,state)
+    instr_isgt!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 1
+end
+
+function test_instr_isge()
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(3,state)
+    instr_isge!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 0
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(6,state)
+    instr_isge!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 1
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(3,state)
+    instr_pushval!(6,state)
+    instr_isge!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 1
+end
+
 
 test_instr_halt()
 test_instr_pushval()
@@ -318,3 +381,5 @@ test_instr_and()
 test_instr_goto()
 test_instr_gotoif()
 test_instr_iseq()
+test_instr_isgt()
+test_instr_isge()
