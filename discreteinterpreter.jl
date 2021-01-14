@@ -114,6 +114,37 @@ function instr_or!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
+function instr_goto!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    # Verification of non zero, positive integer?
+    if x > 0
+        state.instructionpointer = x
+    else
+        state.instructionpointer += 1
+    end
+end
+
+function instr_gotoif!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    if x != 0 && y > 0
+        state.instructionpointer = y
+    else
+        state.instructionpointer += 1
+    end
+end
+
+function instr_iseq!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    if x == y
+        push!(state.stack, 1)
+    else
+        push!(state.stack, 0)
+    end
+    state.instructionpointer += 1
+end
+
 function test_instr_halt()
     state = DiscreteVMState()
     instr_halt!(state)
@@ -157,26 +188,6 @@ function test_instr_swap()
     @test last(state.stack) == 3
     pop!(state.stack)
     @test last(state.stack) == 5
-end
-
-function instr_goto!(state::DiscreteVMState)
-    x = pop!(state.stack)
-    # Verification of non zero, positive integer?
-    if x > 0
-        state.instructionpointer = x
-    else
-        state.instructionpointer += 1
-    end
-end
-
-function instr_gotoif!(state::DiscreteVMState)
-    x = pop!(state.stack)
-    y = pop!(state.stack)
-    if x != 0 && y > 0
-        state.instructionpointer = y
-    else
-        state.instructionpointer += 1
-    end
 end
 
 function test_instr_add()
@@ -275,6 +286,23 @@ function test_instr_gotoif()
     @test state.instructionpointer == 4
 end
 
+function test_instr_iseq()
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(6,state)
+    instr_iseq!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 1
+    # test false
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(3,state)
+    instr_iseq!(state)
+    @test state.instructionpointer == 4
+    @test last(state.stack) == 0
+end
+
 
 test_instr_halt()
 test_instr_pushval()
@@ -289,3 +317,4 @@ test_instr_not()
 test_instr_and()
 test_instr_goto()
 test_instr_gotoif()
+test_instr_iseq()
