@@ -11,6 +11,10 @@ using Profile
 using DataStructures: CircularDeque, DefaultDict
 using Test: @test
 
+function partial(f, a...)
+    ( (b...) -> f(a..., b...) )
+end
+
 @with_kw mutable struct Args
     stackdepth::Int = 10
     programlen::Int = 5
@@ -19,7 +23,10 @@ using Test: @test
     maxint::Int = 3
     usegpu::Bool = false
 end
+
 args = Args()
+intvalues = [i for i in 0:args.maxint]
+#val_instructions = [partial(instr_pushval!, i) for i in intvalues]
 
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
@@ -29,7 +36,6 @@ args = Args()
 end
 
 instr_pass(state::DiscreteVMState) = state
-
 
 function instr_halt!(state::DiscreteVMState)
     state.ishalted = true

@@ -16,13 +16,11 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
+include("utils.jl")
+
 Random.seed!(123);
 
 CUDA.allowscalar(false)
-
-function partial(f, a...)
-    ( (b...) -> f(a..., b...) )
-end
 
 struct VMState
     instructionpointer::Union{Array{Float32},CuArray{Float32}}
