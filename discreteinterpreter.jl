@@ -8,7 +8,7 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: CircularDeque
+using DataStructures: CircularDeque, DefaultDict
 using Test: @test
 
 @with_kw mutable struct Args
@@ -24,6 +24,7 @@ args = Args()
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
     stack::CircularDeque{Int} = CircularDeque{Int}(args.stackdepth)
+    variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
     ishalted::Bool = false
 end
 
@@ -164,6 +165,20 @@ function instr_isge!(state::DiscreteVMState)
     else
         push!(state.stack, 0)
     end
+    state.instructionpointer += 1
+end
+
+function instr_store!(state::DiscreteVMState)
+    x = pop!(state.stack)
+    y = pop!(state.stack)
+    state.variables[y] = x
+    state.instructionpointer += 1
+end
+
+function instr_load!(state::DiscreteVMState)
+    # TODO should this remove the address element on the stack or not
+    x = pop!(state.stack)
+    push!(state.stack, state.variables[x])
     state.instructionpointer += 1
 end
 
@@ -366,6 +381,28 @@ function test_instr_isge()
     @test last(state.stack) == 1
 end
 
+function test_instr_store()
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(3,state)
+    instr_store!(state)
+    @test state.instructionpointer == 4
+    @test state.variables[6] == 3
+end
+
+function test_instr_load()
+    # test true
+    state = DiscreteVMState()
+    instr_pushval!(6,state)
+    instr_pushval!(6,state)
+    instr_pushval!(3,state)
+    instr_store!(state)
+    @test state.variables[6] == 3
+    instr_load!(state)
+    @test state.instructionpointer == 6
+    @test last(state.stack) == 3
+end
 
 test_instr_halt()
 test_instr_pushval()
@@ -383,3 +420,5 @@ test_instr_gotoif()
 test_instr_iseq()
 test_instr_isgt()
 test_instr_isge()
+test_instr_store()
+test_instr_load()
