@@ -1,3 +1,4 @@
+module SuperInterpreter
 using Pkg
 Pkg.activate(".")
 using Flux
@@ -381,4 +382,5 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
             grads .= 0
         end
     end
+end
 end
