@@ -13,10 +13,13 @@ using DataStructures: CircularDeque, DefaultDict
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Test: @test
 
+#=
 function partial(f, a...)
     ( (b...) -> f(a..., b...) )
 end
-
+=#
+include("utils.jl")
+using .Utils
 @with_kw mutable struct Args
     stackdepth::Int = 10
     programlen::Int = 5
@@ -195,5 +198,25 @@ function instr_load!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
-export instr_halt!
+begin export
+    DiscreteVMState,
+    instr_halt!,
+    instr_pushval!,
+    instr_pop!,
+    instr_dup!,
+    instr_swap!,
+    instr_add!,
+    instr_sub!,
+    instr_mult!,
+    instr_div!,
+    instr_not!,
+    instr_and!,
+    instr_goto!,
+    instr_gotoif!,
+    instr_iseq!,
+    instr_isgt!,
+    instr_isge!,
+    instr_store!,
+    instr_load!
+end
 end

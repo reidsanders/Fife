@@ -17,11 +17,36 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
+
 include("utils.jl")
+using .Utils: partial
 
 Random.seed!(123);
 
 CUDA.allowscalar(false)
+
+@with_kw mutable struct Args
+    batchsize::Int = 2
+    lr::Float32 = 2e-4
+    epochs::Int = 2
+    stackdepth::Int = 10
+    programlen::Int = 5
+    inputlen::Int = 2 # frozen part, assumed at front for now
+    max_ticks::Int = 5
+    maxint::Int = 3
+    usegpu::Bool = false
+end
+
+args = Args()
+
+# use_cuda = false
+if args.usegpu
+    global device = gpu
+    @info "Training on GPU"
+else
+    global device = cpu
+    @info "Training on CPU"
+end
 
 struct VMState
     instructionpointer::Union{Array{Float32},CuArray{Float32}}
@@ -382,5 +407,34 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
             grads .= 0
         end
     end
+end
+begin export 
+    instr_val, 
+    instr_dup, 
+    instr_gotoifnotzerofull, 
+    instr_pass, 
+    instr_swap, 
+    valhot,
+    VMState, 
+    VMSuperStates, 
+    trainbatch!, 
+    trainloopsingle, 
+    trainloop,
+    init_state,
+    forward,
+    loss,
+    test,
+    accuracy,
+    run,
+    create_examples,
+    create_program_batch,
+    create_random_discrete_program,
+    create_random_inputs,
+    create_trainable_mask,
+    normit,
+    softmaxmask,
+    roll,
+    check_state_asserts,
+    assert_no_nans
 end
 end

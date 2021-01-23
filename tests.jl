@@ -5,11 +5,19 @@ using Base.Threads: @threads
 using Parameters: @with_kw
 using DataStructures: CircularDeque, DefaultDict
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
+using CUDA 
+using Random
 
 include("main.jl")
+
+include("utils.jl")
+using .Utils: partial
+
 include("discreteinterpreter.jl")
 using .DiscreteInterpreter
 using .SuperInterpreter
+
+Random.seed!(123)
 ######################################
 # Global initialization
 ######################################
