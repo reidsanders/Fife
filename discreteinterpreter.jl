@@ -13,24 +13,22 @@ using DataStructures: CircularDeque, DefaultDict
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Test: @test
 
-#=
-function partial(f, a...)
-    ( (b...) -> f(a..., b...) )
-end
-=#
+include("main.jl")
+using .SuperInterpreter: VMState
+
 include("utils.jl")
 using .Utils
+
 @with_kw mutable struct Args
     stackdepth::Int = 10
     programlen::Int = 5
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
-    maxint::Int = 3
+    maxint::Int = 7
     usegpu::Bool = false
 end
 
-args = Args()
-intvalues = [i for i in 0:args.maxint]
+include("parameters.jl")
 
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
@@ -39,8 +37,21 @@ intvalues = [i for i in 0:args.maxint]
     ishalted::Bool = false
 end
 
-function convert_discrete_to_super(discrete::DiscreteVMState)
-    super_instructionpointer = onehotbatch(discrete.instructionpointer)
+function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
+    contstate = VMState(stackdepth, programlen, allvalues)
+    cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 # uses a global intvalues
+    cont_stack = onehotbatch(discrete.stack, intvalues) * 1.f0
+    @show cont_stack
+    @show cont_instructionpointer
+    @show contstate.stackpointer
+    state = VMState(
+        cont_instructionpointer |> device,
+        contstate.stackpointer |> device,
+        cont_stack |> device,
+    )
+    state
+    # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
+    # On the other hand super -> discrete is always an lossy process
 end
 
 instr_pass(state::DiscreteVMState) = state
@@ -200,6 +211,7 @@ end
 
 begin export
     DiscreteVMState,
+    convert_discrete_to_continuous,
     instr_halt!,
     instr_pushval!,
     instr_pop!,

@@ -21,39 +21,24 @@ using Profile
 include("utils.jl")
 using .Utils: partial
 
-Random.seed!(123);
-
-CUDA.allowscalar(false)
-
 @with_kw mutable struct Args
-    batchsize::Int = 2
-    lr::Float32 = 2e-4
-    epochs::Int = 2
     stackdepth::Int = 10
     programlen::Int = 5
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
-    maxint::Int = 3
+    maxint::Int = 7
     usegpu::Bool = false
 end
 
-args = Args()
-
-# use_cuda = false
-if args.usegpu
-    global device = gpu
-    @info "Training on GPU"
-else
-    global device = cpu
-    @info "Training on CPU"
-end
+include("parameters.jl")
 
 struct VMState
     instructionpointer::Union{Array{Float32},CuArray{Float32}}
     stackpointer::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
+    # TODO initialize to blank state functions here??
+    # Invariants here?
 end
-
 struct VMSuperStates
     instructionpointers::Union{Array{Float32},CuArray{Float32}}
     stackpointers::Union{Array{Float32},CuArray{Float32}}
@@ -288,7 +273,25 @@ function create_trainable_mask(programlen, inputlen)
     mask
 end
 
+function VMState(stackdepth::Int=args.stackdepth, programlen::Int=args.programlen, allvalues::Union{Array,CuArray}=allvalues)
+    @show length(allvalues)
+    @show length(stackdepth)
+    stack = zeros(Float32, length(allvalues), stackdepth)
+    instructionpointer = zeros(Float32, programlen, )
+    stackpointer = zeros(Float32, stackdepth, )
+    stack[1,:] .= 1.f0
+    instructionpointer[1] = 1.f0
+    stackpointer[1] = 1.f0
+    # @assert isbitstype(stack) == true
+    state = VMState(
+        instructionpointer |> device,
+        stackpointer |> device,
+        stack |> device,
+    )
+    state
+end
 
+#=
 function init_state(stackdepth, programlen, allvalues)
     stack = zeros(Float32, length(allvalues), stackdepth)
     instructionpointer = zeros(Float32, programlen, )
@@ -304,6 +307,7 @@ function init_state(stackdepth, programlen, allvalues)
     )
     state
 end
+=# 
 
 function get_program_with_random_inputs(program, mask)
     num_instructions = size(program)[1]
@@ -420,7 +424,7 @@ begin export
     trainbatch!, 
     trainloopsingle, 
     trainloop,
-    init_state,
+    #init_state,
     forward,
     loss,
     test,
@@ -435,6 +439,7 @@ begin export
     softmaxmask,
     roll,
     check_state_asserts,
-    assert_no_nans
+    assert_no_nans,
+    device
 end
 end

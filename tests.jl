@@ -17,11 +17,9 @@ include("discreteinterpreter.jl")
 using .DiscreteInterpreter
 using .SuperInterpreter
 
-Random.seed!(123)
 ######################################
 # Global initialization
 ######################################
-
 @with_kw mutable struct Args
     batchsize::Int = 2
     lr::Float32 = 2e-4
@@ -33,17 +31,7 @@ Random.seed!(123)
     maxint::Int = 3
     usegpu::Bool = false
 end
-
-args = Args()
-
-# use_cuda = false
-if args.usegpu
-    global device = gpu
-    @info "Training on GPU"
-else
-    global device = cpu
-    @info "Training on CPU"
-end
+include("parameters.jl")
 
 function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
@@ -65,7 +53,7 @@ end
 allvalues = [i for i in 0:5]
 instr_2 = partial(instr_val, valhot(2, allvalues))
 
-blank_state = init_state(3, 4, allvalues)
+blank_state = VMState(3, 4, allvalues)
 blank_state_random = init_random_state(3, 4, allvalues)
 check_state_asserts(blank_state)
 check_state_asserts(blank_state_random)
@@ -302,6 +290,7 @@ function test_instr_load()
     @test last(state.stack) == 3
 end
 
+
 test_instr_halt()
 test_instr_pushval()
 test_instr_pop()
@@ -320,3 +309,18 @@ test_instr_isgt()
 test_instr_isge()
 test_instr_store()
 test_instr_load()
+
+
+function test_convert_discrete_to_continuous()
+    # test true
+    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    state = DiscreteVMState()
+    #instr_pushval!(6,state)
+    newcontstate = convert_discrete_to_continuous(state, args.stackdepth, args.programlen, allvalues)
+    #@test contstate == newcontstate
+    @test contstate.instructionpointer == newcontstate.instructionpointer
+    @test contstate.stackpointer == newcontstate.stackpointer
+    @test contstate.stack == newcontstate.stack
+end
+    
+test_convert_discrete_to_continuous()
