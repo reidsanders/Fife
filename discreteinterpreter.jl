@@ -40,10 +40,11 @@ end
 function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
     contstate = VMState(stackdepth, programlen, allvalues)
     cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 # uses a global intvalues
-    cont_stack = onehotbatch(discrete.stack, intvalues) * 1.f0
-    @show cont_stack
-    @show cont_instructionpointer
-    @show contstate.stackpointer
+    discretestack = zeros(Int, stackdepth) # assuming default value at index 1 in allvalues
+    for (i,x) in enumerate(discrete.stack)
+        discretestack[i] = x
+    end
+    cont_stack = onehotbatch(discretestack, allvalues) * 1.f0
     state = VMState(
         cont_instructionpointer |> device,
         contstate.stackpointer |> device,
