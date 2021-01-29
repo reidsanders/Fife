@@ -312,7 +312,6 @@ test_instr_load()
 
 
 function test_convert_discrete_to_continuous()
-    # test true
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     state = DiscreteVMState()
     #instr_pushval!(6,state)
@@ -322,5 +321,21 @@ function test_convert_discrete_to_continuous()
     @test contstate.stackpointer == newcontstate.stackpointer
     @test contstate.stack == newcontstate.stack
 end
-    
+
+function test_convert_continuous_to_discrete()
+    # test true
+    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    discretestate = DiscreteVMState()
+    #instr_pushval!(6,state)
+    newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
+    #@test contstate == newcontstate
+    @test discretestate.instructionpointer == newdiscretestate.instructionpointer
+    @test dicretestate.stackpointer == newdiscretestate.stackpointer
+    @test discretestate.stack == newdiscretestate.stack
+end
+
+# TODO make instruction map cont->discrete
+# run different combinations and compare.
+
 test_convert_discrete_to_continuous()
+test_convert_continuous_to_discrete()

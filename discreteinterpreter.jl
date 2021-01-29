@@ -39,8 +39,8 @@ end
 
 function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
     contstate = VMState(stackdepth, programlen, allvalues)
-    cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 # uses a global intvalues
-    discretestack = zeros(Int, stackdepth) # assuming default value at index 1 in allvalues
+    cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 
+    discretestack = zeros(Int, stackdepth) 
     for (i,x) in enumerate(discrete.stack)
         discretestack[i] = x
     end
@@ -53,6 +53,15 @@ function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=ar
     state
     # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
     # On the other hand super -> discrete is always an lossy process
+end
+
+function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
+    instructionpointer = onecold(contstate.instructionpointer)
+    stackpointer = onecold(contstate.stackpointer)
+    stack = onecold(contstate.stack)
+    #variables = onecold(contstate.stack)
+    stack = circshift(stack, stackpointer) # Check if this actually makes sense with roll
+    DiscreteVMState() 
 end
 
 instr_pass(state::DiscreteVMState) = state
@@ -213,6 +222,7 @@ end
 begin export
     DiscreteVMState,
     convert_discrete_to_continuous,
+    convert_continuous_to_discrete,
     instr_halt!,
     instr_pushval!,
     instr_pop!,
