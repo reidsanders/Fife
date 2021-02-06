@@ -9,7 +9,7 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: CircularDeque, DefaultDict
+using DataStructures: Deque, DefaultDict
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Test: @test
 
@@ -30,9 +30,17 @@ end
 
 include("parameters.jl")
 
+#=
+function ==(x::Deque, y::Deque)
+    for (i,el) in enumerate(x)
+        if x[i] !== y[i]
+
+end
+=#
+
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
-    stack::CircularDeque{Int} = CircularDeque{Int}(args.stackdepth)
+    stack::Deque{Int} = Deque{Int}(args.stackdepth)
     variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
     ishalted::Bool = false
 end
