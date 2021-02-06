@@ -13,9 +13,9 @@ include("main.jl")
 include("utils.jl")
 using .Utils: partial
 
-include("discreteinterpreter.jl")
-using .DiscreteInterpreter
+#include("discreteinterpreter.jl")
 using .SuperInterpreter
+#using .DiscreteInterpreter
 
 ######################################
 # Global initialization
@@ -330,7 +330,10 @@ function test_convert_continuous_to_discrete()
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     #@test contstate == newcontstate
     @test discretestate.instructionpointer == newdiscretestate.instructionpointer
-    @test dicretestate.stackpointer == newdiscretestate.stackpointer
+
+    @show discretestate.stack
+    @show newdiscretestate.stack
+    @show discretestate.stack == newdiscretestate.stack
     @test discretestate.stack == newdiscretestate.stack
 end
 

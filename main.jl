@@ -412,6 +412,40 @@ function trainbatch!(data; batchsize=8) # TODO make true function without global
         end
     end
 end
+#########################
+#     Conversion        #
+#########################
+using Reexport
+include("discreteinterpreter.jl")
+@reexport using .DiscreteInterpreter
+
+function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
+    contstate = VMState(stackdepth, programlen, allvalues)
+    cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 
+    discretestack = zeros(Int, stackdepth) 
+    for (i,x) in enumerate(discrete.stack)
+        discretestack[i] = x
+    end
+    cont_stack = onehotbatch(discretestack, allvalues) * 1.f0
+    state = VMState(
+        cont_instructionpointer |> device,
+        contstate.stackpointer |> device,
+        cont_stack |> device,
+    )
+    state
+    # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
+    # On the other hand super -> discrete is always an lossy process
+end
+
+function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
+    instructionpointer = onecold(contstate.instructionpointer)
+    stackpointer = onecold(contstate.stackpointer)
+    stack = onecold(contstate.stack)
+    #variables = onecold(contstate.stack)
+    stack = circshift(stack, stackpointer) # Check if this actually makes sense with roll
+    DiscreteVMState() 
+end
+
 begin export 
     instr_val, 
     instr_dup, 
@@ -435,6 +469,8 @@ begin export
     create_random_discrete_program,
     create_random_inputs,
     create_trainable_mask,
+    convert_discrete_to_continuous,
+    convert_continuous_to_discrete,
     normit,
     softmaxmask,
     roll,

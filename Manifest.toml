@@ -375,6 +375,12 @@ git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
 uuid = "82899510-4779-5014-852e-03e436cf321d"
 version = "1.0.0"
 
+[[JLFzf]]
+deps = ["Pipe", "REPL", "Random", "fzf_jll"]
+git-tree-sha1 = "fa300b5b580549186c2b1558a199ac5615cc8928"
+uuid = "1019f520-868f-41f5-a6de-eb00f4b6a39c"
+version = "0.1.3"
+
 [[JLLWrappers]]
 git-tree-sha1 = "c70593677bbf2c3ccab4f7500d0f4dacfff7b75c"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
@@ -511,6 +517,12 @@ git-tree-sha1 = "2066e16af994955287f2e03ba1d9e890eb43b0dd"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 version = "1.1.2"
 
+[[OhMyREPL]]
+deps = ["Crayons", "JLFzf", "Markdown", "Pkg", "Printf", "REPL", "Tokenize"]
+git-tree-sha1 = "646c8cf453f25f12115ee09d57ca192c9af00618"
+uuid = "5fb14364-9ced-5910-84b2-373655c76a03"
+version = "0.5.10"
+
 [[OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "9db77584158d0ab52307f8c04f8e7c08ca76b5b3"
@@ -533,6 +545,11 @@ deps = ["Dates", "Test"]
 git-tree-sha1 = "8077624b3c450b15c087944363606a6ba12f925e"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "1.0.10"
+
+[[Pipe]]
+git-tree-sha1 = "6842804e7867b115ca9de748a0cf6b364523c16d"
+uuid = "b98c9c47-44ae-5843-9183-064241ee97a0"
+version = "1.3.0"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -734,6 +751,11 @@ git-tree-sha1 = "f458ca23ff80e46a630922c555d838303e4b9603"
 uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 version = "0.5.6"
 
+[[Tokenize]]
+git-tree-sha1 = "6c487fa179194ec02c4b9fc246563eb4afc9101c"
+uuid = "0796e94c-ce3b-5d07-9a54-7f471281c624"
+version = "0.5.12"
+
 [[Torch]]
 deps = ["FillArrays", "Libdl", "LinearAlgebra", "NNlib", "Requires", "Statistics", "Torch_jll", "ZygoteRules"]
 git-tree-sha1 = "e95e70fccc6d8474ee0437f5ca9ee0fece2fcaf3"
@@ -835,3 +857,9 @@ deps = ["MacroTools"]
 git-tree-sha1 = "b3b4882cc9accf6731a08cc39543fbc6b669dca8"
 uuid = "700de1a5-db45-46bc-99cf-38207098b444"
 version = "0.2.0"
+
+[[fzf_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b2d7b205b9518f8a5ebcd05764c5536dbdf460bb"
+uuid = "214eeab7-80f7-51ab-84ad-2988db7cef09"
+version = "0.24.4+0"
