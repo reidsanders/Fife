@@ -34,7 +34,7 @@ allvalues = [nonintvalues; intvalues]
 
 instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0, allvalues), nonintvalues)
 
-val_instructions = [partial(instr_val, valhot(i, allvalues)) for i in intvalues]
+val_instructions = [partial(instr_pushval, valhot(i, allvalues)) for i in intvalues]
 instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
 num_instructions = length(instructions)
 

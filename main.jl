@@ -88,7 +88,7 @@ end
 # Instructions
 ###############################
 
-function instr_dup(state::VMState)
+function instr_dup!(state::VMState)
     #= 
     DUP Should duplicate top of stack, and push to top of stack 
     =#
@@ -104,7 +104,7 @@ function instr_dup(state::VMState)
     
 end
 
-function instr_swap(state::VMState)
+function instr_swap!(state::VMState)
     #= 
     SWAP Should swap top of stack with second to top of stack
     =#
@@ -122,7 +122,7 @@ end
 
 
     
-function instr_gotoifnotzerofull(zerovec, nonintvalues, state::VMState)
+function instr_gotoiffull!(zerovec, nonintvalues, state::VMState)
     #= 
     GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
 
@@ -165,10 +165,10 @@ end
 # TODO def normit for  all zero case
 
 
-instr_pass(state::VMState) = state
+instr_pass!(state::VMState) = state
 
 
-function instr_val(valhotvec, state::VMState)
+function instr_pushval!(valhotvec, state::VMState)
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
@@ -447,11 +447,11 @@ function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stac
 end
 
 begin export 
-    instr_val, 
-    instr_dup, 
-    instr_gotoifnotzerofull, 
-    instr_pass, 
-    instr_swap, 
+    instr_pushval!, 
+    instr_dup!, 
+    instr_gotoiffull!, 
+    instr_pass!, 
+    instr_swap!, 
     valhot,
     VMState, 
     VMSuperStates, 

@@ -30,14 +30,6 @@ end
 
 include("parameters.jl")
 
-#=
-function ==(x::Deque, y::Deque)
-    for (i,el) in enumerate(x)
-        if x[i] !== y[i]
-
-end
-=#
-
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
     stack::Deque{Int} = Deque{Int}(args.stackdepth)

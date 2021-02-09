@@ -51,14 +51,14 @@ function init_random_state(stackdepth, programlen, allvalues)
 end
 
 allvalues = [i for i in 0:5]
-instr_2 = partial(instr_val, valhot(2, allvalues))
+instr_2 = partial(instr_pushval!, valhot(2, allvalues))
 
 blank_state = VMState(3, 4, allvalues)
 blank_state_random = init_random_state(3, 4, allvalues)
 check_state_asserts(blank_state)
 check_state_asserts(blank_state_random)
 
-newstate = instr_dup(blank_state_random)
+newstate = instr_dup!(blank_state_random)
 newstate_instr2 = instr_2(blank_state_random)
 
 #check_state_asserts(newstate)
@@ -340,5 +340,60 @@ end
 # TODO make instruction map cont->discrete
 # run different combinations and compare.
 
+function test_all_single_instr()
+    instructions = [
+        # instr_halt!,
+        # instr_pushval!,
+        instr_pop!,
+        # instr_dup!,
+        # instr_swap!,
+        instr_add!,
+        # instr_sub!,
+        # instr_mult!,
+        # instr_div!,
+        # instr_not!,
+        # instr_and!,
+        # instr_goto!,
+        # instr_gotoif!,
+        # instr_iseq!,
+        # instr_isgt!,
+        # instr_isge!,
+        # instr_store!,
+        # instr_load!
+    ]
+    for instr in instructions
+        test_program_conversion((instr))
+    end
+end
+
+function test_single_instr_conversion(program)
+    # test true
+    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    discretestate = DiscreteVMState()
+    for instr in program
+        contstate = instr(contstate)
+        discretestate = instr(discretestate)
+    end
+    newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
+    newcontstate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
+    #@test contstate == newcontstate
+    @test newcontstate == contstate
+    @test newdiscretestate == discretestate
+end
+
+function ==(x::DiscreteVMState, y::DiscreteVMState)
+    x.instructionpointer == y.instructionpointer &&
+    x.stack == y.stack &&
+    x.variables == y.variables &&
+    x.ishalted == y.ishalted
+end
+
+function ==(x::VMState, y::VMState)
+    x.instructionpointer == y.instructionpointer &&
+    x.stackpoint == y.stackpointer &&
+    x.stack == y.stack
+end
+
 test_convert_discrete_to_continuous()
 test_convert_continuous_to_discrete()
+test_all_single_instr()
