@@ -7,6 +7,7 @@ using DataStructures: CircularDeque, DefaultDict
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using CUDA 
 using Random
+import Base: ==
 
 include("main.jl")
 
@@ -291,26 +292,6 @@ function test_instr_load()
 end
 
 
-test_instr_halt()
-test_instr_pushval()
-test_instr_pop()
-test_instr_dup()
-test_instr_swap()
-test_instr_add()
-test_instr_sub()
-test_instr_mult()
-test_instr_div()
-test_instr_not()
-test_instr_and()
-test_instr_goto()
-test_instr_gotoif()
-test_instr_iseq()
-test_instr_isgt()
-test_instr_isge()
-test_instr_store()
-test_instr_load()
-
-
 function test_convert_discrete_to_continuous()
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     state = DiscreteVMState()
@@ -331,9 +312,6 @@ function test_convert_continuous_to_discrete()
     #@test contstate == newcontstate
     @test discretestate.instructionpointer == newdiscretestate.instructionpointer
 
-    @show discretestate.stack
-    @show newdiscretestate.stack
-    @show discretestate.stack == newdiscretestate.stack
     @test discretestate.stack == newdiscretestate.stack
 end
 
@@ -342,12 +320,13 @@ end
 
 function test_all_single_instr()
     instructions = [
+        instr_pass!,
         # instr_halt!,
         # instr_pushval!,
-        instr_pop!,
+        # instr_pop!,
         # instr_dup!,
         # instr_swap!,
-        instr_add!,
+        # instr_add!,
         # instr_sub!,
         # instr_mult!,
         # instr_div!,
@@ -362,23 +341,34 @@ function test_all_single_instr()
         # instr_load!
     ]
     for instr in instructions
-        test_program_conversion((instr))
+        test_program_conversion([instr])
     end
 end
 
-function test_single_instr_conversion(program)
+function test_program_conversion(program)
     # test true
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     discretestate = DiscreteVMState()
     for instr in program
         contstate = instr(contstate)
-        discretestate = instr(discretestate)
+        instr(discretestate)
     end
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
-    newcontstate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
+    newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
     #@test contstate == newcontstate
-    @test newcontstate == contstate
+    #@show discretestate.stack
+    #@show newdiscretestate.stack
+    #@show discretestate.stack == newdiscretestate.stack
+
+    #assertequal(newcontstate, contstate)
+    #@test newcontstate == contstate
     @test newdiscretestate == discretestate
+end
+
+function assertequal(x::VMState, y::VMState)
+    @assert x.instructionpointer == y.instructionpointer
+    @assert x.stackpointer == y.stackpointer
+    @assert x.stack == y.stack
 end
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
@@ -394,6 +384,24 @@ function ==(x::VMState, y::VMState)
     x.stack == y.stack
 end
 
+test_instr_halt()
+test_instr_pushval()
+test_instr_pop()
+test_instr_dup()
+test_instr_swap()
+test_instr_add()
+test_instr_sub()
+test_instr_mult()
+test_instr_div()
+test_instr_not()
+test_instr_and()
+test_instr_goto()
+test_instr_gotoif()
+test_instr_iseq()
+test_instr_isgt()
+test_instr_isge()
+test_instr_store()
+test_instr_load()
 test_convert_discrete_to_continuous()
 test_convert_continuous_to_discrete()
 test_all_single_instr()

@@ -10,13 +10,14 @@ using Random
 using LoopVectorization
 using Debugger
 using Base
-import Base: +,-,*,length
+import Base: +, -, *, length
 using StructArrays
 using BenchmarkTools
 using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
+using DataStructures: Deque, DefaultDict
 
 include("utils.jl")
 using .Utils: partial
@@ -31,6 +32,31 @@ using .Utils: partial
 end
 
 include("parameters.jl")
+
+#using Reexport
+include("discreteinterpreter.jl")
+import .DiscreteInterpreter:
+    DiscreteVMState,
+    instr_pass!,
+    instr_halt!,
+    instr_pushval!,
+    instr_pop!,
+    instr_dup!,
+    instr_swap!,
+    instr_add!,
+    instr_sub!,
+    instr_mult!,
+    instr_div!,
+    instr_not!,
+    instr_and!,
+    instr_goto!,
+    instr_gotoif!,
+    instr_iseq!,
+    instr_isgt!,
+    instr_isge!,
+    instr_store!,
+    instr_load!
+#@reexport using .DiscreteInterpreter
 
 struct VMState
     instructionpointer::Union{Array{Float32},CuArray{Float32}}
@@ -164,9 +190,14 @@ end
 # TODO normit after most instr (?)
 # TODO def normit for  all zero case
 
-
-instr_pass!(state::VMState) = state
-
+function instr_pass!(state::VMState)
+    new_instructionpointer = roll(state.instructionpointer, 1)
+    VMState(
+        new_instructionpointer,
+        state.stackpointer,
+        state.stack,
+    )
+end
 
 function instr_pushval!(valhotvec, state::VMState)
     # This seems really inefficient...
@@ -415,11 +446,7 @@ end
 #########################
 #     Conversion        #
 #########################
-using Reexport
-include("discreteinterpreter.jl")
-@reexport using .DiscreteInterpreter
-
-function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
+function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues::Array=allvalues)::VMState
     contstate = VMState(stackdepth, programlen, allvalues)
     cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 
     discretestack = zeros(Int, stackdepth) 
@@ -437,21 +464,50 @@ function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=ar
     # On the other hand super -> discrete is always an lossy process
 end
 
-function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)
+function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)::DiscreteVMState
     instructionpointer = onecold(contstate.instructionpointer)
     stackpointer = onecold(contstate.stackpointer)
     stack = onecold(contstate.stack)
     #variables = onecold(contstate.stack)
+
     stack = circshift(stack, stackpointer) # Check if this actually makes sense with roll
-    DiscreteVMState() 
+    #@show stack
+    # Dealing with blanks is tricky. It's not clear what is correct semantically
+    newstack = Vector{Int}() # Ugly. shouldn't be necessary, but convert doesn't recognize any
+    for x in stack
+        if x == 1 # "blank"
+            break
+        else
+            push!(newstack, x)
+        end
+    end
+    DiscreteVMState(;instructionpointer = instructionpointer, stack = newstack) 
 end
 
 begin export 
-    instr_pushval!, 
-    instr_dup!, 
-    instr_gotoiffull!, 
-    instr_pass!, 
-    instr_swap!, 
+    ## Reexport from Discrete interpreter (A pain because reexport doesn't work with import)
+    DiscreteVMState,
+    convert,
+    instr_pass!,
+    instr_halt!,
+    instr_pushval!,
+    instr_pop!,
+    instr_dup!,
+    instr_swap!,
+    instr_add!,
+    instr_sub!,
+    instr_mult!,
+    instr_div!,
+    instr_not!,
+    instr_and!,
+    instr_goto!,
+    instr_gotoif!,
+    instr_iseq!,
+    instr_isgt!,
+    instr_isge!,
+    instr_store!,
+    instr_load!,
+    ## Export other definitions
     valhot,
     VMState, 
     VMSuperStates, 
@@ -479,3 +535,4 @@ begin export
     device
 end
 end
+using .SuperInterpreter

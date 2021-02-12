@@ -3,7 +3,7 @@ using Pkg
 Pkg.activate(".")
 using Debugger
 using Base
-import Base: +,-,*,length
+import Base: +, -, *, length, convert
 using BenchmarkTools
 using ProgressMeter
 using Base.Threads: @threads
@@ -37,115 +37,163 @@ include("parameters.jl")
     ishalted::Bool = false
 end
 
-instr_pass(state::DiscreteVMState) = state
+function convert(::Type{Deque{T}}, x::Array{T,1}) where T
+    y = Deque{T}()
+    for el in x
+        push!(y, el)
+    end
+    return y
+end    
 
-function instr_halt!(state::DiscreteVMState)
-    state.ishalted = true
+function instr_pass!(state::DiscreteVMState)
     state.instructionpointer += 1
 end
 
-function instr_pushval!(value::Integer, state::DiscreteVMState)
-    push!(state.stack, value)
+function instr_halt!(state::DiscreteVMState)
     state.instructionpointer += 1
+    state.ishalted = true
+end
+
+function instr_pushval!(value::Int, state::DiscreteVMState)
+    state.instructionpointer += 1
+    push!(state.stack, value)
 end
 
 val_instructions = [partial(instr_pushval!, i) for i in intvalues]
 
 function instr_pop!(state::DiscreteVMState)
-    pop!(state.stack)
     state.instructionpointer += 1
+    if length(state.stack) < 1
+        return
+    end
+    pop!(state.stack)
 end
 
 function instr_dup!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 1
+        return
+    end
     x = pop!(state.stack)
     push!(state.stack, x)
     push!(state.stack, x)
-    state.instructionpointer += 1
 end
 
 function instr_swap!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack)
     y = pop!(state.stack)
     push!(state.stack, x)
     push!(state.stack, y)
-    state.instructionpointer += 1
 end
 
 function instr_add!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack) 
     y = pop!(state.stack) 
     push!(state.stack, x+y)
-    state.instructionpointer += 1
 end
 
 function instr_sub!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack) 
     y = pop!(state.stack) 
     push!(state.stack, x-y)
-    state.instructionpointer += 1
 end
 
 function instr_mult!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack) 
     y = pop!(state.stack) 
     push!(state.stack, x*y)
-    state.instructionpointer += 1
 end
 
 function instr_div!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack) 
     y = pop!(state.stack) 
     # Floor or Round?
     push!(state.stack, floor(x/y))
-    state.instructionpointer += 1
 end
 
 function instr_not!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 1
+        return
+    end
     # 0 is false, anything else is true.
     # but if true still set to 1
     x = pop!(state.stack) 
     notx = 1 * (x != 0)
     push!(state.stack, notx)
-    state.instructionpointer += 1
 end
 
 function instr_and!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack) 
     y = pop!(state.stack) 
     res = 1 * (x!=0 && y!=0)
     push!(state.stack, res)
-    state.instructionpointer += 1
 end
 
 function instr_or!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack) 
     y = pop!(state.stack) 
     res = 1 * (x!=0 || y!=0)
     push!(state.stack, res)
-    state.instructionpointer += 1
 end
 
 function instr_goto!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 1
+        return
+    end
     x = pop!(state.stack)
     # Verification of non zero, positive integer?
     if x > 0
         state.instructionpointer = x
-    else
-        state.instructionpointer += 1
     end
 end
 
 function instr_gotoif!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack)
     y = pop!(state.stack)
     if x != 0 && y > 0
         state.instructionpointer = y
-    else
-        state.instructionpointer += 1
     end
 end
 
 function instr_iseq!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack)
     y = pop!(state.stack)
     if x == y
@@ -153,10 +201,13 @@ function instr_iseq!(state::DiscreteVMState)
     else
         push!(state.stack, 0)
     end
-    state.instructionpointer += 1
 end
 
 function instr_isgt!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack)
     y = pop!(state.stack)
     if x > y
@@ -164,10 +215,13 @@ function instr_isgt!(state::DiscreteVMState)
     else
         push!(state.stack, 0)
     end
-    state.instructionpointer += 1
 end
 
 function instr_isge!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack)
     y = pop!(state.stack)
     if x >= y
@@ -175,25 +229,34 @@ function instr_isge!(state::DiscreteVMState)
     else
         push!(state.stack, 0)
     end
-    state.instructionpointer += 1
 end
 
 function instr_store!(state::DiscreteVMState)
+    state.instructionpointer += 1
+    if length(state.stack) < 2
+        return
+    end
     x = pop!(state.stack)
     y = pop!(state.stack)
     state.variables[y] = x
-    state.instructionpointer += 1
 end
 
 function instr_load!(state::DiscreteVMState)
-    # TODO should this remove the address element on the stack or not
-    x = pop!(state.stack)
-    push!(state.stack, state.variables[x])
     state.instructionpointer += 1
+    if length(state.variables) < 1
+        return
+    end
+    # TODO should this remove the address element on the stack or not
+    if last(state.stack) in keys(state.variables)
+        x = pop!(state.stack)
+        push!(state.stack, state.variables[x])
+    end
 end
 
 begin export
     DiscreteVMState,
+    convert,
+    instr_pass!,
     instr_halt!,
     instr_pushval!,
     instr_pop!,
