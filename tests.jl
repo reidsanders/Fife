@@ -327,8 +327,8 @@ function test_all_single_instr()
         # instr_pushval!,
         # instr_pop!,
         instr_dup!,
-        instr_swap!,
-        instr_add!,
+        #instr_swap!,
+        #instr_add!,
         # instr_sub!,
         # instr_mult!,
         # instr_div!,
@@ -355,8 +355,11 @@ function test_program_conversion(program)
         contstate = instr(contstate)
         instr(discretestate)
     end
+    contstate = normalize_stackpointer(contstate)
+    #stack = circshift(stack, stackpointer) # Check if this actually makes sense with circshift
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
+
     assertequal(contstate, newcontstate)
     @test contstate == newcontstate
     @test newdiscretestate == discretestate

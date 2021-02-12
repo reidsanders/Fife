@@ -456,7 +456,7 @@ function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stac
     stack = onecold(contstate.stack)
     #variables = onecold(contstate.stack)
 
-    stack = circshift(stack, stackpointer) # Check if this actually makes sense with circshift
+    stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
     # Dealing with blanks is tricky. It's not clear what is correct semantically
     newstack = Vector{Int}() # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
@@ -467,6 +467,17 @@ function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stac
         end
     end
     DiscreteVMState(;instructionpointer = instructionpointer, stack = newstack) 
+end
+
+function normalize_stackpointer(state::VMState)
+    stackpointermax = onecold(state.stackpointer)
+    stack = circshift(state.stack, (0, 1 - stackpointermax)) 
+    stackpointer = circshift(state.stackpointer, 1 - stackpointermax)
+    state = VMState(
+        state.instructionpointer |> device,
+        stackpointer |> device,
+        stack |> device,
+    )
 end
 
 #=
