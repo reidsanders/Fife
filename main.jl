@@ -1,4 +1,4 @@
-module SuperInterpreter
+#module SuperInterpreter
 using Pkg
 Pkg.activate(".")
 using Flux
@@ -118,10 +118,11 @@ function instr_dup!(state::VMState)
     #= 
     DUP Should duplicate top of stack, and push to top of stack 
     =#
-    new_stackpointer = roll(state.stackpointer, -1)
-    new_stack = state.stack .* (1.f0 .- state.stackpointer') .+ state.stack .* new_stackpointer'
-    new_instructionpointer = roll(state.instructionpointer, 1)
-
+    new_stackpointer = circshift(state.stackpointer, -1)
+    oldcomponent = state.stack .* (1.f0 .- new_stackpointer)'
+    newcomponent = circshift(state.stack .* state.stackpointer', (0,-1))
+    new_stack = oldcomponent .+ newcomponent
+    new_instructionpointer = circshift(state.instructionpointer, 1)
     VMState(
         new_instructionpointer,
         new_stackpointer,
@@ -134,9 +135,9 @@ function instr_swap!(state::VMState)
     #= 
     SWAP Should swap top of stack with second to top of stack
     =#
-    new_stackpointer = roll(state.stackpointer, -1)
+    new_stackpointer = circshift(state.stackpointer, -1)
     new_stack = state.stack .* (1.f0 .- state.stackpointer') .+ state.stack .* new_stackpointer'
-    new_instructionpointer = roll(state.instructionpointer, 1)
+    new_instructionpointer = circshift(state.instructionpointer, 1)
 
     VMState(
         new_instructionpointer,
@@ -159,7 +160,7 @@ function instr_gotoiffull!(zerovec, nonintvalues, state::VMState)
     # TODO don't recalc 
     stackscaled = state.stack .* state.stackpointer'
     probofgoto = 1 .- sum(stackscaled .* zerovec, dims=1)
-    firstpoptop = roll(state.stackpointer, 1)
+    firstpoptop = circshift(state.stackpointer, 1)
     secondstackscaled = state.stack .* firstpoptop' 
     jumpvalprobs = sum(secondstackscaled, dims=2)
 
@@ -168,15 +169,15 @@ function instr_gotoiffull!(zerovec, nonintvalues, state::VMState)
     jumpvalprobs = jumpvalprobs[length(nonintvalues) + 1:end]
     # TODO length(instructionpointer) compare and truncate
     jumpvalprobs = jumpvalprobs[1:end]
-    currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * roll(state.instructionpointer, 1)
+    currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
     new_instructionpointer = currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
-    newtop = roll(firstpoptop, 1)
+    newtop = circshift(firstpoptop, 1)
 
     # jumpvalprobs[:end]
     # TODO set blank / zero to zero? zero goes to first? greater than length(program) goes to end?
     # for each value 0-max in stack, 
     # (??sum diagonal of equivalent jump locations. eg 0 at x is equivalent to 1 at x+1 on stack)
-    # TODO if not int value, set to roll 1 forward?
+    # TODO if not int value, set to circshift 1 forward?
     # TODO add jumpvalprobs to instructionpointer? Then normalize?
 
     VMState(
@@ -191,7 +192,7 @@ end
 # TODO def normit for  all zero case
 
 function instr_pass!(state::VMState)
-    new_instructionpointer = roll(state.instructionpointer, 1)
+    new_instructionpointer = circshift(state.instructionpointer, 1)
     VMState(
         new_instructionpointer,
         state.stackpointer,
@@ -205,8 +206,8 @@ function instr_pushval!(valhotvec, state::VMState)
     # sizehint
     # set return type to force allocation
     # display(state.stackpointer)
-    new_stackpointer = roll(state.stackpointer, -1)
-    new_instructionpointer = roll(state.instructionpointer, 1)
+    new_stackpointer = circshift(state.stackpointer, -1)
+    new_instructionpointer = circshift(state.instructionpointer, 1)
     # display(valhotvec)
     # display(new_stackpointer)
     topscaled = valhotvec * new_stackpointer'
@@ -226,19 +227,6 @@ end
 
 function valhot(val, allvalues)
     [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
-end
-
-# Use circshift instead roll?
-# Use cumsum (!) instead of sum
-function roll(a::Union{CuArray,Array}, increment)
-    increment = increment % length(a)
-    if increment == 0
-        return a
-    elseif increment < 0
-        return vcat(a[1 - increment:end], a[1:-increment])
-    else
-        return vcat(a[end + increment - 1:end], a[1:end - increment])
-    end 
 end
 
 function check_state_asserts(state)
@@ -305,8 +293,6 @@ function create_trainable_mask(programlen, inputlen)
 end
 
 function VMState(stackdepth::Int=args.stackdepth, programlen::Int=args.programlen, allvalues::Union{Array,CuArray}=allvalues)
-    @show length(allvalues)
-    @show length(stackdepth)
     stack = zeros(Float32, length(allvalues), stackdepth)
     instructionpointer = zeros(Float32, programlen, )
     stackpointer = zeros(Float32, stackdepth, )
@@ -470,10 +456,9 @@ function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stac
     stack = onecold(contstate.stack)
     #variables = onecold(contstate.stack)
 
-    stack = circshift(stack, stackpointer) # Check if this actually makes sense with roll
-    #@show stack
+    stack = circshift(stack, stackpointer) # Check if this actually makes sense with circshift
     # Dealing with blanks is tricky. It's not clear what is correct semantically
-    newstack = Vector{Int}() # Ugly. shouldn't be necessary, but convert doesn't recognize any
+    newstack = Vector{Int}() # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == 1 # "blank"
             break
@@ -484,6 +469,7 @@ function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stac
     DiscreteVMState(;instructionpointer = instructionpointer, stack = newstack) 
 end
 
+#=
 begin export 
     ## Reexport from Discrete interpreter (A pain because reexport doesn't work with import)
     DiscreteVMState,
@@ -529,10 +515,10 @@ begin export
     convert_continuous_to_discrete,
     normit,
     softmaxmask,
-    roll,
     check_state_asserts,
     assert_no_nans,
     device
 end
 end
 using .SuperInterpreter
+=#

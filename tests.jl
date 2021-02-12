@@ -11,16 +11,17 @@ import Base: ==
 
 include("main.jl")
 
-include("utils.jl")
-using .Utils: partial
+#include("utils.jl")
+#using .Utils: partial
 
 #include("discreteinterpreter.jl")
-using .SuperInterpreter
+#using .SuperInterpreter
 #using .DiscreteInterpreter
 
 ######################################
 # Global initialization
 ######################################
+#=
 @with_kw mutable struct Args
     batchsize::Int = 2
     lr::Float32 = 2e-4
@@ -33,6 +34,7 @@ using .SuperInterpreter
     usegpu::Bool = false
 end
 include("parameters.jl")
+=#
 
 function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
@@ -324,9 +326,9 @@ function test_all_single_instr()
         # instr_halt!,
         # instr_pushval!,
         # instr_pop!,
-        # instr_dup!,
-        # instr_swap!,
-        # instr_add!,
+        instr_dup!,
+        instr_swap!,
+        instr_add!,
         # instr_sub!,
         # instr_mult!,
         # instr_div!,
@@ -355,17 +357,16 @@ function test_program_conversion(program)
     end
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
-    #@test contstate == newcontstate
-    #@show discretestate.stack
-    #@show newdiscretestate.stack
-    #@show discretestate.stack == newdiscretestate.stack
-
-    #assertequal(newcontstate, contstate)
-    #@test newcontstate == contstate
+    assertequal(contstate, newcontstate)
+    @test contstate == newcontstate
     @test newdiscretestate == discretestate
 end
 
 function assertequal(x::VMState, y::VMState)
+    @show x.stackpointer
+    @show y.stackpointer
+    @show x.stack
+    @show y.stack
     @assert x.instructionpointer == y.instructionpointer
     @assert x.stackpointer == y.stackpointer
     @assert x.stack == y.stack
@@ -380,7 +381,7 @@ end
 
 function ==(x::VMState, y::VMState)
     x.instructionpointer == y.instructionpointer &&
-    x.stackpoint == y.stackpointer &&
+    x.stackpointer == y.stackpointer &&
     x.stack == y.stack
 end
 
