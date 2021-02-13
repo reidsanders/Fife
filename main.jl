@@ -22,15 +22,16 @@ using DataStructures: Deque, DefaultDict
 include("utils.jl")
 using .Utils: partial
 
+#=
 @with_kw mutable struct Args
     stackdepth::Int = 10
-    programlen::Int = 5
+    programlen::Int = 10
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
-    maxint::Int = 7
+    maxint::Int = 9
     usegpu::Bool = false
 end
-
+=#
 include("parameters.jl")
 
 #using Reexport

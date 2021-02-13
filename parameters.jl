@@ -4,6 +4,15 @@ using Flux
 Random.seed!(123);
 CUDA.allowscalar(false)
 
+@with_kw mutable struct Args
+    stackdepth::Int = 10
+    programlen::Int = 10
+    inputlen::Int = 2 # frozen part, assumed at front for now
+    max_ticks::Int = 5
+    maxint::Int = 9
+    usegpu::Bool = false
+end
+
 args = Args()
 
 if args.usegpu

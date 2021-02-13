@@ -18,7 +18,7 @@ using Test: @test
 
 include("utils.jl")
 using .Utils
-
+#=
 @with_kw mutable struct Args
     stackdepth::Int = 10
     programlen::Int = 5
@@ -27,9 +27,9 @@ using .Utils
     maxint::Int = 7
     usegpu::Bool = false
 end
+=#
 
 include("parameters.jl")
-
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
     stack::Deque{Int} = Deque{Int}(args.stackdepth)

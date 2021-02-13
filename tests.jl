@@ -351,12 +351,16 @@ function test_program_conversion(program)
     # test true
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     discretestate = DiscreteVMState()
+    # Put in some misc val (TODO randomize?)
+    for val in [1,3,4,2,6]
+        contstate = instr_pushval!(val, contstate)
+        instr_pushval!(val, discretestate)
+    end
     for instr in program
         contstate = instr(contstate)
         instr(discretestate)
     end
     contstate = normalize_stackpointer(contstate)
-    #stack = circshift(stack, stackpointer) # Check if this actually makes sense with circshift
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
 
