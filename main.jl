@@ -436,7 +436,9 @@ end
 function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues::Array=allvalues)::VMState
     contstate = VMState(stackdepth, programlen, allvalues)
     cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 
-    discretestack = zeros(Int, stackdepth) 
+    discretestack = Array{Any,1}(undef, stackdepth)
+    fill!(discretestack, "blank")
+
     for (i,x) in enumerate(discrete.stack)
         discretestack[i] = x
     end

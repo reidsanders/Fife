@@ -53,7 +53,7 @@ function init_random_state(stackdepth, programlen, allvalues)
     #normit(state)
 end
 
-allvalues = [i for i in 0:5]
+#allvalues = [i for i in 0:5]
 instr_2 = partial(instr_pushval!, valhot(2, allvalues))
 
 blank_state = VMState(3, 4, allvalues)
