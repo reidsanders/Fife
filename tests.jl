@@ -54,7 +54,8 @@ function init_random_state(stackdepth, programlen, allvalues)
 end
 
 #allvalues = [i for i in 0:5]
-instr_2 = partial(instr_pushval!, valhot(2, allvalues))
+#instr_2 = partial(instr_pushval!, valhot(2, allvalues))
+instr_2 = partial(instr_pushval!, 2)
 
 blank_state = VMState(3, 4, allvalues)
 blank_state_random = init_random_state(3, 4, allvalues)
@@ -370,12 +371,16 @@ function test_program_conversion(program)
 end
 
 function assertequal(x::VMState, y::VMState)
-    @show x.stackpointer
-    @show y.stackpointer
-    @show x.stack
-    @show y.stack
     @assert x.instructionpointer == y.instructionpointer
+    println("x.stackpointer")
+    display(x.stackpointer)
+    println("y.stackpointer")
+    display(y.stackpointer)
     @assert x.stackpointer == y.stackpointer
+    println("x.stack")
+    display(x.stack)
+    println("y.stack")
+    display(y.stack)
     @assert x.stack == y.stack
 end
 

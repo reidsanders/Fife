@@ -5,11 +5,11 @@ Random.seed!(123);
 CUDA.allowscalar(false)
 
 @with_kw mutable struct Args
-    stackdepth::Int = 10
-    programlen::Int = 10
-    inputlen::Int = 2 # frozen part, assumed at front for now
-    max_ticks::Int = 5
-    maxint::Int = 9
+    stackdepth::Int = 3
+    programlen::Int = 3
+    inputlen::Int = 1 # frozen part, assumed at front for now
+    max_ticks::Int = 3
+    maxint::Int = 10
     usegpu::Bool = false
 end
 
