@@ -379,8 +379,10 @@ function assertequal(x::VMState, y::VMState)
     @assert x.stackpointer == y.stackpointer
     println("x.stack")
     display(x.stack)
+    @show [allvalues[i] for i in onecold(x.stack)]
     println("y.stack")
     display(y.stack)
+    @show [allvalues[i] for i in onecold(y.stack)]
     @assert x.stack == y.stack
 end
 
