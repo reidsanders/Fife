@@ -56,7 +56,7 @@ end
 
 function instr_pushval!(value::Int, state::DiscreteVMState)
     state.instructionpointer += 1
-    push!(state.stack, value)
+    pushfirst!(state.stack, value)
 end
 
 val_instructions = [partial(instr_pushval!, i) for i in intvalues]
@@ -66,7 +66,7 @@ function instr_pop!(state::DiscreteVMState)
     if length(state.stack) < 1
         return
     end
-    pop!(state.stack)
+    popfirst!(state.stack)
 end
 
 function instr_dup!(state::DiscreteVMState)
@@ -74,9 +74,9 @@ function instr_dup!(state::DiscreteVMState)
     if length(state.stack) < 1
         return
     end
-    x = pop!(state.stack)
-    push!(state.stack, x)
-    push!(state.stack, x)
+    x = popfirst!(state.stack)
+    pushfirst!(state.stack, x)
+    pushfirst!(state.stack, x)
 end
 
 function instr_swap!(state::DiscreteVMState)
@@ -84,10 +84,10 @@ function instr_swap!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack)
-    y = pop!(state.stack)
-    push!(state.stack, x)
-    push!(state.stack, y)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
+    pushfirst!(state.stack, x)
+    pushfirst!(state.stack, y)
 end
 
 function instr_add!(state::DiscreteVMState)
@@ -95,9 +95,9 @@ function instr_add!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack) 
-    y = pop!(state.stack) 
-    push!(state.stack, x+y)
+    x = popfirst!(state.stack) 
+    y = popfirst!(state.stack) 
+    pushfirst!(state.stack, x+y)
 end
 
 function instr_sub!(state::DiscreteVMState)
@@ -105,9 +105,9 @@ function instr_sub!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack) 
-    y = pop!(state.stack) 
-    push!(state.stack, x-y)
+    x = popfirst!(state.stack) 
+    y = popfirst!(state.stack) 
+    pushfirst!(state.stack, x-y)
 end
 
 function instr_mult!(state::DiscreteVMState)
@@ -115,9 +115,9 @@ function instr_mult!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack) 
-    y = pop!(state.stack) 
-    push!(state.stack, x*y)
+    x = popfirst!(state.stack) 
+    y = popfirst!(state.stack) 
+    pushfirst!(state.stack, x*y)
 end
 
 function instr_div!(state::DiscreteVMState)
@@ -125,10 +125,10 @@ function instr_div!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack) 
-    y = pop!(state.stack) 
+    x = popfirst!(state.stack) 
+    y = popfirst!(state.stack) 
     # Floor or Round?
-    push!(state.stack, floor(x/y))
+    pushfirst!(state.stack, floor(x/y))
 end
 
 function instr_not!(state::DiscreteVMState)
@@ -138,9 +138,9 @@ function instr_not!(state::DiscreteVMState)
     end
     # 0 is false, anything else is true.
     # but if true still set to 1
-    x = pop!(state.stack) 
+    x = popfirst!(state.stack) 
     notx = 1 * (x != 0)
-    push!(state.stack, notx)
+    pushfirst!(state.stack, notx)
 end
 
 function instr_and!(state::DiscreteVMState)
@@ -148,10 +148,10 @@ function instr_and!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack) 
-    y = pop!(state.stack) 
+    x = popfirst!(state.stack) 
+    y = popfirst!(state.stack) 
     res = 1 * (x!=0 && y!=0)
-    push!(state.stack, res)
+    pushfirst!(state.stack, res)
 end
 
 function instr_or!(state::DiscreteVMState)
@@ -159,10 +159,10 @@ function instr_or!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack) 
-    y = pop!(state.stack) 
+    x = popfirst!(state.stack) 
+    y = popfirst!(state.stack) 
     res = 1 * (x!=0 || y!=0)
-    push!(state.stack, res)
+    pushfirst!(state.stack, res)
 end
 
 function instr_goto!(state::DiscreteVMState)
@@ -170,7 +170,7 @@ function instr_goto!(state::DiscreteVMState)
     if length(state.stack) < 1
         return
     end
-    x = pop!(state.stack)
+    x = popfirst!(state.stack)
     # Verification of non zero, positive integer?
     if x > 0
         state.instructionpointer = x
@@ -182,8 +182,8 @@ function instr_gotoif!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack)
-    y = pop!(state.stack)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
     if x != 0 && y > 0
         state.instructionpointer = y
     end
@@ -194,12 +194,12 @@ function instr_iseq!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack)
-    y = pop!(state.stack)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
     if x == y
-        push!(state.stack, 1)
+        pushfirst!(state.stack, 1)
     else
-        push!(state.stack, 0)
+        pushfirst!(state.stack, 0)
     end
 end
 
@@ -208,12 +208,12 @@ function instr_isgt!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack)
-    y = pop!(state.stack)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
     if x > y
-        push!(state.stack, 1)
+        pushfirst!(state.stack, 1)
     else
-        push!(state.stack, 0)
+        pushfirst!(state.stack, 0)
     end
 end
 
@@ -222,12 +222,12 @@ function instr_isge!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack)
-    y = pop!(state.stack)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
     if x >= y
-        push!(state.stack, 1)
+        pushfirst!(state.stack, 1)
     else
-        push!(state.stack, 0)
+        pushfirst!(state.stack, 0)
     end
 end
 
@@ -236,8 +236,8 @@ function instr_store!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = pop!(state.stack)
-    y = pop!(state.stack)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
     state.variables[y] = x
 end
 
@@ -248,8 +248,8 @@ function instr_load!(state::DiscreteVMState)
     end
     # TODO should this remove the address element on the stack or not
     if last(state.stack) in keys(state.variables)
-        x = pop!(state.stack)
-        push!(state.stack, state.variables[x])
+        x = popfirst!(state.stack)
+        pushfirst!(state.stack, state.variables[x])
     end
 end
 

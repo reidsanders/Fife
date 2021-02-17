@@ -453,14 +453,14 @@ end
 function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)::DiscreteVMState
     instructionpointer = onecold(contstate.instructionpointer)
     stackpointer = onecold(contstate.stackpointer)
-    stack = onecold(contstate.stack)
+    stack = [allvalues[i] for i in onecold(contstate.stack)]
     #variables = onecold(contstate.stack)
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
     # Dealing with blanks is tricky. It's not clear what is correct semantically
     newstack = Vector{Int}() # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
-        if x == 1 # "blank"
+        if x == "blank"
             break
         else
             push!(newstack, x)
