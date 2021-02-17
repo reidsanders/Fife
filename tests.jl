@@ -365,25 +365,8 @@ function test_program_conversion(program)
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
 
-    assertequal(contstate, newcontstate)
-    @test contstate == newcontstate
+    testequality(contstate, newcontstate)
     testequality(discretestate, newdiscretestate)
-end
-
-function assertequal(x::VMState, y::VMState)
-    @assert x.instructionpointer == y.instructionpointer
-    println("x.stackpointer")
-    display(x.stackpointer)
-    println("y.stackpointer")
-    display(y.stackpointer)
-    @assert x.stackpointer == y.stackpointer
-    println("x.stack")
-    display(x.stack)
-    @show [allvalues[i] for i in onecold(x.stack)]
-    println("y.stack")
-    display(y.stack)
-    @show [allvalues[i] for i in onecold(y.stack)]
-    @assert x.stack == y.stack
 end
 
 function testequality(x::DiscreteVMState, y::DiscreteVMState)
@@ -392,6 +375,13 @@ function testequality(x::DiscreteVMState, y::DiscreteVMState)
     @test x.ishalted == y.ishalted
     @test x.stack == y.stack
 end
+
+function testequality(x::VMState, y::VMState)
+    @test x.instructionpointer == y.instructionpointer
+    @test x.stackpointer == y.stackpointer
+    @test x.stack == y.stack
+end
+
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
     x.instructionpointer == y.instructionpointer &&

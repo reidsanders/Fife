@@ -205,7 +205,6 @@ function instr_pushval!(val, state::VMState)::VMState
     # This seems really inefficient...
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
-    display(allvalues)
     valhotvec = valhot(val, allvalues) # pass allvalues, and partial? 
     new_stackpointer = circshift(state.stackpointer, -1)
     new_instructionpointer = circshift(state.instructionpointer, 1)
