@@ -26,3 +26,6 @@ end
 intvalues = [i for i in 0:args.maxint]
 nonintvalues = ["blank"]
 allvalues = [nonintvalues; intvalues]
+blanks = fill("blank", args.stackdepth)
+blankstack = onehotbatch(blanks, allvalues)
+

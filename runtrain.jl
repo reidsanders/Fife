@@ -4,7 +4,7 @@ include("main.jl")
 # Global initialization
 ######################################
 
-
+#=
 @with_kw mutable struct Args
     batchsize::Int = 32
     lr::Float32 = 2e-4
@@ -31,11 +31,13 @@ end
 intvalues = [i for i in 0:args.maxint]
 nonintvalues = ["blank"]
 allvalues = [nonintvalues; intvalues]
+=#
 
-instr_gotoifnotzero = partial(instr_gotoifnotzerofull, valhot(0, allvalues), nonintvalues)
+
+instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonintvalues)
 
 val_instructions = [partial(instr_pushval!, i) for i in intvalues]
-instructions = [[instr_gotoifnotzero, instr_dup]; val_instructions]
+instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
 num_instructions = length(instructions)
 
 discrete_program = create_random_discrete_program(args.programlen, instructions)

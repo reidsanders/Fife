@@ -1,4 +1,3 @@
-#module SuperInterpreter
 using Pkg
 Pkg.activate(".")
 using Flux
@@ -22,19 +21,8 @@ using DataStructures: Deque, DefaultDict
 include("utils.jl")
 using .Utils: partial
 
-#=
-@with_kw mutable struct Args
-    stackdepth::Int = 10
-    programlen::Int = 10
-    inputlen::Int = 2 # frozen part, assumed at front for now
-    max_ticks::Int = 5
-    maxint::Int = 9
-    usegpu::Bool = false
-end
-=#
 include("parameters.jl")
 
-#using Reexport
 include("discreteinterpreter.jl")
 import .DiscreteInterpreter:
     DiscreteVMState,
@@ -57,7 +45,6 @@ import .DiscreteInterpreter:
     instr_isge!,
     instr_store!,
     instr_load!
-#@reexport using .DiscreteInterpreter
 
 struct VMState
     instructionpointer::Union{Array{Float32},CuArray{Float32}}
@@ -132,10 +119,62 @@ function instr_dup!(state::VMState)
     
 end
 
-function instr_swap!(state::VMState)
+function instr_add!(state::VMState)
     #= 
-    SWAP Should swap top of stack with second to top of stack
+    ADD Should pop top two values, and add them, then push that value to top
     =#
+    oldcomponent = state.stack .* (1.f0 .- new_stackpointer)'
+    newcomponent = circshift(state.stack .* state.stackpointer', (0,-1))
+    state, x = pop()
+
+    newstack = oldcomponent .+ newcomponent
+    newinstructionpointer = circshift(state.instructionpointer, 1)
+    newstackpointer = circshift(state.stackpointer, -1)
+    VMState(
+        new_instructionpointer,
+        new_stackpointer,
+        new_stack,
+    )
+    
+end
+
+function pop(state::VMState; blankstack=blankstack)
+    #= 
+    Regular pop. remove prob vector from stack and return
+    =#
+    newstackpointer = circshift(state.stackpointer, 1)
+    scaledstack = state.stack .* newstackpointer'
+    scaledblankstack = blankstack .* (1.f0 .- newstackpointer)
+    newstack = scaledstack .+ scaledblankstack
+    newstate = VMState(
+        state.instructionpointer,
+        newstackpointer,
+        newstack,
+    )
+    (newstate, sum(stackscaled, dims=2))
+end
+
+function push(state::VMState, valvec::Array) # TODO add shape info?
+    #= 
+    Regular push. push prob vector to stack based on current stackpointer prob
+
+    note reverses arg ordering of instr in order to match regular push!
+    =#
+    new_stackpointer = circshift(state.stackpointer, -1)
+    topscaled = valvec * new_stackpointer'
+    stackscaled = state.stack .* (1.f0 .- new_stackpointer')
+    new_stack = stackscaled .+ topscaled
+    VMState(
+        new_instructionpointer,
+        new_stackpointer,
+        new_stack,
+    )
+end
+
+#= 
+SWAP Should swap top of stack with second to top of stack
+=#
+function instr_swap!(state::VMState)
     new_stackpointer = circshift(state.stackpointer, -1)
     new_stack = state.stack .* (1.f0 .- state.stackpointer') .+ state.stack .* new_stackpointer'
     new_instructionpointer = circshift(state.instructionpointer, 1)
@@ -173,6 +212,8 @@ function instr_gotoiffull!(zerovec, nonintvalues, state::VMState)
     currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
     new_instructionpointer = currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
     newtop = circshift(firstpoptop, 1)
+
+    # TODO Stack needs to be shifted too
 
     # jumpvalprobs[:end]
     # TODO set blank / zero to zero? zero goes to first? greater than length(program) goes to end?
@@ -304,24 +345,6 @@ function VMState(stackdepth::Int=args.stackdepth, programlen::Int=args.programle
     )
     state
 end
-
-#=
-function init_state(stackdepth, programlen, allvalues)
-    stack = zeros(Float32, length(allvalues), stackdepth)
-    instructionpointer = zeros(Float32, programlen, )
-    stackpointer = zeros(Float32, stackdepth, )
-    stack[1,:] .= 1.f0
-    instructionpointer[1] = 1.f0
-    stackpointer[1] = 1.f0
-    # @assert isbitstype(stack) == true
-    state = VMState(
-        instructionpointer |> device,
-        stackpointer |> device,
-        stack |> device,
-    )
-    state
-end
-=# 
 
 function get_program_with_random_inputs(program, mask)
     num_instructions = size(program)[1]
@@ -478,57 +501,3 @@ function normalize_stackpointer(state::VMState)
         stack |> device,
     )
 end
-
-#=
-begin export 
-    ## Reexport from Discrete interpreter (A pain because reexport doesn't work with import)
-    DiscreteVMState,
-    convert,
-    instr_pass!,
-    instr_halt!,
-    instr_pushval!,
-    instr_pop!,
-    instr_dup!,
-    instr_swap!,
-    instr_add!,
-    instr_sub!,
-    instr_mult!,
-    instr_div!,
-    instr_not!,
-    instr_and!,
-    instr_goto!,
-    instr_gotoif!,
-    instr_iseq!,
-    instr_isgt!,
-    instr_isge!,
-    instr_store!,
-    instr_load!,
-    ## Export other definitions
-    valhot,
-    VMState, 
-    VMSuperStates, 
-    trainbatch!, 
-    trainloopsingle, 
-    trainloop,
-    #init_state,
-    forward,
-    loss,
-    test,
-    accuracy,
-    run,
-    create_examples,
-    create_program_batch,
-    create_random_discrete_program,
-    create_random_inputs,
-    create_trainable_mask,
-    convert_discrete_to_continuous,
-    convert_continuous_to_discrete,
-    normit,
-    softmaxmask,
-    check_state_asserts,
-    assert_no_nans,
-    device
-end
-end
-using .SuperInterpreter
-=#

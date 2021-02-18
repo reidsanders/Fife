@@ -329,7 +329,7 @@ function test_all_single_instr()
         # instr_pop!,
         instr_dup!,
         #instr_swap!,
-        #instr_add!,
+        instr_add!,
         # instr_sub!,
         # instr_mult!,
         # instr_div!,
