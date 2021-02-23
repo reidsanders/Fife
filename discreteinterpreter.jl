@@ -59,7 +59,7 @@ function instr_pushval!(value::Int, state::DiscreteVMState)
     pushfirst!(state.stack, value)
 end
 
-val_instructions = [partial(instr_pushval!, i) for i in intvalues]
+val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
 function instr_pop!(state::DiscreteVMState)
     state.instructionpointer += 1

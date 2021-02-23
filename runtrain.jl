@@ -28,15 +28,15 @@ else
     # @info "Training on CPU"
 end
 
-intvalues = [i for i in 0:args.maxint]
-nonintvalues = ["blank"]
-allvalues = [nonintvalues; intvalues]
+numericvalues = [i for i in 0:args.maxint]
+nonnumericvalues = ["blank"]
+allvalues = [nonnumericvalues; numericvalues]
 =#
 
 
-instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonintvalues)
+instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonnumericvalues)
 
-val_instructions = [partial(instr_pushval!, i) for i in intvalues]
+val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
 num_instructions = length(instructions)
 

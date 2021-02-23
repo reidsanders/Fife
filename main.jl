@@ -127,7 +127,7 @@ function instr_add!(state::VMState)
     state, y = pop(state)
 
 
-    # TODO need to add intvalues (eg exclude blank?)
+    # TODO need to add numericvalues (eg exclude blank?)
     # blank is equivalent to NaN ? Eg include in addition / multiplication table, but replace results with zero?
     # Actually should replace result with "blank". Or just append same vector??
     resultvec = add_probvec(x, y)
@@ -141,18 +141,18 @@ function instr_add!(state::VMState)
     
 end
 
-function add_probvec(x::Array, y::Array; intvalues=intvalues)
-    additiontable = intvalues .+ intvalues'
+function add_probvec(x::Array, y::Array; numericvalues=numericvalues)
+    additiontable = numericvalues .+ numericvalues'
     additiontable = replacenans.(additiontable, 0.0)
-    additiontable = clamp_to_numeric_range.(additiontable; min=intvalues[2], max=intvalues[end-1])
+    additiontable = clamp_to_numeric_range.(additiontable; min=numericvalues[2], max=numericvalues[end-1])
     
     indexmapping = []
-    for numericval in intvalues
+    for numericval in numericvalues
         append!(indexmapping, [findall(x -> x == numericval, additiontable)])
     end
 
-    xints = x[end + 1 - length(intvalues):end] # Requires intvalues at end of allvalues
-    yints = y[end + 1 - length(intvalues):end]
+    xints = x[end + 1 - length(numericvalues):end] # Requires numericvalues at end of allvalues
+    yints = y[end + 1 - length(numericvalues):end]
     additionprobs = xints .* yints'
 
     numericprobs = []
@@ -160,7 +160,7 @@ function add_probvec(x::Array, y::Array; intvalues=intvalues)
         append!(numericprobs, sum(additionprobs[indexes]))
     end
     # Non numeric values -- just add prob for each individually? You can't really add them so..
-    nonnumericprobs = (x[1:end + 1 - length(intvalues)] .+ y[1:end + 1 - length(intvalues)])/2
+    nonnumericprobs = (x[1:end - length(numericvalues)] .+ y[1:end - length(numericvalues)])/2
     [nonnumericprobs; numericprobs]
 end
 
@@ -209,7 +209,7 @@ function push(state::VMState, valvec::Array) # TODO add shape info?
     stackscaled = state.stack .* (1.f0 .- new_stackpointer')
     new_stack = stackscaled .+ topscaled
     VMState(
-        new_instructionpointer,
+        state.instructionpointer,
         new_stackpointer,
         new_stack,
     )
@@ -233,7 +233,7 @@ end
 
 
     
-function instr_gotoiffull!(zerovec, nonintvalues, state::VMState)
+function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)
     #= 
     GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
 
@@ -249,8 +249,8 @@ function instr_gotoiffull!(zerovec, nonintvalues, state::VMState)
     jumpvalprobs = sum(secondstackscaled, dims=2)
 
     # Assume ints start at 0 should skip 0?
-    # Constraint -- length(intvalues) > length of current instruction ?
-    jumpvalprobs = jumpvalprobs[length(nonintvalues) + 1:end]
+    # Constraint -- length(numericvalues) > length of current instruction ?
+    jumpvalprobs = jumpvalprobs[length(nonnumericvalues) + 1:end]
     # TODO length(instructionpointer) compare and truncate
     jumpvalprobs = jumpvalprobs[1:end]
     currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)

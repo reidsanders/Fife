@@ -372,7 +372,7 @@ end
 function test_add_probvec()
     x = [0.0 , 0.1, 0.9, 0.0]
     y = [0.0, .7, .3, 0.0]
-    result = add_probvec(x, y; intvalues=[-Inf, 0, 1, Inf])
+    result = add_probvec(x, y; numericvalues=[-Inf, 0, 1, Inf])
     @test result == [0.0, 0.1*0.7, 0.1*0.3 + 0.7*0.9, 0.3*0.9]
 end
 
