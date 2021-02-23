@@ -77,6 +77,7 @@ function instr_dup!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     pushfirst!(state.stack, x)
     pushfirst!(state.stack, x)
+    return state
 end
 
 function instr_swap!(state::DiscreteVMState)
@@ -253,6 +254,7 @@ function instr_load!(state::DiscreteVMState)
     end
 end
 
+#=
 begin export
     DiscreteVMState,
     convert,
@@ -276,4 +278,5 @@ begin export
     instr_store!,
     instr_load!
 end
+=#
 end

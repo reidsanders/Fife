@@ -23,7 +23,7 @@ else
     @info "Training on CPU"
 end
 
-intvalues = [i for i in 0:args.maxint]
+intvalues = [[-Inf]; [i for i in -args.maxint:args.maxint]; [Inf]]
 nonintvalues = ["blank"]
 allvalues = [nonintvalues; intvalues]
 blanks = fill("blank", args.stackdepth)

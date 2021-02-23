@@ -365,18 +365,25 @@ function test_program_conversion(program)
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
 
-    testequality(contstate, newcontstate)
-    testequality(discretestate, newdiscretestate)
+    run_equality_test(contstate, newcontstate)
+    run_equality_test(discretestate, newdiscretestate)
 end
 
-function testequality(x::DiscreteVMState, y::DiscreteVMState)
+function test_add_probvec()
+    x = [0.0 , 0.1, 0.9, 0.0]
+    y = [0.0, .7, .3, 0.0]
+    result = add_probvec(x, y; intvalues=[-Inf, 0, 1, Inf])
+    @test result == [0.0, 0.1*0.7, 0.1*0.3 + 0.7*0.9, 0.3*0.9]
+end
+
+function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
     @test x.instructionpointer == y.instructionpointer
     @test x.variables == y.variables
     @test x.ishalted == y.ishalted
     @test x.stack == y.stack
 end
 
-function testequality(x::VMState, y::VMState)
+function run_equality_test(x::VMState, y::VMState)
     @test x.instructionpointer == y.instructionpointer
     @test x.stackpointer == y.stackpointer
     @test x.stack == y.stack
@@ -396,6 +403,7 @@ function ==(x::VMState, y::VMState)
     x.stack == y.stack
 end
 
+test_add_probvec()
 test_instr_halt()
 test_instr_pushval()
 test_instr_pop()

@@ -16,7 +16,7 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: Deque, DefaultDict
+using DataStructures: Deque#, DefaultDict
 
 include("utils.jl")
 using .Utils: partial
@@ -123,19 +123,63 @@ function instr_add!(state::VMState)
     #= 
     ADD Should pop top two values, and add them, then push that value to top
     =#
-    oldcomponent = state.stack .* (1.f0 .- new_stackpointer)'
-    newcomponent = circshift(state.stack .* state.stackpointer', (0,-1))
-    state, x = pop()
+    state, x = pop(state)
+    state, y = pop(state)
 
-    newstack = oldcomponent .+ newcomponent
+
+    # TODO need to add intvalues (eg exclude blank?)
+    # blank is equivalent to NaN ? Eg include in addition / multiplication table, but replace results with zero?
+    # Actually should replace result with "blank". Or just append same vector??
+    resultvec = add_probvec(x, y)
+    newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    newstackpointer = circshift(state.stackpointer, -1)
     VMState(
-        new_instructionpointer,
-        new_stackpointer,
-        new_stack,
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
     )
     
+end
+
+function add_probvec(x::Array, y::Array; intvalues=intvalues)
+    additiontable = intvalues .+ intvalues'
+    additiontable = replacenans.(additiontable, 0.0)
+    additiontable = clamp_to_numeric_range.(additiontable; min=intvalues[2], max=intvalues[end-1])
+    
+    indexmapping = []
+    for numericval in intvalues
+        append!(indexmapping, [findall(x -> x == numericval, additiontable)])
+    end
+
+    xints = x[end + 1 - length(intvalues):end] # Requires intvalues at end of allvalues
+    yints = y[end + 1 - length(intvalues):end]
+    additionprobs = xints .* yints'
+
+    numericprobs = []
+    for indexes in indexmapping
+        append!(numericprobs, sum(additionprobs[indexes]))
+    end
+    # Non numeric values -- just add prob for each individually? You can't really add them so..
+    nonnumericprobs = (x[1:end + 1 - length(intvalues)] .+ y[1:end + 1 - length(intvalues)])/2
+    [nonnumericprobs; numericprobs]
+end
+
+function replacenans(x, replacement)
+    if isnan(x)
+        return replacement
+    else
+        return x
+    end
+end
+
+function clamp_to_numeric_range(x::Number; min=-Inf, max=Inf)
+    if x < min
+        return -Inf
+    elseif x > max
+        return Inf
+    else
+        return x
+    end
 end
 
 function pop(state::VMState; blankstack=blankstack)
@@ -144,14 +188,14 @@ function pop(state::VMState; blankstack=blankstack)
     =#
     newstackpointer = circshift(state.stackpointer, 1)
     scaledstack = state.stack .* newstackpointer'
-    scaledblankstack = blankstack .* (1.f0 .- newstackpointer)
+    scaledblankstack = blankstack .* (1.f0 .- newstackpointer')
     newstack = scaledstack .+ scaledblankstack
     newstate = VMState(
         state.instructionpointer,
         newstackpointer,
         newstack,
     )
-    (newstate, sum(stackscaled, dims=2))
+    (newstate, sum(newstack, dims=2))
 end
 
 function push(state::VMState, valvec::Array) # TODO add shape info?
