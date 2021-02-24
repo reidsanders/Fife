@@ -160,7 +160,13 @@ function add_probvec(x::Array, y::Array; numericvalues=numericvalues)
         append!(numericprobs, sum(additionprobs[indexes]))
     end
     # Non numeric values -- just add prob for each individually? You can't really add them so..
-    nonnumericprobs = (x[1:end - length(numericvalues)] .+ y[1:end - length(numericvalues)])/2
+    # prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
+    # a * b + a * (1-b) + b * (1-a) =>
+    # ab + a - ab + b - ab =>
+    # a + b - ab
+    a = x[1:end - length(numericvalues)]
+    b = y[1:end - length(numericvalues)]
+    nonnumericprobs = a + b - a.*b 
     [nonnumericprobs; numericprobs]
 end
 

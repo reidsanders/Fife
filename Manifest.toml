@@ -6,6 +6,12 @@ git-tree-sha1 = "051c95d6836228d120f5f4b984dd5aba1624f716"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.5.0"
 
+[[AbstractNumbers]]
+deps = ["SpecialFunctions"]
+git-tree-sha1 = "8762ea6a862d3e9c32c0a2da155dbd14078f0ddc"
+uuid = "85c772de-338a-5e7f-b815-41e76c26ac1f"
+version = "0.2.2"
+
 [[AbstractTrees]]
 deps = ["Markdown"]
 git-tree-sha1 = "33e450545eaf7699da1a6e755f9ea65f14077a45"

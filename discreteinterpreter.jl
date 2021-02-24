@@ -13,27 +13,36 @@ using DataStructures: Deque, DefaultDict
 using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
 using Test: @test
 
-#include("main.jl")
-#using .SuperInterpreter: VMState
-
 include("utils.jl")
 using .Utils
-#=
-@with_kw mutable struct Args
-    stackdepth::Int = 10
-    programlen::Int = 5
-    inputlen::Int = 2 # frozen part, assumed at front for now
-    max_ticks::Int = 5
-    maxint::Int = 7
-    usegpu::Bool = false
-end
-=#
-
 include("parameters.jl")
+
+using AbstractNumbers#, SpecialFunctions
+
+struct StackNumber{T} <: AbstractNumbers.AbstractNumber{T}
+    number::T
+end
+
+Base.convert(::Type{Number}, x::StackNumber) = x.number
+AbstractNumbers.basetype(::Type{<: StackNumber}) = StackNumber
+AbstractNumbers.number(x::StackNumber) = x.number
+
+BoundedNum = StackNumber{Union{Int, Type{Inf}, Type{-Inf}}}
+
+function bounded_add(x, y)
+    @assert false
+end
+
+x::BoundedNum + y::BoundedNum = BoundedNum{stacknumber_add(x, y)}
+
+
+#abstract type AbstractBoundedNum <: Real end
+
+
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
-    stack::Deque{Int} = Deque{Int}(args.stackdepth)
-    variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
+    stack::Deque{Union{Int, Type{-Inf}, Type{Inf}}} = Deque{Union{Int, Type{-Inf}, Type{Inf}}}(args.stackdepth)
+    variables::DefaultDict{Int, Int} = DefaultDict{Int, Int}(0)
     ishalted::Bool = false
 end
 

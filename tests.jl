@@ -370,10 +370,17 @@ function test_program_conversion(program)
 end
 
 function test_add_probvec()
-    x = [0.0 , 0.1, 0.9, 0.0]
-    y = [0.0, .7, .3, 0.0]
+    x = [0.0, 0.0 , 0.1, 0.9, 0.0]
+    y = [0.0, 0.0, .7, .3, 0.0]
     result = add_probvec(x, y; numericvalues=[-Inf, 0, 1, Inf])
-    @test result == [0.0, 0.1*0.7, 0.1*0.3 + 0.7*0.9, 0.3*0.9]
+    @test sum(result) == 1.0
+    @test result == [0.0, 0.0, 0.1*0.7, 0.1*0.3 + 0.7*0.9, 0.3*0.9]
+
+    x = [.1, 0.0 , 0.1, 0.8, 0.0]
+    y = [.3, 0.0, .4, .3, 0.0]
+    result = add_probvec(x, y; numericvalues=[-Inf, 0, 1, Inf])
+    @test result == [.1 * .3 + .1 * (1 - .3) + (1 - .1) * .3, 0.0, 0.1*0.4, 0.1*0.3 + 0.4*0.8, 0.3*0.8]
+    @test sum(result) == 1.0
 end
 
 function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
