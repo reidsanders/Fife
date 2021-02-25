@@ -1,4 +1,3 @@
-module DiscreteInterpreter
 using Pkg
 Pkg.activate(".")
 using Debugger
@@ -14,34 +13,20 @@ using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, gloro
 using Test: @test
 
 include("utils.jl")
-using .Utils
-include("parameters.jl")
+using .Utils: partial, replacenans, setoutofboundstoinf, roundnoninf, coercetostackvalue
 
-using AbstractNumbers#, SpecialFunctions
+coercetostackvaluepart(x) = coercetostackvalue(x; min = -args.maxint, max = args.maxint)
 
-struct StackNumber{T} <: AbstractNumbers.AbstractNumber{T}
-    number::T
-end
+StackValueType = Real
 
-Base.convert(::Type{Number}, x::StackNumber) = x.number
-AbstractNumbers.basetype(::Type{<: StackNumber}) = StackNumber
-AbstractNumbers.number(x::StackNumber) = x.number
-
-BoundedNum = StackNumber{Union{Int, Type{Inf}, Type{-Inf}}}
-
-function bounded_add(x, y)
-    @assert false
-end
-
-x::BoundedNum + y::BoundedNum = BoundedNum{stacknumber_add(x, y)}
-
-
-#abstract type AbstractBoundedNum <: Real end
-
+# Set nans to 0
+# Set > max to Inf
+# Set < max to -Inf
+# Round Floats to Int (?) define convert? probably want to only clamp at end of calculations
 
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
-    stack::Deque{Union{Int, Type{-Inf}, Type{Inf}}} = Deque{Union{Int, Type{-Inf}, Type{Inf}}}(args.stackdepth)
+    stack::Deque{StackValueType} = Deque{StackValueType}(args.stackdepth)
     variables::DefaultDict{Int, Int} = DefaultDict{Int, Int}(0)
     ishalted::Bool = false
 end
@@ -63,12 +48,10 @@ function instr_halt!(state::DiscreteVMState)
     state.ishalted = true
 end
 
-function instr_pushval!(value::Int, state::DiscreteVMState)
+function instr_pushval!(value::StackValueType, state::DiscreteVMState)
     state.instructionpointer += 1
     pushfirst!(state.stack, value)
 end
-
-val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
 function instr_pop!(state::DiscreteVMState)
     state.instructionpointer += 1
@@ -107,7 +90,7 @@ function instr_add!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack) 
     y = popfirst!(state.stack) 
-    pushfirst!(state.stack, x+y)
+    pushfirst!(state.stack, x+y |> coercetostackvaluepart)
 end
 
 function instr_sub!(state::DiscreteVMState)
@@ -117,7 +100,7 @@ function instr_sub!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack) 
     y = popfirst!(state.stack) 
-    pushfirst!(state.stack, x-y)
+    pushfirst!(state.stack, x-y |> coercetostackvaluepart)
 end
 
 function instr_mult!(state::DiscreteVMState)
@@ -127,7 +110,7 @@ function instr_mult!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack) 
     y = popfirst!(state.stack) 
-    pushfirst!(state.stack, x*y)
+    pushfirst!(state.stack, x*y |> coercetostackvaluepart)
 end
 
 function instr_div!(state::DiscreteVMState)
@@ -138,7 +121,7 @@ function instr_div!(state::DiscreteVMState)
     x = popfirst!(state.stack) 
     y = popfirst!(state.stack) 
     # Floor or Round?
-    pushfirst!(state.stack, floor(x/y))
+    pushfirst!(state.stack, x/y |> coercetostackvaluepart)
 end
 
 function instr_not!(state::DiscreteVMState)
@@ -261,31 +244,4 @@ function instr_load!(state::DiscreteVMState)
         x = popfirst!(state.stack)
         pushfirst!(state.stack, state.variables[x])
     end
-end
-
-#=
-begin export
-    DiscreteVMState,
-    convert,
-    instr_pass!,
-    instr_halt!,
-    instr_pushval!,
-    instr_pop!,
-    instr_dup!,
-    instr_swap!,
-    instr_add!,
-    instr_sub!,
-    instr_mult!,
-    instr_div!,
-    instr_not!,
-    instr_and!,
-    instr_goto!,
-    instr_gotoif!,
-    instr_iseq!,
-    instr_isgt!,
-    instr_isge!,
-    instr_store!,
-    instr_load!
-end
-=#
 end

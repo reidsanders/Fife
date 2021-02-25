@@ -9,32 +9,25 @@ using CUDA
 using Random
 import Base: ==
 
-include("main.jl")
-
-#include("utils.jl")
-#using .Utils: partial
-
-#include("discreteinterpreter.jl")
-#using .SuperInterpreter
-#using .DiscreteInterpreter
+#include("main.jl")
+include("fife.jl")
 
 ######################################
 # Global initialization
 ######################################
-#=
-@with_kw mutable struct Args
+@with_kw mutable struct TestArgs
     batchsize::Int = 2
     lr::Float32 = 2e-4
     epochs::Int = 2
     stackdepth::Int = 10
-    programlen::Int = 5
+    programlen::Int = 10
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
-    maxint::Int = 3
+    maxint::Int = 20
     usegpu::Bool = false
 end
+args = TestArgs()
 include("parameters.jl")
-=#
 
 function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
