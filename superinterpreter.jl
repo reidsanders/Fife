@@ -96,10 +96,6 @@ function instr_add!(state::VMState)
     state, x = pop(state)
     state, y = pop(state)
 
-
-    # TODO need to add numericvalues (eg exclude blank?)
-    # blank is equivalent to NaN ? Eg include in addition / multiplication table, but replace results with zero?
-    # Actually should replace result with "blank". Or just append same vector??
     resultvec = add_probvec(x, y)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
@@ -108,7 +104,6 @@ function instr_add!(state::VMState)
         newstate.stackpointer,
         newstate.stack,
     )
-    
 end
 
 function add_probvec(x::Array, y::Array; numericvalues=numericvalues)

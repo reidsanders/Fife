@@ -394,8 +394,9 @@ end
 
 function test_push_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
-    state = push(state, valhot(2, allvalues))
-    display(state.stack)
+    newval = valhot(2, allvalues)
+    state = push(state, newval)
+    @test state.stack[:, end] == newval
 end
 
 function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
@@ -425,6 +426,7 @@ function ==(x::VMState, y::VMState)
     x.stack == y.stack
 end
 
+test_push_vmstate()
 test_pop_vmstate()
 test_add_probvec()
 test_instr_halt()
