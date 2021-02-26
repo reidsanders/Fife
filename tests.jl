@@ -19,11 +19,11 @@ include("fife.jl")
     batchsize::Int = 2
     lr::Float32 = 2e-4
     epochs::Int = 2
-    stackdepth::Int = 10
-    programlen::Int = 10
+    stackdepth::Int = 5
+    programlen::Int = 7
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
-    maxint::Int = 20
+    maxint::Int = 8
     usegpu::Bool = false
 end
 args = TestArgs()
@@ -130,11 +130,17 @@ end
 
 function test_instr_mult()
     state = DiscreteVMState()
+    instr_pushval!(2,state)
     instr_pushval!(3,state)
-    instr_pushval!(5,state)
     instr_mult!(state)
     @test state.instructionpointer == 4
-    @test first(state.stack) == 15
+    @test first(state.stack) == 6
+    # Test out of bounds case
+    instr_pushval!(5,state)
+    instr_pushval!(5,state)
+    instr_mult!(state)
+    @test state.instructionpointer == 7
+    @test first(state.stack) == Inf
 end
 
 function test_instr_div()
@@ -346,7 +352,7 @@ function test_program_conversion(program)
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     discretestate = DiscreteVMState()
     # Put in some misc val (TODO randomize?)
-    for val in [1,3,4,2,6]
+    for val in [1,3,4,2]
         contstate = instr_pushval!(val, contstate)
         instr_pushval!(val, discretestate)
     end
@@ -358,6 +364,7 @@ function test_program_conversion(program)
     newdiscretestate = convert_continuous_to_discrete(contstate, args.stackdepth, args.programlen, allvalues)
     newcontstate = convert_discrete_to_continuous(discretestate, args.stackdepth, args.programlen, allvalues)
 
+    display(contstate.stack)
     run_equality_test(contstate, newcontstate)
     run_equality_test(discretestate, newdiscretestate)
 end
@@ -374,6 +381,22 @@ function test_add_probvec()
     result = add_probvec(x, y; numericvalues=[-Inf, 0, 1, Inf])
     @test result == [.1 * .3 + .1 * (1 - .3) + (1 - .1) * .3, 0.0, 0.1*0.4, 0.1*0.3 + 0.4*0.8, 0.3*0.8]
     @test sum(result) == 1.0
+end
+
+function test_pop_vmstate()
+    state = VMState(args.stackdepth, args.programlen, allvalues)
+    newval = valhot(2, allvalues)
+    state = push(state, newval)
+    display(state.stack)
+    state, popval = pop(state)
+    display(state.stack)
+    @test newval == popval
+end
+
+function test_push_vmstate()
+    state = VMState(args.stackdepth, args.programlen, allvalues)
+    state = push(state, valhot(2, allvalues))
+    display(state.stack)
 end
 
 function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
@@ -403,6 +426,7 @@ function ==(x::VMState, y::VMState)
     x.stack == y.stack
 end
 
+test_pop_vmstate()
 test_add_probvec()
 test_instr_halt()
 test_instr_pushval()

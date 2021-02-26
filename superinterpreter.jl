@@ -76,15 +76,15 @@ function instr_dup!(state::VMState)
     #= 
     DUP Should duplicate top of stack, and push to top of stack 
     =#
-    new_stackpointer = circshift(state.stackpointer, -1)
-    oldcomponent = state.stack .* (1.f0 .- new_stackpointer)'
+    newstackpointer = circshift(state.stackpointer, -1)
+    oldcomponent = state.stack .* (1.f0 .- newstackpointer)'
     newcomponent = circshift(state.stack .* state.stackpointer', (0,-1))
-    new_stack = oldcomponent .+ newcomponent
-    new_instructionpointer = circshift(state.instructionpointer, 1)
+    newstack = oldcomponent .+ newcomponent
+    newinstructionpointer = circshift(state.instructionpointer, 1)
     VMState(
-        new_instructionpointer,
-        new_stackpointer,
-        new_stack,
+        newinstructionpointer,
+        newstackpointer,
+        newstack,
     )
     
 end
@@ -140,16 +140,6 @@ function add_probvec(x::Array, y::Array; numericvalues=numericvalues)
     [nonnumericprobs; numericprobs]
 end
 
-function clamp_to_bounds(x::Number; min=-Inf, max=Inf)
-    if x < min
-        return -Inf
-    elseif x > max
-        return Inf
-    else
-        return x
-    end
-end
-
 function pop(state::VMState; blankstack=blankstack)
     #= 
     Regular pop. remove prob vector from stack and return
@@ -163,7 +153,8 @@ function pop(state::VMState; blankstack=blankstack)
         newstackpointer,
         newstack,
     )
-    (newstate, sum(newstack, dims=2))
+    check_state_asserts(newstate)
+    (newstate, sum(scaledstack, dims=2))
 end
 
 function push(state::VMState, valvec::Array) # TODO add shape info?
@@ -172,29 +163,31 @@ function push(state::VMState, valvec::Array) # TODO add shape info?
 
     note reverses arg ordering of instr in order to match regular push!
     =#
-    new_stackpointer = circshift(state.stackpointer, -1)
-    topscaled = valvec * new_stackpointer'
-    stackscaled = state.stack .* (1.f0 .- new_stackpointer')
-    new_stack = stackscaled .+ topscaled
-    VMState(
+    newstackpointer = circshift(state.stackpointer, -1)
+    topscaled = valvec * newstackpointer'
+    stackscaled = state.stack .* (1.f0 .- newstackpointer')
+    newstack = stackscaled .+ topscaled
+    newstate = VMState(
         state.instructionpointer,
-        new_stackpointer,
-        new_stack,
+        newstackpointer,
+        newstack,
     )
+    check_state_asserts(newstate)
+    newstate
 end
 
 #= 
 SWAP Should swap top of stack with second to top of stack
 =#
 function instr_swap!(state::VMState)
-    new_stackpointer = circshift(state.stackpointer, -1)
-    new_stack = state.stack .* (1.f0 .- state.stackpointer') .+ state.stack .* new_stackpointer'
-    new_instructionpointer = circshift(state.instructionpointer, 1)
+    newstackpointer = circshift(state.stackpointer, -1)
+    newstack = state.stack .* (1.f0 .- state.stackpointer') .+ state.stack .* newstackpointer'
+    newinstructionpointer = circshift(state.instructionpointer, 1)
 
     VMState(
-        new_instructionpointer,
-        new_stackpointer,
-        new_stack,
+        newinstructionpointer,
+        newstackpointer,
+        newstack,
     )
     
 end
@@ -222,7 +215,7 @@ function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)
     # TODO length(instructionpointer) compare and truncate
     jumpvalprobs = jumpvalprobs[1:end]
     currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
-    new_instructionpointer = currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
+    newinstructionpointer = currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
     newtop = circshift(firstpoptop, 1)
 
     # TODO Stack needs to be shifted too
@@ -235,7 +228,7 @@ function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)
     # TODO add jumpvalprobs to instructionpointer? Then normalize?
 
     VMState(
-        new_instructionpointer,
+        newinstructionpointer,
         newtop,
         state.stack,
     )
@@ -246,9 +239,9 @@ end
 # TODO def normit for  all zero case
 
 function instr_pass!(state::VMState)
-    new_instructionpointer = circshift(state.instructionpointer, 1)
+    newinstructionpointer = circshift(state.instructionpointer, 1)
     VMState(
-        new_instructionpointer,
+        newinstructionpointer,
         state.stackpointer,
         state.stack,
     )
@@ -259,15 +252,15 @@ function instr_pushval!(val, state::VMState)::VMState
     # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
     # sizehint
     valhotvec = valhot(val, allvalues) # pass allvalues, and partial? 
-    new_stackpointer = circshift(state.stackpointer, -1)
-    new_instructionpointer = circshift(state.instructionpointer, 1)
-    topscaled = valhotvec * new_stackpointer'
-    stackscaled = state.stack .* (1.f0 .- new_stackpointer')
-    new_stack = stackscaled .+ topscaled
+    newstackpointer = circshift(state.stackpointer, -1)
+    newinstructionpointer = circshift(state.instructionpointer, 1)
+    topscaled = valhotvec * newstackpointer'
+    stackscaled = state.stack .* (1.f0 .- newstackpointer')
+    newstack = stackscaled .+ topscaled
     VMState(
-        new_instructionpointer,
-        new_stackpointer,
-        new_stack,
+        newinstructionpointer,
+        newstackpointer,
+        newstack,
     )
 end
 
