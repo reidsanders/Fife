@@ -329,9 +329,9 @@ function test_all_single_instr()
         instr_dup!,
         #instr_swap!,
         instr_add!,
-        # instr_sub!,
-        # instr_mult!,
-        # instr_div!,
+        instr_sub!,
+        instr_mult!,
+        instr_div!,
         # instr_not!,
         # instr_and!,
         # instr_goto!,
@@ -372,13 +372,13 @@ end
 function test_add_probvec()
     x = [0.0, 0.0 , 0.1, 0.9, 0.0]
     y = [0.0, 0.0, .7, .3, 0.0]
-    result = add_probvec(x, y; numericvalues=[-Inf, 0, 1, Inf])
+    result = op_probvec(+, x, y; numericvalues=[-Inf, 0, 1, Inf])
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1*0.7, 0.1*0.3 + 0.7*0.9, 0.3*0.9]
 
     x = [.1, 0.0 , 0.1, 0.8, 0.0]
     y = [.3, 0.0, .4, .3, 0.0]
-    result = add_probvec(x, y; numericvalues=[-Inf, 0, 1, Inf])
+    result = op_probvec(+, x, y; numericvalues=[-Inf, 0, 1, Inf])
     @test result == [.1 * .3 + .1 * (1 - .3) + (1 - .1) * .3, 0.0, 0.1*0.4, 0.1*0.3 + 0.4*0.8, 0.3*0.8]
     @test sum(result) == 1.0
 end

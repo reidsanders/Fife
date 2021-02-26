@@ -17,6 +17,7 @@ using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
 using DataStructures: Deque
+using Memoize
 
 include("utils.jl")
 using .Utils: partial
@@ -72,12 +73,18 @@ end
 # Instructions
 ###############################
 
-function instr_dup!(state::VMState)
+"""
+    instr_dup!(state::VMState)::VMState
+
+Get top of stack, then push it to stack. Return new state.
+
+"""
+function instr_dup!(state::VMState)::VMState
     #= 
     DUP Should duplicate top of stack, and push to top of stack 
     =#
     newstackpointer = circshift(state.stackpointer, -1)
-    oldcomponent = state.stack .* (1.f0 .- newstackpointer)'
+    oldcomponent = state.stack .* (1 .- newstackpointer)'
     newcomponent = circshift(state.stack .* state.stackpointer', (0,-1))
     newstack = oldcomponent .+ newcomponent
     newinstructionpointer = circshift(state.instructionpointer, 1)
@@ -89,14 +96,20 @@ function instr_dup!(state::VMState)
     
 end
 
-function instr_add!(state::VMState)
+"""
+    instr_add!(state::VMState)::VMState
+
+Pop two values from stack, add them, then push result to stack. Return new state.
+
+"""
+function instr_add!(state::VMState)::VMState
     #= 
     ADD Should pop top two values, and add them, then push that value to top
     =#
     state, x = pop(state)
     state, y = pop(state)
 
-    resultvec = add_probvec(x, y)
+    resultvec = op_probvec(+, x, y)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
     VMState(
@@ -106,29 +119,116 @@ function instr_add!(state::VMState)
     )
 end
 
-function add_probvec(x::Array, y::Array; numericvalues=numericvalues)
-    additiontable = numericvalues .+ numericvalues'
-    additiontable = replacenans.(additiontable, 0.0)
-    additiontable = setoutofboundstoinf.(additiontable; min=numericvalues[2], max=numericvalues[end-1])
+"""
+    instr_sub!(state::VMState)::VMState
+
+Pop two values of stack, subtract second from first, then push result to stack. Return new state.
+
+"""
+function instr_sub!(state::VMState)::VMState
+    state, x = pop(state)
+    state, y = pop(state)
+
+    resultvec = op_probvec(-, x, y)
+    newstate = push(state, resultvec)
+    newinstructionpointer = circshift(state.instructionpointer, 1)
+    VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+    )
+end
+
+"""
+    instr_mult!(state::VMState)::VMState
+
+Pop two values of stack, multiply them, then push result to stack. Return new state.
+
+"""
+function instr_mult!(state::VMState)::VMState
+    state, x = pop(state)
+    state, y = pop(state)
+
+    resultvec = op_probvec(*, x, y)
+    newstate = push(state, resultvec)
+    newinstructionpointer = circshift(state.instructionpointer, 1)
+    VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+    )
+end
+
+"""
+    instr_div!(state::VMState)::VMState
+
+Pop two values of stack, divide first by second, then push result to stack. Return new state.
+
+"""
+function instr_div!(state::VMState)::VMState
+    state, x = pop(state)
+    state, y = pop(state)
+
+    resultvec = op_probvec(/, x, y)
+    newstate = push(state, resultvec)
+    newinstructionpointer = circshift(state.instructionpointer, 1)
+    VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+    )
+end
+
+"""
+    instr_not!(state::VMState)::VMState
+
+Pop value from stack, take not, then push result to stack. Return new state.
+
+"""
+function instr_not!(state::VMState)::VMState
+    state, x = pop(state)
+
+    resultvec = op_probvec(!, x)
+    newstate = push(state, resultvec)
+    newinstructionpointer = circshift(state.instructionpointer, 1)
+    VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+    )
+end
+
+
+@memoize function optablecalc(op; numericvalues=numericvalues)
+    optable = op.(numericvalues, numericvalues')
+    optable = replacenans.(optable, 0.0)
+    optable = setoutofboundstoinf.(optable; min=numericvalues[2], max=numericvalues[end-1])
     
     indexmapping = []
     for numericval in numericvalues
-        append!(indexmapping, [findall(x -> x == numericval, additiontable)])
+        append!(indexmapping, [findall(x -> x == numericval, optable)])
     end
+    indexmapping
+end
+
+function op_probvec(op, x::Array, y::Array; numericvalues=numericvalues)
+    optableindexes = optablecalc(op, numericvalues=numericvalues)
 
     xints = x[end + 1 - length(numericvalues):end] # Requires numericvalues at end of allvalues
     yints = y[end + 1 - length(numericvalues):end]
-    additionprobs = xints .* yints'
+    probs = xints .* yints'
 
     numericprobs = []
-    for indexes in indexmapping
-        append!(numericprobs, sum(additionprobs[indexes]))
+    for indexes in optableindexes
+        append!(numericprobs, sum(probs[indexes]))
     end
-    # Non numeric values -- just add prob for each individually? You can't really add them so..
-    # prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
-    # a * b + a * (1-b) + b * (1-a) =>
-    # ab + a - ab + b - ab =>
-    # a + b - ab
+    #=
+    Non numeric values
+    prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
+    a * b + a * (1-b) + b * (1-a) =>
+    ab + a - ab + b - ab =>
+    a + b - ab
+    =#
     a = x[1:end - length(numericvalues)]
     b = y[1:end - length(numericvalues)]
     nonnumericprobs = a + b - a.*b 
@@ -140,7 +240,7 @@ function pop(state::VMState; blankstack=blankstack)
     Regular pop. remove prob vector from stack and return
     =#
     scaledreturnstack = state.stack .* state.stackpointer'
-    scaledremainingstack = state.stack .* (1.f0 .- state.stackpointer')
+    scaledremainingstack = state.stack .* (1 .- state.stackpointer')
     scaledblankstack = blankstack .* state.stackpointer'
     newstack = scaledremainingstack .+ scaledblankstack
     newstackpointer = circshift(state.stackpointer, 1)
@@ -162,9 +262,10 @@ function push(state::VMState, valvec::Array) # TODO add shape info?
 
     note reverses arg ordering of instr in order to match regular push!
     =#
+    @assert isapprox(sum(valvec), 1.0)
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'
-    stackscaled = state.stack .* (1.f0 .- newstackpointer')
+    stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
     newstate = VMState(
         state.instructionpointer,
@@ -178,9 +279,9 @@ end
 #= 
 SWAP Should swap top of stack with second to top of stack
 =#
-function instr_swap!(state::VMState)
+function instr_swap!(state::VMState)::VMState
     newstackpointer = circshift(state.stackpointer, -1)
-    newstack = state.stack .* (1.f0 .- state.stackpointer') .+ state.stack .* newstackpointer'
+    newstack = state.stack .* (1 .- state.stackpointer') .+ state.stack .* newstackpointer'
     newinstructionpointer = circshift(state.instructionpointer, 1)
 
     VMState(
@@ -193,7 +294,7 @@ end
 
 
     
-function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)
+function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)::VMState
     #= 
     GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
 
@@ -213,7 +314,7 @@ function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)
     jumpvalprobs = jumpvalprobs[length(nonnumericvalues) + 1:end]
     # TODO length(instructionpointer) compare and truncate
     jumpvalprobs = jumpvalprobs[1:end]
-    currentinstructionforward = (1.f0 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
+    currentinstructionforward = (1 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
     newinstructionpointer = currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
     newtop = circshift(firstpoptop, 1)
 
@@ -237,7 +338,7 @@ end
 # TODO normit after most instr (?)
 # TODO def normit for  all zero case
 
-function instr_pass!(state::VMState)
+function instr_pass!(state::VMState)::VMState
     newinstructionpointer = circshift(state.instructionpointer, 1)
     VMState(
         newinstructionpointer,
@@ -254,7 +355,7 @@ function instr_pushval!(val, state::VMState)::VMState
     newstackpointer = circshift(state.stackpointer, -1)
     newinstructionpointer = circshift(state.instructionpointer, 1)
     topscaled = valhotvec * newstackpointer'
-    stackscaled = state.stack .* (1.f0 .- newstackpointer')
+    stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
     VMState(
         newinstructionpointer,
