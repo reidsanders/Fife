@@ -144,17 +144,21 @@ function pop(state::VMState; blankstack=blankstack)
     #= 
     Regular pop. remove prob vector from stack and return
     =#
+    scaledreturnstack = state.stack .* state.stackpointer'
+    scaledremainingstack = state.stack .* (1.f0 .- state.stackpointer')
+    scaledblankstack = blankstack .* state.stackpointer'
+    newstack = scaledremainingstack .+ scaledblankstack
     newstackpointer = circshift(state.stackpointer, 1)
-    scaledstack = state.stack .* newstackpointer'
-    scaledblankstack = blankstack .* (1.f0 .- newstackpointer')
-    newstack = scaledstack .+ scaledblankstack
     newstate = VMState(
         state.instructionpointer,
         newstackpointer,
         newstack,
     )
     check_state_asserts(newstate)
-    (newstate, sum(scaledstack, dims=2))
+    (
+        newstate,
+        dropdims(sum(scaledreturnstack, dims=2), dims=2)
+    )
 end
 
 function push(state::VMState, valvec::Array) # TODO add shape info?

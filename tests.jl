@@ -387,9 +387,8 @@ function test_pop_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
     newval = valhot(2, allvalues)
     state = push(state, newval)
-    display(state.stack)
     state, popval = pop(state)
-    display(state.stack)
+    display(popval)
     @test newval == popval
 end
 
