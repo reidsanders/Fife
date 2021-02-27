@@ -41,17 +41,11 @@ function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
     instructionpointer = zeros(Float32, programlen)
     stackpointer = zeros(Float32, stackdepth)
-    #instructionpointer = rand(Float32, programlen, )
-    #stackpointer = rand(Float32, stackdepth, )
     stack = normit(stack)
     instructionpointer[1] = 1.0f0
     stackpointer[1] = 1.0f0
     state = VMState(instructionpointer |> device, stackpointer |> device, stack |> device)
-    #normit(state)
 end
-
-#allvalues = [i for i in 0:5]
-#instr_2 = partial(instr_pushval!, valhot(2, allvalues))
 instr_2 = partial(instr_pushval!, 2)
 
 blank_state = VMState(3, 4, allvalues)
@@ -323,7 +317,6 @@ function test_convert_continuous_to_discrete()
     )
     #@test contstate == newcontstate
     @test discretestate.instructionpointer == newdiscretestate.instructionpointer
-
     @test discretestate.stack == newdiscretestate.stack
 end
 
@@ -384,7 +377,7 @@ function test_program_conversion(program)
         allvalues,
     )
 
-    display(contstate.stack)
+    #display(contstate.stack)
     run_equality_test(contstate, newcontstate)
     run_equality_test(discretestate, newdiscretestate)
 end
@@ -421,7 +414,7 @@ function test_div_probvec()
     result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
     @test sum(result) == 1.0
     # sum -Inf/0 -Inf/1 Inf/-1 -1/0
-    @test result[1] == 0.05 * 0.23 + 0.05 * 0.33 + 0.28 * 0.13 + 0.1 * 0.23
+    @test result[1] == (0.05 * 0.23) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.23)
 end
 
 function test_pop_vmstate()

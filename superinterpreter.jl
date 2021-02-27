@@ -230,7 +230,8 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     b = y[1:end-length(numericvalues)]
     nonnumericprobs = a + b - a .* b
     @assert sum(xints) * sum(yints) ≈ sum(numericprobs)
-    @assert sum(numericprobs) ≈ 1 - sum(nonnumericprobs)
+    @test sum(xints) * sum(yints) ≈ sum(numericprobs)
+    @test sum(numericprobs) ≈ 1 - sum(nonnumericprobs)
     
     [nonnumericprobs; numericprobs]
 end
