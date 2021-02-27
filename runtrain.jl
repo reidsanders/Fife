@@ -4,8 +4,7 @@ include("main.jl")
 # Global initialization
 ######################################
 
-#=
-@with_kw mutable struct Args
+@with_kw mutable struct TrainArgs
     batchsize::Int = 32
     lr::Float32 = 2e-4
     epochs::Int = 50
@@ -16,22 +15,8 @@ include("main.jl")
     maxint::Int = 50
     usegpu::Bool = false
 end
-
-args = Args()
-
-# use_cuda = false
-if args.usegpu
-    global device = gpu
-    # @info "Training on GPU"
-else
-    global device = cpu
-    # @info "Training on CPU"
-end
-
-numericvalues = [i for i in 0:args.maxint]
-nonnumericvalues = ["blank"]
-allvalues = [nonnumericvalues; numericvalues]
-=#
+args = TrainArgs()
+include("parameters.jl")
 
 
 instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonnumericvalues)

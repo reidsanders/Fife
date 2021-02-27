@@ -409,12 +409,29 @@ function test_div_probvec()
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7 + 0.1 * 0.3, 0.9 * 0.3, 0.9 * 0.7]
 
+    x = [0.0, 0.15, 0.15, 0.7, 0.0]
+    y = [0.0, 0.16, 0.0, 0.56, 0.28]
+    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    @test sum(result) == 1.0
+
     x = [0.05, 0.1, 0.15, 0.2, 0.5]
     y = [0.03, 0.13, 0.23, 0.33, 0.28]
     result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
     @test sum(result) == 1.0
     # sum -Inf/0 -Inf/1 Inf/-1 -1/0
     @test result[1] == (0.05 * 0.23) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.23)
+    # sum -1/1 1/-1
+    @test result[2] == (0.1 * 0.33) + (0.2 * 0.13)
+
+    x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
+    y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
+    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    @test sum(result) == 1.0
+    @test result[1] == .1 + .05 - (.1 * .05)
+    # sum -Inf/0 -Inf/1 Inf/-1 -1/0
+    @test result[2] == (0.05 * 0.18) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.18)
+    # sum -1/1 1/-1
+    @test result[3] == (0.1 * 0.33) + (0.2 * 0.13)
 end
 
 function test_pop_vmstate()
