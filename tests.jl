@@ -470,6 +470,7 @@ end
 test_push_vmstate()
 test_pop_vmstate()
 test_add_probvec()
+test_div_probvec()
 test_instr_halt()
 test_instr_pushval()
 test_instr_pop()

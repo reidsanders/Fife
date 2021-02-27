@@ -229,6 +229,9 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     a = x[1:end-length(numericvalues)]
     b = y[1:end-length(numericvalues)]
     nonnumericprobs = a + b - a .* b
+    @assert sum(xints) * sum(yints) ≈ sum(numericprobs)
+    @assert sum(numericprobs) ≈ 1 - sum(nonnumericprobs)
+    
     [nonnumericprobs; numericprobs]
 end
 
@@ -258,6 +261,7 @@ Note reversed arg ordering of instr in order to match regular push!
 
 """
 function push(state::VMState, valvec::Array)::VMState
+    display(valvec)
     @assert isapprox(sum(valvec), 1.0)
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'
