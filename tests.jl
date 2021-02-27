@@ -383,6 +383,22 @@ function test_add_probvec()
     @test sum(result) == 1.0
 end
 
+function test_div_probvec()
+    x = [0.0, 0.0, 0.1, 0.9, 0.0]
+    y = [0.0, 0.0, 0.7, 0.3, 0.0]
+    result = op_probvec(/, x, y; numericvalues=[-Inf, 0, 1, Inf])
+    @test sum(result) == 1.0
+    @test result == [0.0, 0.0, 0.1*0.7 + .1*.3, 0.9*0.3, 0.9*.7]
+
+    x = [0.05, 0.1, 0.15, 0.2, 0.5]
+    y = [0.03, 0.13, 0.23, 0.33, 0.28]
+    result = op_probvec(/, x, y; numericvalues=[-Inf, -1, 0, 1, Inf])
+    @test sum(result) == 1.0
+    # sum -Inf/0 -Inf/1 Inf/-1 -1/0
+    @test result[1] == .05*.23 + .05*.33 + .28*.13 + .1*.23
+end
+
+
 function test_pop_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
     newval = valhot(2, allvalues)
