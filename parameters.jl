@@ -13,9 +13,8 @@ else
     @info "Training on CPU"
 end
 
-numericvalues = [[-Inf]; [i for i in -args.maxint:args.maxint]; [Inf]]
+numericvalues = [[-Inf]; [i for i = -args.maxint:args.maxint]; [Inf]]
 nonnumericvalues = ["blank"]
 allvalues = [nonnumericvalues; numericvalues]
 blanks = fill("blank", args.stackdepth)
 blankstack = onehotbatch(blanks, allvalues)
-

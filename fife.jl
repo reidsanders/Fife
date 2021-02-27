@@ -1,7 +1,15 @@
 using Pkg
 Pkg.activate(".")
 using Flux
-using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
+using Flux:
+    onehot,
+    onehotbatch,
+    onecold,
+    crossentropy,
+    logitcrossentropy,
+    glorot_uniform,
+    mse,
+    epseltype
 using Flux: Optimise
 using CUDA
 using Zygote
@@ -43,16 +51,22 @@ val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 #########################
 #     Conversion        #
 #########################
-function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues::Array=allvalues)::VMState
+function convert_discrete_to_continuous(
+    discrete::DiscreteVMState,
+    stackdepth = args.stackdepth,
+    programlen = args.programlen,
+    allvalues::Array = allvalues,
+)::VMState
     contstate = VMState(stackdepth, programlen, allvalues)
-    cont_instructionpointer = onehot(discrete.instructionpointer, [i for i in 1:programlen]) * 1.f0 
+    cont_instructionpointer =
+        onehot(discrete.instructionpointer, [i for i = 1:programlen]) * 1.0f0
     discretestack = Array{Any,1}(undef, stackdepth)
     fill!(discretestack, "blank")
 
-    for (i,x) in enumerate(discrete.stack)
+    for (i, x) in enumerate(discrete.stack)
         discretestack[i] = x
     end
-    cont_stack = onehotbatch(discretestack, allvalues) * 1.f0
+    cont_stack = onehotbatch(discretestack, allvalues) * 1.0f0
     state = VMState(
         cont_instructionpointer |> device,
         contstate.stackpointer |> device,
@@ -63,7 +77,12 @@ function convert_discrete_to_continuous(discrete::DiscreteVMState, stackdepth=ar
     # On the other hand super -> discrete is always an lossy process
 end
 
-function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stackdepth, programlen=args.programlen, allvalues=allvalues)::DiscreteVMState
+function convert_continuous_to_discrete(
+    contstate::VMState,
+    stackdepth = args.stackdepth,
+    programlen = args.programlen,
+    allvalues = allvalues,
+)::DiscreteVMState
     instructionpointer = onecold(contstate.instructionpointer)
     stackpointer = onecold(contstate.stackpointer)
     stack = [allvalues[i] for i in onecold(contstate.stack)]
@@ -79,5 +98,5 @@ function convert_continuous_to_discrete(contstate::VMState, stackdepth=args.stac
             push!(newstack, x)
         end
     end
-    DiscreteVMState(;instructionpointer = instructionpointer, stack = newstack) 
+    DiscreteVMState(; instructionpointer = instructionpointer, stack = newstack)
 end

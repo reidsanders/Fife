@@ -9,7 +9,15 @@ using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
 using DataStructures: Deque, DefaultDict
-using Flux: onehot, onehotbatch, onecold, crossentropy, logitcrossentropy, glorot_uniform, mse, epseltype
+using Flux:
+    onehot,
+    onehotbatch,
+    onecold,
+    crossentropy,
+    logitcrossentropy,
+    glorot_uniform,
+    mse,
+    epseltype
 using Test: @test
 
 include("utils.jl")
@@ -27,17 +35,17 @@ StackValueType = Real
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
     stack::Deque{StackValueType} = Deque{StackValueType}(args.stackdepth)
-    variables::DefaultDict{Int, Int} = DefaultDict{Int, Int}(0)
+    variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
     ishalted::Bool = false
 end
 
-function convert(::Type{Deque{T}}, x::Array{T,1}) where T
+function convert(::Type{Deque{T}}, x::Array{T,1}) where {T}
     y = Deque{T}()
     for el in x
         push!(y, el)
     end
     return y
-end    
+end
 
 function instr_pass!(state::DiscreteVMState)
     state.instructionpointer += 1
@@ -88,9 +96,9 @@ function instr_add!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = popfirst!(state.stack) 
-    y = popfirst!(state.stack) 
-    pushfirst!(state.stack, x+y |> coercetostackvaluepart)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
+    pushfirst!(state.stack, x + y |> coercetostackvaluepart)
 end
 
 function instr_sub!(state::DiscreteVMState)
@@ -98,9 +106,9 @@ function instr_sub!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = popfirst!(state.stack) 
-    y = popfirst!(state.stack) 
-    pushfirst!(state.stack, x-y |> coercetostackvaluepart)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
+    pushfirst!(state.stack, x - y |> coercetostackvaluepart)
 end
 
 function instr_mult!(state::DiscreteVMState)
@@ -108,9 +116,9 @@ function instr_mult!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = popfirst!(state.stack) 
-    y = popfirst!(state.stack) 
-    pushfirst!(state.stack, x*y |> coercetostackvaluepart)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
+    pushfirst!(state.stack, x * y |> coercetostackvaluepart)
 end
 
 function instr_div!(state::DiscreteVMState)
@@ -118,10 +126,10 @@ function instr_div!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = popfirst!(state.stack) 
-    y = popfirst!(state.stack) 
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
     # Floor or Round?
-    pushfirst!(state.stack, x/y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x / y |> coercetostackvaluepart)
 end
 
 function instr_not!(state::DiscreteVMState)
@@ -131,7 +139,7 @@ function instr_not!(state::DiscreteVMState)
     end
     # 0 is false, anything else is true.
     # but if true still set to 1
-    x = popfirst!(state.stack) 
+    x = popfirst!(state.stack)
     notx = 1 * (x != 0)
     pushfirst!(state.stack, notx)
 end
@@ -141,9 +149,9 @@ function instr_and!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = popfirst!(state.stack) 
-    y = popfirst!(state.stack) 
-    res = 1 * (x!=0 && y!=0)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
+    res = 1 * (x != 0 && y != 0)
     pushfirst!(state.stack, res)
 end
 
@@ -152,9 +160,9 @@ function instr_or!(state::DiscreteVMState)
     if length(state.stack) < 2
         return
     end
-    x = popfirst!(state.stack) 
-    y = popfirst!(state.stack) 
-    res = 1 * (x!=0 || y!=0)
+    x = popfirst!(state.stack)
+    y = popfirst!(state.stack)
+    res = 1 * (x != 0 || y != 0)
     pushfirst!(state.stack, res)
 end
 

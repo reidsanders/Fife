@@ -1,6 +1,6 @@
 module Utils
 function partial(f, a...)
-    ( (b...) -> f(a..., b...) )
+    ((b...) -> f(a..., b...))
 end
 
 function replacenans(x, replacement)
@@ -11,7 +11,7 @@ function replacenans(x, replacement)
     end
 end
 
-function setoutofboundstoinf(x::Number; min=-Inf, max=Inf)::Number
+function setoutofboundstoinf(x::Number; min = -Inf, max = Inf)::Number
     if x < min
         return -Inf
     elseif x > max

@@ -49,7 +49,7 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
 # Initialize
 
-trainmaskfull = repeat(trainmask', outer=(size(hiddenprogram)[1], 1)) |> device
+trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
 softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 applyfullmaskprog = partial(applyfullmask, trainmaskfull)
 applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
@@ -68,11 +68,12 @@ check_state_asserts(blank_state)
 
 target = run(blank_state, target_program, instructions, args.programlen)
 
-gradprogpart = partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
+gradprogpart =
+    partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
-opt = Descent(0.1) 
+opt = Descent(0.1)
 
 ######################################
 # Run program train
@@ -80,9 +81,10 @@ opt = Descent(0.1)
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(hiddenprogram, numexamples=10)
+@time trainloopsingle(hiddenprogram, numexamples = 10)
 
-second_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+second_loss =
+    test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
