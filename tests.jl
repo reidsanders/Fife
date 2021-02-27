@@ -424,7 +424,6 @@ function test_div_probvec()
     @test result[1] == 0.05 * 0.23 + 0.05 * 0.33 + 0.28 * 0.13 + 0.1 * 0.23
 end
 
-
 function test_pop_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
     newval = valhot(2, allvalues)

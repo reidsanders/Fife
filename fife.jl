@@ -24,9 +24,8 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: Deque#, DefaultDict
+using DataStructures: Deque
 
-#if ""!=PROGRAM_FILE && realpath(@__FILE__) == realpath(PROGRAM_FILE)
 @with_kw mutable struct Args
     stackdepth::Int = 10
     programlen::Int = 10

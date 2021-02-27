@@ -201,10 +201,24 @@ end
     indexmapping
 end
 
-function op_probvec(op, x::Array, y::Array; numericvalues = numericvalues)
+"""
+    op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
+
+Apply op to probability vector of mixed numeric and nonnumeric values. Returns new vector.
+
+Requires numericvalues at end of allvalues.
+
+For non numeric values:
+prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
+a * b + a * (1-b) + b * (1-a) =>
+ab + a - ab + b - ab =>
+a + b - ab
+
+"""
+function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
     optableindexes = optablecalc(op, numericvalues = numericvalues)
 
-    xints = x[end+1-length(numericvalues):end] # Requires numericvalues at end of allvalues
+    xints = x[end+1-length(numericvalues):end]
     yints = y[end+1-length(numericvalues):end]
     probs = xints .* yints'
 
@@ -212,23 +226,19 @@ function op_probvec(op, x::Array, y::Array; numericvalues = numericvalues)
     for indexes in optableindexes
         append!(numericprobs, sum(probs[indexes]))
     end
-    #=
-    Non numeric values
-    prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
-    a * b + a * (1-b) + b * (1-a) =>
-    ab + a - ab + b - ab =>
-    a + b - ab
-    =#
     a = x[1:end-length(numericvalues)]
     b = y[1:end-length(numericvalues)]
     nonnumericprobs = a + b - a .* b
     [nonnumericprobs; numericprobs]
 end
 
-function pop(state::VMState; blankstack = blankstack)
-    #= 
-    Regular pop. remove prob vector from stack and return
-    =#
+"""
+    pop(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
+
+Removes prob vector from stack. Returns the new state and top of stack.
+
+"""
+function pop(state::VMState; blankstack = blankstack)::Tuple{VMState, Array}
     scaledreturnstack = state.stack .* state.stackpointer'
     scaledremainingstack = state.stack .* (1 .- state.stackpointer')
     scaledblankstack = blankstack .* state.stackpointer'
@@ -239,12 +249,15 @@ function pop(state::VMState; blankstack = blankstack)
     (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
 end
 
-function push(state::VMState, valvec::Array) # TODO add shape info?
-    #= 
-    Regular push. push prob vector to stack based on current stackpointer prob
+"""
+    push(state::VMState, valvec::Array)::VMState
 
-    note reverses arg ordering of instr in order to match regular push!
-    =#
+Push prob vector to stack based on current stackpointer prob. Returns new state.
+
+Note reversed arg ordering of instr in order to match regular push!
+
+"""
+function push(state::VMState, valvec::Array)::VMState
     @assert isapprox(sum(valvec), 1.0)
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'
@@ -255,29 +268,26 @@ function push(state::VMState, valvec::Array) # TODO add shape info?
     newstate
 end
 
-#= 
-SWAP Should swap top of stack with second to top of stack
-=#
+"""
+    instr_swap!(state::VMState)::VMState
+
+Swap top of stack with second to top of stack. Returns new state.
+
+"""
 function instr_swap!(state::VMState)::VMState
     newstackpointer = circshift(state.stackpointer, -1)
     newstack = state.stack .* (1 .- state.stackpointer') .+ state.stack .* newstackpointer'
     newinstructionpointer = circshift(state.instructionpointer, 1)
-
     VMState(newinstructionpointer, newstackpointer, newstack)
-
 end
 
+"""
+    instr_gotoiffull!(zerovec::Array, nonnumericvalues, state::VMState)::VMState
 
+Pops top two elements of stack. If top is not zero, goto second element (or end, if greater than program len). Returns new state.
 
-function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)::VMState
-    #= 
-    GOTO takes top two elements of stack. If top is not zero, goto second element (or end, if greater than program len)
-
-    take stack. apply bitmask for 0 / mult by zero onehot (or select col by index, but slow on gpu)
-    1.- , then mult as prob vector. 
-    Apply top of stack prob? =#
-
-    # TODO don't recalc 
+"""
+function instr_gotoiffull!(zerovec::Array, nonnumericvalues, state::VMState)::VMState
     stackscaled = state.stack .* state.stackpointer'
     probofgoto = 1 .- sum(stackscaled .* zerovec, dims = 1)
     firstpoptop = circshift(state.stackpointer, 1)
@@ -308,18 +318,25 @@ function instr_gotoiffull!(zerovec, nonnumericvalues, state::VMState)::VMState
 
 end
 
-# TODO normit after most instr (?)
-# TODO def normit for  all zero case
+"""
+    instr_pass!(state::VMState)::VMState
 
+Do nothing but advance instruction pointer. Returns new state.
+
+"""
 function instr_pass!(state::VMState)::VMState
     newinstructionpointer = circshift(state.instructionpointer, 1)
     VMState(newinstructionpointer, state.stackpointer, state.stack)
 end
 
-function instr_pushval!(val, state::VMState)::VMState
-    # This seems really inefficient...
-    # Preallocate intermediate arrays? 1 intermediate state for each possible command, so not bad to allocate ahead of time
-    # sizehint
+
+"""
+    instr_pushval!(val::StackValueType, state::VMState)::VMState
+
+Push current val to stack. Returns new state.
+
+"""
+function instr_pushval!(val::StackValueType, state::VMState)::VMState
     valhotvec = valhot(val, allvalues) # pass allvalues, and partial? 
     newstackpointer = circshift(state.stackpointer, -1)
     newinstructionpointer = circshift(state.instructionpointer, 1)
@@ -435,7 +452,6 @@ end
 
 function create_examples(hiddenprogram, trainmaskfull; numexamples = 16)
     variablemasked = (1 .- trainmaskfull) .* hiddenprogram
-    # variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
     variablemaskeds = Array{Float32}(undef, (size(variablemasked)..., numexamples))
     for i = 1:numexamples
         newvariablemasked = copy(variablemasked)
@@ -498,7 +514,8 @@ function trainloop(variablemaskeds; batchsize = 4)
     end
 end
 
-function trainloopsingle(hiddenprogram; numexamples = 4) # TODO make true function without globals
+function trainloopsingle(hiddenprogram; numexamples = 4) 
+    # TODO make true function without globals
     @showprogress for i = 1:numexamples
         grads = gradprogpart(hiddenprogram)[end]
         grads = applyfullmasktohidden(grads)
@@ -506,7 +523,8 @@ function trainloopsingle(hiddenprogram; numexamples = 4) # TODO make true functi
     end
 end
 
-function trainbatch!(data; batchsize = 8) # TODO make true function without globals
+function trainbatch!(data; batchsize = 8) 
+    # TODO make true function without globals
     local training_loss
     grads = zeros(Float32, size(hiddenprogram[0]))
     @showprogress for d in data
