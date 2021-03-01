@@ -190,10 +190,7 @@ end
 
 @memoize function optablecalc(op; numericvalues = numericvalues)
     optable = op.(numericvalues, numericvalues')
-    optable = replacenans.(optable, 0.0)
-    optable =
-        setoutofboundstoinf.(optable; min = numericvalues[2], max = numericvalues[end-1])
-
+    optable = coercetostackvalue.(optable, min = numericvalues[2], max = numericvalues[end-1])
     indexmapping = []
     for numericval in numericvalues
         append!(indexmapping, [findall(x -> x == numericval, optable)])
@@ -229,7 +226,8 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     a = x[1:end-length(numericvalues)]
     b = y[1:end-length(numericvalues)]
     nonnumericprobs = a + b - a .* b
-    #@assert sum(xints) * sum(yints) ≈ sum(numericprobs)
+
+    @assert sum(xints) * sum(yints) ≈ sum(numericprobs)
     @test sum(xints) * sum(yints) ≈ sum(numericprobs)
     @test sum(numericprobs) ≈ 1 - sum(nonnumericprobs)
     
@@ -262,7 +260,6 @@ Note reversed arg ordering of instr in order to match regular push!
 
 """
 function push(state::VMState, valvec::Array)::VMState
-    display(valvec)
     @assert isapprox(sum(valvec), 1.0)
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'

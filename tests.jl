@@ -325,15 +325,15 @@ end
 
 function test_all_single_instr()
     instructions = [
-        instr_pass!,
-        # instr_halt!,
-        # instr_pushval!,
-        # instr_pop!,
-        instr_dup!,
-        #instr_swap!,
-        instr_add!,
-        instr_sub!,
-        instr_mult!,
+        # instr_pass!,
+        # # instr_halt!,
+        # # instr_pushval!,
+        # # instr_pop!,
+        # instr_dup!,
+        # #instr_swap!,
+        # instr_add!,
+        # instr_sub!,
+        # instr_mult!,
         instr_div!,
         # instr_not!,
         # instr_and!,
@@ -377,7 +377,6 @@ function test_program_conversion(program)
         allvalues,
     )
 
-    #display(contstate.stack)
     run_equality_test(contstate, newcontstate)
     run_equality_test(discretestate, newdiscretestate)
 end
@@ -432,6 +431,12 @@ function test_div_probvec()
     @test result[2] == (0.05 * 0.18) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.18)
     # sum -1/1 1/-1
     @test result[3] == (0.1 * 0.33) + (0.2 * 0.13)
+
+    x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    @test sum(result) == 1.0
+    @test result[1] == 1.0
 end
 
 function test_pop_vmstate()
@@ -439,7 +444,6 @@ function test_pop_vmstate()
     newval = valhot(2, allvalues)
     state = push(state, newval)
     state, popval = pop(state)
-    display(popval)
     @test newval == popval
 end
 
@@ -477,6 +481,7 @@ function ==(x::VMState, y::VMState)
         x.stack == y.stack
 end
 
+test_all_single_instr()
 test_push_vmstate()
 test_pop_vmstate()
 test_add_probvec()
@@ -501,4 +506,3 @@ test_instr_store()
 test_instr_load()
 test_convert_discrete_to_continuous()
 test_convert_continuous_to_discrete()
-test_all_single_instr()
