@@ -325,15 +325,15 @@ end
 
 function test_all_single_instr()
     instructions = [
-        # instr_pass!,
-        # # instr_halt!,
-        # # instr_pushval!,
-        # # instr_pop!,
-        # instr_dup!,
-        # #instr_swap!,
-        # instr_add!,
-        # instr_sub!,
-        # instr_mult!,
+        instr_pass!,
+        # instr_halt!,
+        # instr_pushval!,
+        # instr_pop!,
+        instr_dup!,
+        #instr_swap!,
+        instr_add!,
+        instr_sub!,
+        instr_mult!,
         instr_div!,
         # instr_not!,
         # instr_and!,
@@ -481,7 +481,6 @@ function ==(x::VMState, y::VMState)
         x.stack == y.stack
 end
 
-test_all_single_instr()
 test_push_vmstate()
 test_pop_vmstate()
 test_add_probvec()
@@ -506,3 +505,4 @@ test_instr_store()
 test_instr_load()
 test_convert_discrete_to_continuous()
 test_convert_continuous_to_discrete()
+test_all_single_instr()
