@@ -71,7 +71,7 @@ function convert_discrete_to_continuous(
         contstate.stackpointer |> device,
         cont_stack |> device,
     )
-    state
+    return state
     # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
     # On the other hand super -> discrete is always an lossy process
 end
@@ -98,5 +98,5 @@ function convert_continuous_to_discrete(
             push!(newstack, x)
         end
     end
-    DiscreteVMState(; instructionpointer = instructionpointer, stack = newstack)
+    return DiscreteVMState(; instructionpointer = instructionpointer, stack = newstack)
 end

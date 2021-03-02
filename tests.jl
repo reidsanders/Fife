@@ -44,7 +44,8 @@ function init_random_state(stackdepth, programlen, allvalues)
     stack = normit(stack)
     instructionpointer[1] = 1.0f0
     stackpointer[1] = 1.0f0
-    state = VMState(instructionpointer |> device, stackpointer |> device, stack |> device)
+    return state =
+        VMState(instructionpointer |> device, stackpointer |> device, stack |> device)
 end
 instr_2 = partial(instr_pushval!, 2)
 
@@ -377,15 +378,15 @@ function test_program_conversion(program)
         allvalues,
     )
 
+
     run_equality_asserts(contstate, newcontstate)
     run_equality_asserts(discretestate, newdiscretestate)
     run_equality_test(contstate, newcontstate)
-    run_equality_test(discretestate, newdiscretestate)
+    return run_equality_test(discretestate, newdiscretestate)
 end
 
 function test_add_probvec()
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
-    y = [0.0, 0.0, 0.7, 0.3, 0.0]
     result = op_probvec(+, x, y; numericvalues = [-Inf, 0, 1, Inf])
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7, 0.1 * 0.3 + 0.7 * 0.9, 0.3 * 0.9]
@@ -425,15 +426,15 @@ function test_div_probvec()
     @test result[2] == (0.1 * 0.33) + (0.2 * 0.13)
 
     x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
+    x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
     y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
     result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
     @test sum(result) == 1.0
-    @test result[1] == .1 + .05 - (.1 * .05)
+    @test result[1] == 0.1 + 0.05 - (0.1 * 0.05)
     # sum -Inf/0 -Inf/1 Inf/-1 -1/0
     @test result[2] == (0.05 * 0.18) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.18)
     # sum -1/1 1/-1
     @test result[3] == (0.1 * 0.33) + (0.2 * 0.13)
-
     x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
@@ -467,38 +468,43 @@ function run_equality_test(x::VMState, y::VMState)
     @test x.instructionpointer == y.instructionpointer
     @test x.stackpointer == y.stackpointer
     @test x.stack == y.stack
+    @test x.stack == y.stack
 end
 
 function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
-    @assert x.instructionpointer == y.instructionpointer (x.instructionpointer == y.instructionpointer)
+    @assert x.instructionpointer == y.instructionpointer (
+        x.instructionpointer == y.instructionpointer
+    )
     @assert x.variables == y.variables (x.variables == y.variables)
     @assert x.ishalted == y.ishalted (x.ishalted == y.ishalted)
     @assert x.stack == y.stack (x.stack == y.stack)
 end
 
 function run_equality_asserts(x::VMState, y::VMState)
-    @assert x.instructionpointer == y.instructionpointer (x.instructionpointer, y.instructionpointer)
+    @assert x.instructionpointer == y.instructionpointer (
+        x.instructionpointer,
+        y.instructionpointer,
+    )
     @assert x.stackpointer == y.stackpointer (x.stackpointer, y.stackpointer)
     @assert x.stack == y.stack "Stacks not equal:\n $(x.stack)\n $(y.stack)"
 end
 
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
-    x.instructionpointer == y.instructionpointer &&
-        x.stack == y.stack &&
-        x.variables == y.variables &&
-        x.ishalted == y.ishalted
+    return x.instructionpointer == y.instructionpointer &&
+               x.stack == y.stack &&
+               x.variables == y.variables &&
+               x.ishalted == y.ishalted
 end
 
 function ==(x::VMState, y::VMState)
-    x.instructionpointer == y.instructionpointer &&
-        x.stackpointer == y.stackpointer &&
-        x.stack == y.stack
+    return x.instructionpointer == y.instructionpointer &&
+               x.stackpointer == y.stackpointer &&
+               x.stack == y.stack
 end
 
 test_push_vmstate()
 test_pop_vmstate()
-test_add_probvec()
 test_div_probvec()
 test_instr_halt()
 test_instr_pushval()

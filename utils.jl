@@ -1,6 +1,6 @@
 module Utils
 function partial(f, a...)
-    ((b...) -> f(a..., b...))
+    return ((b...) -> f(a..., b...))
 end
 
 function replacenans(x, replacement)
@@ -25,13 +25,13 @@ function roundnoninf(x::Number)
     if x in [Inf, -Inf]
         return x
     end
-    round(Int, x)
+    return round(Int, x)
 end
 
 function coercetostackvalue(x::Number; min = -Inf, max = Inf)
     x = replacenans(x, 0)
     x = setoutofboundstoinf(x; min = min, max = max)
-    roundnoninf(x)
+    return roundnoninf(x)
 end
 
 export partial, replacenans, setoutofboundstoinf, roundnoninf, coercetostackvalue
