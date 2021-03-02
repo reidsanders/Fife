@@ -156,13 +156,13 @@ function test_instr_not()
     instr_pushval!(3, state)
     instr_not!(state)
     @test state.instructionpointer == 3
-    @test first(state.stack) == 1
+    @test first(state.stack) == 0
     # test false
     state = DiscreteVMState()
     instr_pushval!(0, state)
     instr_not!(state)
     @test state.instructionpointer == 3
-    @test first(state.stack) == 0
+    @test first(state.stack) == 1
 end
 
 function test_instr_and()
@@ -330,12 +330,12 @@ function test_all_single_instr()
         # instr_pushval!,
         # instr_pop!,
         instr_dup!,
-        #instr_swap!,
+        instr_swap!,
         instr_add!,
         instr_sub!,
         instr_mult!,
         instr_div!,
-        # instr_not!,
+        instr_not!,
         # instr_and!,
         # instr_goto!,
         # instr_gotoif!,
@@ -377,6 +377,8 @@ function test_program_conversion(program)
         allvalues,
     )
 
+    run_equality_asserts(contstate, newcontstate)
+    run_equality_asserts(discretestate, newdiscretestate)
     run_equality_test(contstate, newcontstate)
     run_equality_test(discretestate, newdiscretestate)
 end
@@ -465,6 +467,19 @@ function run_equality_test(x::VMState, y::VMState)
     @test x.instructionpointer == y.instructionpointer
     @test x.stackpointer == y.stackpointer
     @test x.stack == y.stack
+end
+
+function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
+    @assert x.instructionpointer == y.instructionpointer (x.instructionpointer == y.instructionpointer)
+    @assert x.variables == y.variables (x.variables == y.variables)
+    @assert x.ishalted == y.ishalted (x.ishalted == y.ishalted)
+    @assert x.stack == y.stack (x.stack == y.stack)
+end
+
+function run_equality_asserts(x::VMState, y::VMState)
+    @assert x.instructionpointer == y.instructionpointer (x.instructionpointer, y.instructionpointer)
+    @assert x.stackpointer == y.stackpointer (x.stackpointer, y.stackpointer)
+    @assert x.stack == y.stack "Stacks not equal:\n $(x.stack)\n $(y.stack)"
 end
 
 

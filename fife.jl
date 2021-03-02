@@ -94,6 +94,7 @@ function convert_continuous_to_discrete(
         if x == "blank"
             break
         else
+            # TODO convert to int ?
             push!(newstack, x)
         end
     end

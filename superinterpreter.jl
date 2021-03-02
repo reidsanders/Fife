@@ -24,7 +24,6 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: Deque
 using Memoize
 
 include("utils.jl")
@@ -181,106 +180,29 @@ Pop value from stack, take not, then push result to stack. Return new state.
 function instr_not!(state::VMState)::VMState
     state, x = pop(state)
 
-    resultvec = op_probvec(!, x)
+    resultvec = op_probvec(a -> float(a == 0), x)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    VMState(newinstructionpointer, newstate.stackpointer, newstate.stack)
-end
-
-
-@memoize function optablecalc(op; numericvalues = numericvalues)
-    optable = op.(numericvalues, numericvalues')
-    optable = coercetostackvalue.(optable, min = numericvalues[2], max = numericvalues[end-1])
-    indexmapping = []
-    for numericval in numericvalues
-        append!(indexmapping, [findall(x -> x == numericval, optable)])
-    end
-    indexmapping
-end
-
-"""
-    op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
-
-Apply op to probability vector of mixed numeric and nonnumeric values. Returns new vector.
-
-Requires numericvalues at end of allvalues.
-
-For non numeric values:
-prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
-a * b + a * (1-b) + b * (1-a) =>
-ab + a - ab + b - ab =>
-a + b - ab
-
-"""
-function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
-    optableindexes = optablecalc(op, numericvalues = numericvalues)
-
-    xints = x[end+1-length(numericvalues):end]
-    yints = y[end+1-length(numericvalues):end]
-    probs = xints .* yints'
-
-    numericprobs = []
-    for indexes in optableindexes
-        append!(numericprobs, sum(probs[indexes]))
-    end
-    a = x[1:end-length(numericvalues)]
-    b = y[1:end-length(numericvalues)]
-    nonnumericprobs = a + b - a .* b
-
-    @assert sum(xints) * sum(yints) ≈ sum(numericprobs)
-    @test sum(xints) * sum(yints) ≈ sum(numericprobs)
-    @test sum(numericprobs) ≈ 1 - sum(nonnumericprobs)
-    
-    [nonnumericprobs; numericprobs]
-end
-
-"""
-    pop(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
-
-Removes prob vector from stack. Returns the new state and top of stack.
-
-"""
-function pop(state::VMState; blankstack = blankstack)::Tuple{VMState, Array}
-    scaledreturnstack = state.stack .* state.stackpointer'
-    scaledremainingstack = state.stack .* (1 .- state.stackpointer')
-    scaledblankstack = blankstack .* state.stackpointer'
-    newstack = scaledremainingstack .+ scaledblankstack
-    newstackpointer = circshift(state.stackpointer, 1)
-    newstate = VMState(state.instructionpointer, newstackpointer, newstack)
-    check_state_asserts(newstate)
-    (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
-end
-
-"""
-    push(state::VMState, valvec::Array)::VMState
-
-Push prob vector to stack based on current stackpointer prob. Returns new state.
-
-Note reversed arg ordering of instr in order to match regular push!
-
-"""
-function push(state::VMState, valvec::Array)::VMState
-    @assert isapprox(sum(valvec), 1.0)
-    newstackpointer = circshift(state.stackpointer, -1)
-    topscaled = valvec * newstackpointer'
-    stackscaled = state.stack .* (1 .- newstackpointer')
-    newstack = stackscaled .+ topscaled
-    newstate = VMState(state.instructionpointer, newstackpointer, newstack)
+    newstate = VMState(newinstructionpointer, newstate.stackpointer, newstate.stack)
     check_state_asserts(newstate)
     newstate
+
 end
 
 """
     instr_swap!(state::VMState)::VMState
 
-Swap top of stack with second to top of stack. Returns new state.
+Swap top two values of stack. Returns new state.
 
 """
 function instr_swap!(state::VMState)::VMState
-    newstackpointer = circshift(state.stackpointer, -1)
-    newstack = state.stack .* (1 .- state.stackpointer') .+ state.stack .* newstackpointer'
+    state, x = pop(state)
+    state, y = pop(state)
+
+    state = push(state, x)
+    state = push(state, y)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    VMState(newinstructionpointer, newstackpointer, newstack)
+    VMState(newinstructionpointer, state.stackpointer, state.stack)
 end
 
 """
@@ -351,6 +273,136 @@ end
 ###############################
 # Utility functions 
 ###############################
+"""
+    optablepair(op; [numericvalues = numericvalues])
+
+Create table of all combinations of applying op to numericvalues. 
+Find optable indexes that correspond to given value in numericvalues. Return this mapping.
+
+"""
+@memoize function optablepair(op; numericvalues = numericvalues)
+    optable = op.(numericvalues, numericvalues')
+    optable = coercetostackvalue.(optable, min = numericvalues[2], max = numericvalues[end-1])
+    indexmapping = []
+    for numericval in numericvalues
+        append!(indexmapping, [findall(x -> x == numericval, optable)])
+    end
+    indexmapping
+end
+
+"""
+    optablesingle(op; [numericvalues = numericvalues])
+
+Create table of all combinations of applying op to numericvalues. 
+Find optable indexes that correspond to given value in numericvalues. Return this mapping.
+
+"""
+@memoize function optablesingle(op; numericvalues = numericvalues)
+    optable = op.(numericvalues)
+    optable = coercetostackvalue.(optable, min = numericvalues[2], max = numericvalues[end-1])
+    indexmapping = []
+    for numericval in numericvalues
+        append!(indexmapping, [findall(x -> x == numericval, optable)])
+    end
+    indexmapping
+end
+
+"""
+    op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array
+
+Apply numeric op to probability vector of mixed numeric and nonnumeric values. Returns new vector.
+
+Requires numericvalues at end of allvalues.
+
+"""
+function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array
+    optableindexes = optablesingle(op, numericvalues = numericvalues)
+
+    xnumerics = x[end+1-length(numericvalues):end]
+
+    numericprobs = []
+    for indexes in optableindexes
+        append!(numericprobs, sum(xnumerics[indexes]))
+    end
+    nonnumericprobs = x[1:end-length(numericvalues)]
+    
+
+    @assert sum(xnumerics) ≈ sum(numericprobs)  "Numeric probabilities are conserved"
+    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
+    
+    [nonnumericprobs; numericprobs]
+end
+
+"""
+    op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
+
+Apply numeric op to probability vector of mixed numeric and nonnumeric values. Returns new vector.
+
+Requires numericvalues at end of allvalues.
+
+For non numeric values:
+prob a is blank and b is blank + prob a is blank and b is not blank + prob b is blank and a is not blank?
+a * b + a * (1-b) + b * (1-a) =>
+ab + a - ab + b - ab =>
+a + b - ab
+
+"""
+function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
+    optableindexes = optablepair(op, numericvalues = numericvalues)
+
+    xnumerics = x[end+1-length(numericvalues):end]
+    ynumerics = y[end+1-length(numericvalues):end]
+    probs = xnumerics .* ynumerics'
+
+    numericprobs = []
+    for indexes in optableindexes
+        append!(numericprobs, sum(probs[indexes]))
+    end
+    a = x[1:end-length(numericvalues)]
+    b = y[1:end-length(numericvalues)]
+    nonnumericprobs = a + b - a .* b
+
+    @assert sum(xnumerics) * sum(ynumerics) ≈ sum(numericprobs)  "Numeric probabilities are conserved"
+    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
+    
+    [nonnumericprobs; numericprobs]
+end
+
+"""
+    pop(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
+
+Removes prob vector from stack. Returns the new state and top of stack.
+
+"""
+function pop(state::VMState; blankstack = blankstack)::Tuple{VMState, Array}
+    scaledreturnstack = state.stack .* state.stackpointer'
+    scaledremainingstack = state.stack .* (1 .- state.stackpointer')
+    scaledblankstack = blankstack .* state.stackpointer'
+    newstack = scaledremainingstack .+ scaledblankstack
+    newstackpointer = circshift(state.stackpointer, 1)
+    newstate = VMState(state.instructionpointer, newstackpointer, newstack)
+    check_state_asserts(newstate)
+    (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
+end
+
+"""
+    push(state::VMState, valvec::Array)::VMState
+
+Push prob vector to stack based on current stackpointer prob. Returns new state.
+
+Note reversed arg ordering of instr in order to match regular push!
+
+"""
+function push(state::VMState, valvec::Array)::VMState
+    @assert isapprox(sum(valvec), 1.0)
+    newstackpointer = circshift(state.stackpointer, -1)
+    topscaled = valvec * newstackpointer'
+    stackscaled = state.stack .* (1 .- newstackpointer')
+    newstack = stackscaled .+ topscaled
+    newstate = VMState(state.instructionpointer, newstackpointer, newstack)
+    check_state_asserts(newstate)
+    newstate
+end
 
 function valhot(val, allvalues)
     [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device

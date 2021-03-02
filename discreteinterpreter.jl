@@ -140,7 +140,7 @@ function instr_not!(state::DiscreteVMState)
     # 0 is false, anything else is true.
     # but if true still set to 1
     x = popfirst!(state.stack)
-    notx = 1 * (x != 0)
+    notx = 1 * (x == 0)
     pushfirst!(state.stack, notx)
 end
 
