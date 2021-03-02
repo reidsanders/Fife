@@ -206,22 +206,28 @@ function instr_swap!(state::VMState)::VMState
 end
 
 """
-    instr_gotoiffull!(zerovec::Array, nonnumericvalues, state::VMState)::VMState
+    instr_gotoif!(state::VMState; [zerovec::Array = valhot(0, allvalues), nonnumericvalues=nonnumericvalues])::VMState
 
 Pops top two elements of stack. If top is not zero, goto second element (or end, if greater than program len). Returns new state.
 
 """
-function instr_gotoiffull!(zerovec::Array, nonnumericvalues, state::VMState)::VMState
-    stackscaled = state.stack .* state.stackpointer'
-    probofgoto = 1 .- sum(stackscaled .* zerovec, dims = 1)
-    firstpoptop = circshift(state.stackpointer, 1)
-    secondstackscaled = state.stack .* firstpoptop'
-    jumpvalprobs = sum(secondstackscaled, dims = 2)
+function instr_gotoif!(
+    state::VMState;
+    zerohotvec::Array = onehot(0, allvalues),
+    numericvalues = numericvalues,
+)::VMState
+    state, conditional = pop(state)
+    state, destination = pop(state)
+
+    
+    probofgoto = 1 .- (conditional .* zerohotvec)
 
     # Assume ints start at 0 should skip 0?
     # Constraint -- length(numericvalues) > length of current instruction ?
-    jumpvalprobs = jumpvalprobs[length(nonnumericvalues)+1:end]
+    beginprobs = y[end + 1 - length(numericvalues):end]
+    jumpvalprobs = y[end + 1 - length(numericvalues):end]
     # TODO length(instructionpointer) compare and truncate
+    # Set inf to end of program, -int to beginning etc
     jumpvalprobs = jumpvalprobs[1:end]
     currentinstructionforward =
         (1 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
@@ -229,18 +235,10 @@ function instr_gotoiffull!(zerovec::Array, nonnumericvalues, state::VMState)::VM
         currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
     newtop = circshift(firstpoptop, 1)
 
-    # TODO Stack needs to be shifted too
-
-    # jumpvalprobs[:end]
-    # TODO set blank / zero to zero? zero goes to first? greater than length(program) goes to end?
-    # for each value 0-max in stack, 
-    # (??sum diagonal of equivalent jump locations. eg 0 at x is equivalent to 1 at x+1 on stack)
-    # TODO if not int value, set to circshift 1 forward?
-    # TODO add jumpvalprobs to instructionpointer? Then normalize?
-
     VMState(newinstructionpointer, newtop, state.stack)
 
 end
+
 
 """
     instr_pass!(state::VMState)::VMState

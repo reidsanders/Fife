@@ -19,7 +19,7 @@ args = TrainArgs()
 include("parameters.jl")
 
 
-instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonnumericvalues)
+#instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonnumericvalues)
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
