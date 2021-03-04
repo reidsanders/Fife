@@ -27,7 +27,7 @@ include("fife.jl")
     batchsize::Int = 2
     lr::Float32 = 2e-4
     epochs::Int = 2
-    stackdepth::Int = 5
+    stackdepth::Int = 8
     programlen::Int = 7
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
@@ -324,66 +324,6 @@ end
 # TODO make instruction map cont->discrete
 # run different combinations and compare.
 
-function test_all_single_instr()
-    instructions = [
-        instr_pass!,
-        # instr_halt!,
-        # instr_pushval!,
-        # instr_pop!,
-        instr_dup!,
-        instr_swap!,
-        instr_add!,
-        instr_sub!,
-        instr_mult!,
-        instr_div!,
-        instr_not!,
-        # instr_and!,
-        # instr_goto!,
-        # instr_gotoif!,
-        # instr_iseq!,
-        # instr_isgt!,
-        # instr_isge!,
-        # instr_store!,
-        # instr_load!
-    ]
-    for instr in instructions
-        test_program_conversion([instr])
-    end
-end
-
-function test_program_conversion(program)
-    # test true
-    contstate = VMState(args.stackdepth, args.programlen, allvalues)
-    discretestate = DiscreteVMState()
-    # Put in some misc val (TODO randomize?)
-    for val in [1, 3, 4, 2]
-        contstate = instr_pushval!(val, contstate)
-        instr_pushval!(val, discretestate)
-    end
-    for instr in program
-        contstate = instr(contstate)
-        instr(discretestate)
-    end
-    contstate = normalize_stackpointer(contstate)
-    newdiscretestate = convert_continuous_to_discrete(
-        contstate,
-        args.stackdepth,
-        args.programlen,
-        allvalues,
-    )
-    newcontstate = convert_discrete_to_continuous(
-        discretestate,
-        args.stackdepth,
-        args.programlen,
-        allvalues,
-    )
-
-
-    run_equality_asserts(contstate, newcontstate)
-    run_equality_asserts(discretestate, newdiscretestate)
-    run_equality_test(contstate, newcontstate)
-    return run_equality_test(discretestate, newdiscretestate)
-end
 
 function test_add_probvec()
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
@@ -472,12 +412,10 @@ function run_equality_test(x::VMState, y::VMState)
 end
 
 function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
-    @assert x.instructionpointer == y.instructionpointer (
-        x.instructionpointer == y.instructionpointer
-    )
-    @assert x.variables == y.variables (x.variables == y.variables)
-    @assert x.ishalted == y.ishalted (x.ishalted == y.ishalted)
-    @assert x.stack == y.stack (x.stack == y.stack)
+    @assert x.instructionpointer == y.instructionpointer "Instructionpointer Not Equal:\n $(x.instructionpointer)\n $(y.instructionpointer)"
+    @assert x.variables == y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
+    @assert x.ishalted == y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
+    @assert x.stack == y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"
 end
 
 function run_equality_asserts(x::VMState, y::VMState)
@@ -492,15 +430,75 @@ end
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
     return x.instructionpointer == y.instructionpointer &&
-               x.stack == y.stack &&
-               x.variables == y.variables &&
-               x.ishalted == y.ishalted
+           x.stack == y.stack &&
+           x.variables == y.variables &&
+           x.ishalted == y.ishalted
 end
 
 function ==(x::VMState, y::VMState)
     return x.instructionpointer == y.instructionpointer &&
-               x.stackpointer == y.stackpointer &&
-               x.stack == y.stack
+           x.stackpointer == y.stackpointer &&
+           x.stack == y.stack
+end
+
+function test_all_single_instr()
+    instructions = [
+        instr_pass!,
+        # instr_halt!,
+        # instr_pushval!,
+        # instr_pop!,
+        instr_dup!,
+        instr_swap!,
+        instr_add!,
+        instr_sub!,
+        instr_mult!,
+        instr_div!,
+        instr_not!,
+        # instr_and!,
+        # instr_goto!,
+        instr_gotoif!,
+        # instr_iseq!,
+        # instr_isgt!,
+        # instr_isge!,
+        # instr_store!,
+        # instr_load!
+    ]
+    for instr in instructions
+        test_program_conversion([instr])
+    end
+end
+
+function test_program_conversion(program)
+    # test true
+    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    discretestate = DiscreteVMState()
+    # Put in some misc val (TODO randomize?)
+    for val in [1, 3, 2, 4]
+        contstate = instr_pushval!(val, contstate)
+        instr_pushval!(val, discretestate)
+    end
+    for instr in program
+        contstate = instr(contstate)
+        instr(discretestate)
+    end
+    contstate = normalize_stackpointer(contstate)
+    newdiscretestate = convert_continuous_to_discrete(
+        contstate,
+        args.stackdepth,
+        args.programlen,
+        allvalues,
+    )
+    newcontstate = convert_discrete_to_continuous(
+        discretestate,
+        args.stackdepth,
+        args.programlen,
+        allvalues,
+    )
+
+    run_equality_asserts(contstate, newcontstate)
+    run_equality_asserts(discretestate, newdiscretestate)
+    run_equality_test(contstate, newcontstate)
+    return run_equality_test(discretestate, newdiscretestate)
 end
 
 test_push_vmstate()

@@ -1,4 +1,4 @@
-include("main.jl")
+include("fife.jl")
 
 ######################################
 # Global initialization
@@ -46,8 +46,8 @@ hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
 
 
-blank_state = init_state(args.stackdepth, args.programlen, allvalues)
-blank_state2 = init_state(args.stackdepth, args.programlen, allvalues)
+blank_state = VMState(args.stackdepth, args.programlen, allvalues)
+blank_state2 = VMState(args.stackdepth, args.programlen, allvalues)
 
 check_state_asserts(blank_state)
 

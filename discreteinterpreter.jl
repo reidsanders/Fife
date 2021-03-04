@@ -8,16 +8,7 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: Deque, DefaultDict
-using Flux:
-    onehot,
-    onehotbatch,
-    onecold,
-    crossentropy,
-    logitcrossentropy,
-    glorot_uniform,
-    mse,
-    epseltype
+using DataStructures: CircularDeque, Deque, DefaultDict
 using Test: @test
 
 include("utils.jl")
@@ -37,6 +28,8 @@ StackValueType = Real
     stack::Deque{StackValueType} = Deque{StackValueType}(args.stackdepth)
     variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
     ishalted::Bool = false
+    programlen::Int = args.programlen
+    stackdepth::Int = args.stackdepth
 end
 
 function convert(::Type{Deque{T}}, x::Array{T,1}) where {T}
@@ -45,6 +38,23 @@ function convert(::Type{Deque{T}}, x::Array{T,1}) where {T}
         push!(y, el)
     end
     return y
+end
+
+"""
+    setinstructionpointer(state::DiscreteVMState, newinstructionpointer)
+
+Set instruction pointer respecting program length. 
+If before the beginning of program set to 1, if after end set to end, and set ishalted to true
+"""
+function setinstructionpointer!(state::DiscreteVMState, targetinstructionpointer)
+    if targetinstructionpointer < 1
+        state.instructionpointer = 1
+    elseif targetinstructionpointer > state.programlen
+        state.instructionpointer = state.programlen
+        state.ishalted = true
+    else
+        state.instructionpointer = targetinstructionpointer
+    end
 end
 
 function instr_pass!(state::DiscreteVMState)
@@ -186,6 +196,7 @@ function instr_gotoif!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
     if x != 0 && y > 0
+        # TODO clamp to valid length
         state.instructionpointer = y
     end
 end

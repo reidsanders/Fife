@@ -213,29 +213,33 @@ Pops top two elements of stack. If top is not zero, goto second element (or end,
 """
 function instr_gotoif!(
     state::VMState;
-    zerohotvec::Array = onehot(0, allvalues),
+    allvalues = allvalues,
     numericvalues = numericvalues,
 )::VMState
     state, conditional = pop(state)
     state, destination = pop(state)
 
+    # Beginning of vector based approach to allow gpu (might be a big pain)
+    # zerohotvec = onehot(0, allvalues)
+    # probofgoto = 1 - sum((conditional .* zerohotvec))
 
-    probofgoto = 1 .- (conditional .* zerohotvec)
+    maxint = round(Int, (length(numericvalues) - 1) / 2)
 
-    # Assume ints start at 0 should skip 0?
-    # Constraint -- length(numericvalues) > length of current instruction ?
-    beginprobs = y[end+1-length(numericvalues):end]
-    jumpvalprobs = y[end+1-length(numericvalues):end]
-    # TODO length(instructionpointer) compare and truncate
-    # Set inf to end of program, -int to beginning etc
-    jumpvalprobs = jumpvalprobs[1:end]
+    zeroindex = length(allvalues) - maxint
+    neginfindex = zeroindex - maxint
+    maxinstrindex = zeroindex + length(state.instructionpointer)
+
+    probofgoto = 1 - conditional[zeroindex]
+    gotobeginprob = sum(destination[neginfindex: zeroindex + 1])
+    jumpvalprobs = destination[zeroindex + 1 : maxinstrindex]
+    gotoendprob = sum(destination[maxinstrindex : end])
+
     currentinstructionforward =
-        (1 - sum(jumpvalprobs)) * circshift(state.instructionpointer, 1)
+        (1 - probofgoto) * circshift(state.instructionpointer, 1)
     newinstructionpointer =
-        currentinstructionforward .+ jumpvalprobs[1:length(state.instructionpointer)]
-    newtop = circshift(firstpoptop, 1)
+        currentinstructionforward .+ probofgoto * jumpvalprobs
 
-    return VMState(newinstructionpointer, newtop, state.stack)
+    return VMState(newinstructionpointer, state.stackpointer, state.stack)
 
 end
 
