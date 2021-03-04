@@ -298,7 +298,7 @@ function test_convert_discrete_to_continuous()
     state = DiscreteVMState()
     #instr_pushval!(6,state)
     newcontstate =
-        convert_discrete_to_continuous(state, args.stackdepth, args.programlen, allvalues)
+        convert_discrete_to_continuous(state, allvalues)
     #@test contstate == newcontstate
     @test contstate.instructionpointer == newcontstate.instructionpointer
     @test contstate.stackpointer == newcontstate.stackpointer
@@ -312,12 +312,12 @@ function test_convert_continuous_to_discrete()
     #instr_pushval!(6,state)
     newdiscretestate = convert_continuous_to_discrete(
         contstate,
-        args.stackdepth,
-        args.programlen,
         allvalues,
     )
     #@test contstate == newcontstate
     @test discretestate.instructionpointer == newdiscretestate.instructionpointer
+    display(discretestate.stack.capacity)
+    display(newdiscretestate.stack.capacity)
     @test discretestate.stack == newdiscretestate.stack
 end
 
@@ -427,20 +427,6 @@ function run_equality_asserts(x::VMState, y::VMState)
     @assert x.stack == y.stack "Stacks not equal:\n $(x.stack)\n $(y.stack)"
 end
 
-
-function ==(x::DiscreteVMState, y::DiscreteVMState)
-    return x.instructionpointer == y.instructionpointer &&
-           x.stack == y.stack &&
-           x.variables == y.variables &&
-           x.ishalted == y.ishalted
-end
-
-function ==(x::VMState, y::VMState)
-    return x.instructionpointer == y.instructionpointer &&
-           x.stackpointer == y.stackpointer &&
-           x.stack == y.stack
-end
-
 function test_all_single_instr()
     instructions = [
         instr_pass!,
@@ -484,14 +470,10 @@ function test_program_conversion(program)
     contstate = normalize_stackpointer(contstate)
     newdiscretestate = convert_continuous_to_discrete(
         contstate,
-        args.stackdepth,
-        args.programlen,
         allvalues,
     )
     newcontstate = convert_discrete_to_continuous(
         discretestate,
-        args.stackdepth,
-        args.programlen,
         allvalues,
     )
 

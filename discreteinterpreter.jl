@@ -25,15 +25,15 @@ StackValueType = Real
 
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
-    stack::Deque{StackValueType} = Deque{StackValueType}(args.stackdepth)
+    stack::CircularDeque{StackValueType} = CircularDeque{StackValueType}(args.stackdepth)
     variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
     ishalted::Bool = false
     programlen::Int = args.programlen
     stackdepth::Int = args.stackdepth
 end
 
-function convert(::Type{Deque{T}}, x::Array{T,1}) where {T}
-    y = Deque{T}()
+function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
+    y = CircularDeque{T}(length(x))
     for el in x
         push!(y, el)
     end

@@ -52,10 +52,11 @@ val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 #########################
 function convert_discrete_to_continuous(
     discrete::DiscreteVMState,
-    stackdepth = args.stackdepth,
-    programlen = args.programlen,
     allvalues::Array = allvalues,
 )::VMState
+    stackdepth = discrete.stackdepth
+    programlen = discrete.programlen
+
     contstate = VMState(stackdepth, programlen, allvalues)
     cont_instructionpointer =
         onehot(discrete.instructionpointer, [i for i = 1:programlen]) * 1.0f0
@@ -73,13 +74,11 @@ function convert_discrete_to_continuous(
     )
     return state
     # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
-    # On the other hand super -> discrete is always an lossy process
+    # On the other hand super -> discrete is always an lossy process so it might not matter
 end
 
 function convert_continuous_to_discrete(
     contstate::VMState,
-    stackdepth = args.stackdepth,
-    programlen = args.programlen,
     allvalues = allvalues,
 )::DiscreteVMState
     instructionpointer = onecold(contstate.instructionpointer)
@@ -89,7 +88,7 @@ function convert_continuous_to_discrete(
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
     # Dealing with blanks is tricky. It's not clear what is correct semantically
-    newstack = Vector{StackValueType}() # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    newstack = CircularDeque{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
             break
@@ -99,4 +98,26 @@ function convert_continuous_to_discrete(
         end
     end
     return DiscreteVMState(; instructionpointer = instructionpointer, stack = newstack)
+end
+
+function ==(x::CircularDeque, y::CircularDeque)
+    x.capacity != y.capacity && return false
+    length(x) != length(y) && return false
+    for (i, j) in zip(x, y)
+        i == j || return false
+    end
+    return true
+end
+ 
+function ==(x::DiscreteVMState, y::DiscreteVMState)
+    return x.instructionpointer == y.instructionpointer &&
+           x.stack == y.stack &&
+           x.variables == y.variables &&
+           x.ishalted == y.ishalted
+end
+
+function ==(x::VMState, y::VMState)
+    return x.instructionpointer == y.instructionpointer &&
+           x.stackpointer == y.stackpointer &&
+           x.stack == y.stack
 end
