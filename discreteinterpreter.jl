@@ -26,7 +26,7 @@ StackValueType = Real
 @with_kw mutable struct DiscreteVMState
     instructionpointer::Int = 1
     stack::CircularDeque{StackValueType} = CircularDeque{StackValueType}(args.stackdepth)
-    variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0)
+    variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0) # StackValueType instead of Int?
     ishalted::Bool = false
     programlen::Int = args.programlen
     stackdepth::Int = args.stackdepth

@@ -108,7 +108,7 @@ function ==(x::CircularDeque, y::CircularDeque)
     end
     return true
 end
- 
+
 function ==(x::DiscreteVMState, y::DiscreteVMState)
     return x.instructionpointer == y.instructionpointer &&
            x.stack == y.stack &&

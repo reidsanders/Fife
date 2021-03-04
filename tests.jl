@@ -37,6 +37,24 @@ end
 args = TestArgs()
 include("parameters.jl")
 
+function init_random_state(
+    stackdepth::Int = args.stackdepth,
+    programlen::Int = args.programlen,
+    allvalues::Union{Array,CuArray} = allvalues,
+)
+    instructionpointer = zeros(Float32, programlen)
+    stackpointer = zeros(Float32, stackdepth)
+    ishalted = zeros(Float32, 2)
+    stack = rand(Float32, length(allvalues), stackdepth)
+    variables = rand(Float32, length(allvalues), stackdepth)
+    stack = normit(stack)
+    variables = normit(variables)
+    instructionpointer[1] = 1.0
+    stackpointer[1] = 1.0
+    ishalted[1] = 1.0 # set false
+    return VMState(instructionpointer |> device, stackpointer |> device, stack |> device, variables |> device, ishalted |> device)
+end
+
 function init_random_state(stackdepth, programlen, allvalues)
     stack = rand(Float32, length(allvalues), stackdepth)
     instructionpointer = zeros(Float32, programlen)
@@ -45,8 +63,9 @@ function init_random_state(stackdepth, programlen, allvalues)
     instructionpointer[1] = 1.0f0
     stackpointer[1] = 1.0f0
     return state =
-        VMState(instructionpointer |> device, stackpointer |> device, stack |> device)
+        VMState(instructionpointer |> device, stackpointer |> device, stack |> device, )
 end
+
 instr_2 = partial(instr_pushval!, 2)
 
 blank_state = VMState(3, 4, allvalues)
