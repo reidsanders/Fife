@@ -52,18 +52,13 @@ function init_random_state(
     instructionpointer[1] = 1.0
     stackpointer[1] = 1.0
     ishalted[1] = 1.0 # set false
-    return VMState(instructionpointer |> device, stackpointer |> device, stack |> device, variables |> device, ishalted |> device)
-end
-
-function init_random_state(stackdepth, programlen, allvalues)
-    stack = rand(Float32, length(allvalues), stackdepth)
-    instructionpointer = zeros(Float32, programlen)
-    stackpointer = zeros(Float32, stackdepth)
-    stack = normit(stack)
-    instructionpointer[1] = 1.0f0
-    stackpointer[1] = 1.0f0
-    return state =
-        VMState(instructionpointer |> device, stackpointer |> device, stack |> device, )
+    return VMState(
+        instructionpointer |> device,
+        stackpointer |> device,
+        stack |> device,
+        variables |> device,
+        ishalted |> device,
+    )
 end
 
 instr_2 = partial(instr_pushval!, 2)
@@ -316,12 +311,12 @@ function test_convert_discrete_to_continuous()
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     state = DiscreteVMState()
     #instr_pushval!(6,state)
-    newcontstate =
-        convert_discrete_to_continuous(state, allvalues)
+    newcontstate = convert_discrete_to_continuous(state, allvalues)
     #@test contstate == newcontstate
     @test contstate.instructionpointer == newcontstate.instructionpointer
     @test contstate.stackpointer == newcontstate.stackpointer
     @test contstate.stack == newcontstate.stack
+    return
 end
 
 function test_convert_continuous_to_discrete()
@@ -329,15 +324,11 @@ function test_convert_continuous_to_discrete()
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     discretestate = DiscreteVMState()
     #instr_pushval!(6,state)
-    newdiscretestate = convert_continuous_to_discrete(
-        contstate,
-        allvalues,
-    )
+    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
     #@test contstate == newcontstate
     @test discretestate.instructionpointer == newdiscretestate.instructionpointer
-    display(discretestate.stack.capacity)
-    display(newdiscretestate.stack.capacity)
     @test discretestate.stack == newdiscretestate.stack
+    return
 end
 
 # TODO make instruction map cont->discrete
@@ -438,12 +429,11 @@ function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
 end
 
 function run_equality_asserts(x::VMState, y::VMState)
-    @assert x.instructionpointer == y.instructionpointer (
-        x.instructionpointer,
-        y.instructionpointer,
-    )
-    @assert x.stackpointer == y.stackpointer (x.stackpointer, y.stackpointer)
-    @assert x.stack == y.stack "Stacks not equal:\n $(x.stack)\n $(y.stack)"
+    @assert x.instructionpointer == y.instructionpointer "Instructionpointer Not Equal:\n $(x.instructionpointer)\n $(y.instructionpointer)"
+    @assert x.variables == y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
+    @assert x.ishalted == y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
+    @assert x.stack == y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"
+    @assert x.stackpointer == y.stackpointer "Stack Not equal\n $(x.stackpointer)\n $(y.stackpointer)"
 end
 
 function test_all_single_instr()
@@ -487,14 +477,8 @@ function test_program_conversion(program)
         instr(discretestate)
     end
     contstate = normalize_stackpointer(contstate)
-    newdiscretestate = convert_continuous_to_discrete(
-        contstate,
-        allvalues,
-    )
-    newcontstate = convert_discrete_to_continuous(
-        discretestate,
-        allvalues,
-    )
+    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+    newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
 
     run_equality_asserts(contstate, newcontstate)
     run_equality_asserts(discretestate, newdiscretestate)

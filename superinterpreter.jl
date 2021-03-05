@@ -530,11 +530,11 @@ function VMState(
     stackpointer = zeros(Float32, stackdepth)
     ishalted = zeros(Float32, 2)
     stack = zeros(Float32, length(allvalues), stackdepth)
-    stack[1, :] .= 1.0
     variables = zeros(Float32, length(allvalues), stackdepth)
-    stack[1, :] .= 1.0
     instructionpointer[1] = 1.0
     stackpointer[1] = 1.0
+    stack[1, :] .= 1.0
+    variables[1, :] .= 1.0
     ishalted[1] = 1.0 # set false
     # @assert isbitstype(stack) == true
     state = VMState(instructionpointer |> device, stackpointer |> device, stack |> device, variables |> device, ishalted |> device)

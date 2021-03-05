@@ -60,17 +60,27 @@ function convert_discrete_to_continuous(
     contstate = VMState(stackdepth, programlen, allvalues)
     cont_instructionpointer =
         onehot(discrete.instructionpointer, [i for i = 1:programlen]) * 1.0f0
+
     discretestack = Array{Any,1}(undef, stackdepth)
     fill!(discretestack, "blank")
-
     for (i, x) in enumerate(discrete.stack)
         discretestack[i] = x
     end
-    cont_stack = onehotbatch(discretestack, allvalues) * 1.0f0
+    contstack = onehotbatch(discretestack, allvalues) * 1.0f0
+
+    discretevariables = Array{Any,1}(undef, stackdepth)
+    fill!(discretevariables, "blank")
+    for (k, v) in discrete.variables
+        discretevariables[k] = v
+    end
+    contvariables = onehotbatch(discretevariables, allvalues) * 1.0f0
+    contishalted = onehot(discrete.ishalted, [false, true]) * 1.0f0
     state = VMState(
         cont_instructionpointer |> device,
         contstate.stackpointer |> device,
-        cont_stack |> device,
+        contstack |> device,
+        contvariables |> device,
+        contishalted |> device,
     )
     return state
     # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
