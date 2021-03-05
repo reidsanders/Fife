@@ -56,7 +56,13 @@ struct VMSuperStates
     ishalteds::Union{Array{Float32},CuArray{Float32}}
 end
 
-a::Number * b::VMState = VMState(a * b.instructionpointer, a * b.stackpointer, a * b.stack, a * b.variables, a * b.ishalted)
+a::Number * b::VMState = VMState(
+    a * b.instructionpointer,
+    a * b.stackpointer,
+    a * b.stack,
+    a * b.variables,
+    a * b.ishalted,
+)
 a::VMState * b::Number = b * a
 a::VMState + b::VMState = VMState(
     a.instructionpointer + b.instructionpointer,
@@ -74,8 +80,13 @@ a::VMState - b::VMState = VMState(
 )
 
 length(a::VMSuperStates) = size(a.instructionpointers)[3]
-a::Union{Array,CuArray} * b::VMSuperStates =
-    VMSuperStates(a .* b.instructionpointers, a .* b.stackpointers, a .* b.stacks, a .* b.supervariables, a .* b.ishalteds)
+a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(
+    a .* b.instructionpointers,
+    a .* b.stackpointers,
+    a .* b.stacks,
+    a .* b.supervariables,
+    a .* b.ishalteds,
+)
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
 function super_step(state::VMState, program, instructions)
@@ -88,7 +99,8 @@ function super_step(state::VMState, program, instructions)
     supervariables = cat([x.variables for x in newstates]..., dims = 3)
     ishalteds = cat([x.ishalted for x in newstates]..., dims = 3)
 
-    states = VMSuperStates(instructionpointers, stackpointers, stacks, supervariables, ishalteds)
+    states =
+        VMSuperStates(instructionpointers, stackpointers, stacks, supervariables, ishalteds)
     current = program .* state.instructionpointer'
     summed = sum(current, dims = 2)
     summed = reshape(summed, (1, 1, :))
@@ -112,8 +124,8 @@ If before the beginning of program set to 1, if after end set to end, and set is
 function advanceinstructionpointer!(state::VMState, increment::Int)::VMState
     stackdepth = size(state.stack)[2]
     programlen = length(state.instructionpointer)
-    afterend = state.instructionpointer[end + 1 - increment: end]
-    beforebeginning = state.instructionpointer[1 : -increment]
+    afterend = state.instructionpointer[end+1-increment:end]
+    beforebeginning = state.instructionpointer[1:-increment]
     if increment < 1
         state.instructionpointer = 1
     elseif targetinstructionpointer > state.programlen
@@ -143,7 +155,13 @@ function instr_dup!(state::VMState)::VMState
     newcomponent = circshift(state.stack .* state.stackpointer', (0, -1))
     newstack = oldcomponent .+ newcomponent
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, newstackpointer, newstack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstackpointer,
+        newstack,
+        state.variables,
+        state.ishalted,
+    )
 
 end
 
@@ -163,7 +181,13 @@ function instr_add!(state::VMState)::VMState
     resultvec = op_probvec(+, x, y)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, newstate.stackpointer, newstate.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 """
@@ -179,7 +203,13 @@ function instr_sub!(state::VMState)::VMState
     resultvec = op_probvec(-, x, y)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, newstate.stackpointer, newstate.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 """
@@ -195,7 +225,13 @@ function instr_mult!(state::VMState)::VMState
     resultvec = op_probvec(*, x, y)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, newstate.stackpointer, newstate.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 """
@@ -211,7 +247,13 @@ function instr_div!(state::VMState)::VMState
     resultvec = op_probvec(/, x, y)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, newstate.stackpointer, newstate.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 """
@@ -226,7 +268,13 @@ function instr_not!(state::VMState)::VMState
     resultvec = op_probvec(a -> float(a == 0), x)
     newstate = push(state, resultvec)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, newstate.stackpointer, newstate.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 """
@@ -242,7 +290,13 @@ function instr_swap!(state::VMState)::VMState
     state = push(state, x)
     state = push(state, y)
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, state.stackpointer, state.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        state.stackpointer,
+        state.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 """
@@ -270,16 +324,20 @@ function instr_gotoif!(
     maxinstrindex = zeroindex + length(state.instructionpointer)
 
     probofgoto = 1 - conditional[zeroindex]
-    gotobeginprob = sum(destination[neginfindex: zeroindex + 1])
-    jumpvalprobs = destination[zeroindex + 1 : maxinstrindex]
-    gotoendprob = sum(destination[maxinstrindex : end])
+    gotobeginprob = sum(destination[neginfindex:zeroindex+1])
+    jumpvalprobs = destination[zeroindex+1:maxinstrindex]
+    gotoendprob = sum(destination[maxinstrindex:end])
 
-    currentinstructionforward =
-        (1 - probofgoto) * circshift(state.instructionpointer, 1)
-    newinstructionpointer =
-        currentinstructionforward .+ probofgoto * jumpvalprobs
+    currentinstructionforward = (1 - probofgoto) * circshift(state.instructionpointer, 1)
+    newinstructionpointer = currentinstructionforward .+ probofgoto * jumpvalprobs
     # TODO ishalted
-    return VMState(newinstructionpointer, state.stackpointer, state.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        state.stackpointer,
+        state.stack,
+        state.variables,
+        state.ishalted,
+    )
 
 end
 
@@ -292,7 +350,13 @@ Do nothing but advance instruction pointer. Returns new state.
 """
 function instr_pass!(state::VMState)::VMState
     newinstructionpointer = circshift(state.instructionpointer, 1)
-    return VMState(newinstructionpointer, state.stackpointer, state.stack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        state.stackpointer,
+        state.stack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 
@@ -309,7 +373,13 @@ function instr_pushval!(val::StackValueType, state::VMState)::VMState
     topscaled = valhotvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
-    return VMState(newinstructionpointer, newstackpointer, newstack, state.variables, state.ishalted)
+    return VMState(
+        newinstructionpointer,
+        newstackpointer,
+        newstack,
+        state.variables,
+        state.ishalted,
+    )
 end
 
 ###############################
@@ -424,7 +494,13 @@ function pop(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
     scaledblankstack = blankstack .* state.stackpointer'
     newstack = scaledremainingstack .+ scaledblankstack
     newstackpointer = circshift(state.stackpointer, 1)
-    newstate = VMState(state.instructionpointer, newstackpointer, newstack, state.variables, state.ishalted)
+    newstate = VMState(
+        state.instructionpointer,
+        newstackpointer,
+        newstack,
+        state.variables,
+        state.ishalted,
+    )
     check_state_asserts(newstate)
     return (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
 end
@@ -443,7 +519,13 @@ function push(state::VMState, valvec::Array)::VMState
     topscaled = valvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
-    newstate = VMState(state.instructionpointer, newstackpointer, newstack, state.variables, state.ishalted)
+    newstate = VMState(
+        state.instructionpointer,
+        newstackpointer,
+        newstack,
+        state.variables,
+        state.ishalted,
+    )
     check_state_asserts(newstate)
     return newstate
 end
@@ -537,7 +619,13 @@ function VMState(
     variables[1, :] .= 1.0
     ishalted[1] = 1.0 # set false
     # @assert isbitstype(stack) == true
-    state = VMState(instructionpointer |> device, stackpointer |> device, stack |> device, variables |> device, ishalted |> device)
+    state = VMState(
+        instructionpointer |> device,
+        stackpointer |> device,
+        stack |> device,
+        variables |> device,
+        ishalted |> device,
+    )
     return state
 end
 
@@ -650,5 +738,11 @@ function normalize_stackpointer(state::VMState)
     stackpointermax = onecold(state.stackpointer)
     stack = circshift(state.stack, (0, 1 - stackpointermax))
     stackpointer = circshift(state.stackpointer, 1 - stackpointermax)
-    return VMState(state.instructionpointer |> device, stackpointer |> device, stack |> device, state.variables |> device, state.ishalted |> device)
+    return VMState(
+        state.instructionpointer |> device,
+        stackpointer |> device,
+        stack |> device,
+        state.variables |> device,
+        state.ishalted |> device,
+    )
 end
