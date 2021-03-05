@@ -327,10 +327,11 @@ function instr_gotoif!(
     gotobeginprob = sum(destination[neginfindex:zeroindex+1])
     jumpvalprobs = destination[zeroindex+1:maxinstrindex]
     gotoendprob = sum(destination[maxinstrindex:end])
-
+    # TODO gotobegin set index 1.
+    # TODO apply advanceinstructionpointer function instead of circshift?
     currentinstructionforward = (1 - probofgoto) * circshift(state.instructionpointer, 1)
     newinstructionpointer = currentinstructionforward .+ probofgoto * jumpvalprobs
-    # TODO ishalted
+    # TODO ishalted += gotoendprob ?
     return VMState(
         newinstructionpointer,
         state.stackpointer,
