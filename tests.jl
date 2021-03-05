@@ -418,7 +418,8 @@ function run_equality_test(x::VMState, y::VMState)
     @test x.instructionpointer == y.instructionpointer
     @test x.stackpointer == y.stackpointer
     @test x.stack == y.stack
-    @test x.stack == y.stack
+    @test x.variables == y.variables
+    @test x.ishalted == y.ishalted
 end
 
 function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
