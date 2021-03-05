@@ -121,19 +121,28 @@ end
 Set instruction pointer respecting program length. 
 If before the beginning of program set to 1, if after end set to end, and set ishalted to true
 """
-function advanceinstructionpointer!(state::VMState, increment::Int)::VMState
-    stackdepth = size(state.stack)[2]
-    programlen = length(state.instructionpointer)
-    afterend = state.instructionpointer[end+1-increment:end]
-    beforebeginning = state.instructionpointer[1:-increment]
-    if increment < 1
-        state.instructionpointer = 1
-    elseif targetinstructionpointer > state.programlen
-        state.instructionpointer = state.programlen
-        state.ishalted = true
-    else
-        state.instructionpointer = targetinstructionpointer
+function advanceinstructionpointer(state::VMState, increment::Int)::VMState
+    plast = sum(state.instructionpointer[end+1-increment:end])
+    pfirst = sum(state.instructionpointer[1:-increment])
+    middle = state.instructionpointer[max(1, 1 + increment) : min(end, end - increment)]
+    if increment > 0
+        middle = [zeros(abs(increment)); middle]
+    elseif increment < 0
+        middle = [middle; zeros(abs(increment))]
     end
+    newinstructionpointer = [[pfirst]; middle; [plast]]
+    pfalse, ptrue = state.ishalted
+    phalted = 1 - pfalse * (1 - plast) # 1 - pfalse + pfalse * plast
+    newishalted = [1- phalted, phalted]
+
+    return VMState(
+        newinstructionpointer,
+        state.stackpointer,
+        state.stack,
+        state.variables,
+        newishalted,
+    )
+
 end
 
 ###############################
