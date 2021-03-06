@@ -395,7 +395,7 @@ end
 function test_pop_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
     newval = valhot(2, allvalues)
-    state = push(state, newval)
+    state = pushtostack(state, newval)
     state, popval = pop(state)
     @test newval == popval
 end
@@ -403,7 +403,7 @@ end
 function test_push_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
     newval = valhot(2, allvalues)
-    state = push(state, newval)
+    state = pushtostack(state, newval)
     @test state.stack[:, end] == newval
 end
 
@@ -450,7 +450,7 @@ function test_all_single_instr()
         instr_mult!,
         instr_div!,
         instr_not!,
-        # instr_and!,
+        instr_and!,
         # instr_goto!,
         instr_gotoif!,
         # instr_iseq!,

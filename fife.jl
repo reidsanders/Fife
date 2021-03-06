@@ -83,8 +83,6 @@ function convert_discrete_to_continuous(
         contishalted |> device,
     )
     return state
-    # NOTE if theres no stackpointer the discrete -> super -> discrete aren't consistent (eg symetric)
-    # On the other hand super -> discrete is always an lossy process so it might not matter
 end
 
 function convert_continuous_to_discrete(
@@ -103,7 +101,7 @@ function convert_continuous_to_discrete(
     newstack = CircularDeque{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
-            continue 
+            break
             # or break... discrete can't have blank values on stack, but removing them 
             # is confusing and may mess up behavior if the superinterpreter is 
             # depending on there being a blank there
@@ -116,8 +114,10 @@ function convert_continuous_to_discrete(
         end
     end
 
-    newvariables = Dict{StackValueType}
-    for x in stack
+    newvariables = DefaultDict{StackValueType, StackValueType}(0) 
+    # default blank? blank isn't technically in it
+    # Use missing instead of blank?
+    for x in variables
         if x == "blank"
             continue
         else

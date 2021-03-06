@@ -29,6 +29,8 @@ using Memoize
 include("utils.jl")
 using .Utils: partial
 
+StackFloatType = Float32
+
 @with_kw struct VMState
     instructionpointer::Union{Array{Float32},CuArray{Float32}}
     stackpointer::Union{Array{Float32},CuArray{Float32}}
@@ -193,7 +195,7 @@ function instr_add!(state::VMState)::VMState
     state, y = pop(state)
 
     resultvec = op_probvec(+, x, y)
-    newstate = push(state, resultvec)
+    newstate = pushtostack(state, resultvec)
     newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
     return VMState(
         newinstructionpointer,
@@ -215,7 +217,7 @@ function instr_sub!(state::VMState)::VMState
     state, y = pop(state)
 
     resultvec = op_probvec(-, x, y)
-    newstate = push(state, resultvec)
+    newstate = pushtostack(state, resultvec)
     newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
     return VMState(
         newinstructionpointer,
@@ -237,7 +239,7 @@ function instr_mult!(state::VMState)::VMState
     state, y = pop(state)
 
     resultvec = op_probvec(*, x, y)
-    newstate = push(state, resultvec)
+    newstate = pushtostack(state, resultvec)
     newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
     return VMState(
         newinstructionpointer,
@@ -259,7 +261,7 @@ function instr_div!(state::VMState)::VMState
     state, y = pop(state)
 
     resultvec = op_probvec(/, x, y)
-    newstate = push(state, resultvec)
+    newstate = pushtostack(state, resultvec)
     newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
     return VMState(
         newinstructionpointer,
@@ -273,14 +275,40 @@ end
 """
     instr_not!(state::VMState)::VMState
 
-Pop value from stack, take not, then push result to stack. Return new state.
+Pop value from stack, apply not, then push result to stack. Return new state.
+
+0 is false, all else is considered true. 
 
 """
 function instr_not!(state::VMState)::VMState
     state, x = pop(state)
 
     resultvec = op_probvec(a -> float(a == 0), x)
-    newstate = push(state, resultvec)
+    newstate = pushtostack(state, resultvec)
+    newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
+    return VMState(
+        newinstructionpointer,
+        newstate.stackpointer,
+        newstate.stack,
+        state.variables,
+        ishalted,
+    )
+end
+
+"""
+    instr_and!(state::VMState)::VMState
+
+Pop top two values from stack, apply and, then push result to stack. Return new state.
+
+0 is false, all else is considered true. 
+
+"""
+function instr_and!(state::VMState)::VMState
+    state, x = pop(state)
+    state, y = pop(state)
+
+    resultvec = op_probvec((a,b) -> float(a != 0 && a != 0), x, y)
+    newstate = pushtostack(state, resultvec)
     newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
     return VMState(
         newinstructionpointer,
@@ -301,8 +329,8 @@ function instr_swap!(state::VMState)::VMState
     state, x = pop(state)
     state, y = pop(state)
 
-    state = push(state, x)
-    state = push(state, y)
+    state = pushtostack(state, x)
+    state = pushtostack(state, y)
     newinstructionpointer, ishalted = advanceinstructionpointer(state, 1)
     return VMState(
         newinstructionpointer,
@@ -535,14 +563,14 @@ function pop(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
 end
 
 """
-    push(state::VMState, valvec::Array)::VMState
+    pushtostack(state::VMState, valvec::Array)::VMState
 
 Push prob vector to stack based on current stackpointer prob. Returns new state.
 
 Note reversed arg ordering of instr in order to match regular push!
 
 """
-function push(state::VMState, valvec::Array)::VMState
+function pushtostack(state::VMState, valvec::Array)::VMState
     @assert isapprox(sum(valvec), 1.0)
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'
