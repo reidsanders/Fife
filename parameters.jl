@@ -4,6 +4,7 @@ using Flux
 Random.seed!(123);
 CUDA.allowscalar(false)
 
+FloatType = Float32
 
 if args.usegpu
     global device = gpu
