@@ -440,7 +440,7 @@ end
 function test_all_single_instr()
     instructions = [
         instr_pass!,
-        # instr_halt!,
+        instr_halt!,
         # instr_pushval!,
         # instr_pop!,
         instr_dup!,

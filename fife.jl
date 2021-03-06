@@ -93,7 +93,9 @@ function convert_continuous_to_discrete(
 )::DiscreteVMState
     instructionpointer = onecold(contstate.instructionpointer)
     stackpointer = onecold(contstate.stackpointer)
+    ishalted = onecold(contstate.ishalted, ishaltedvalues)
     stack = [allvalues[i] for i in onecold(contstate.stack)]
+    variables = [allvalues[i] for i in onecold(contstate.variables)]
     #variables = onecold(contstate.stack)
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
@@ -101,13 +103,30 @@ function convert_continuous_to_discrete(
     newstack = CircularDeque{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
-            break
+            continue 
+            # or break... discrete can't have blank values on stack, but removing them 
+            # is confusing and may mess up behavior if the superinterpreter is 
+            # depending on there being a blank there
+            # TODO either break or 
+            # allow "blank" values on discrete stack? 
+            # That would complicate the discrete operations a lot.
         else
             # TODO convert to int ?
             push!(newstack, x)
         end
     end
-    return DiscreteVMState(; instructionpointer = instructionpointer, stack = newstack)
+
+    newvariables = Dict{StackValueType}
+    for x in stack
+        if x == "blank"
+            continue
+        else
+            # TODO convert to int ?
+            newvariables[]
+            push!(newstack, x)
+        end
+    end
+    return DiscreteVMState(instructionpointer = instructionpointer, stack = newstack, ishalted = ishalted)
 end
 
 function ==(x::CircularDeque, y::CircularDeque)

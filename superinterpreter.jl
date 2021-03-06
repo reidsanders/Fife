@@ -34,7 +34,7 @@ using .Utils: partial
     stackpointer::Union{Array{Float32},CuArray{Float32}}
     stack::Union{Array{Float32},CuArray{Float32}}
     variables::Union{Array{Float32},CuArray{Float32}}
-    ishalted::Union{Array{Float32},CuArray{Float32}}
+    ishalted::Union{Array{Float32},CuArray{Float32}} # [nothalted, halted]
 
     #=
     # Invariants here? Is it worth the extra calculation every construction though?
@@ -116,8 +116,9 @@ function super_step(state::VMState, program, instructions)
 end
 
 """
+    advanceinstructionpointer(state::VMState, increment::Int)
 
-advance instruction pointer respecting program length. Return newinstructionpointer, newishalted
+advance instruction pointer respecting program length. Return (newinstructionpointer, newishalted)
 If before the beginning of program set to 1, if after end set to end, and set ishalted to true
 """
 function advanceinstructionpointer(state::VMState, increment::Int)
@@ -140,13 +141,13 @@ function advanceinstructionpointer(state::VMState, increment::Int)
     pfirst = sum(state.instructionpointer[1:1-increment])
     newinstructionpointer = [[pfirst]; middle; [plast]]
     pfalse, ptrue = state.ishalted
-    phalted = 1 - pfalse * (1 - plast) # 1 - pfalse + pfalse * plast
+    phalted = 1 - pfalse * (1 - plast)
     newishalted = [1 - phalted, phalted]
 
     @assert sum(newinstructionpointer) ≈ 1.0 "Not sum to 1: $(newinstructionpointer)\n Initial: $(state.instructionpointer)"
     @assert sum(newishalted) ≈ 1.0
 
-    return (newinstructionpointer .|> FloatType, newishalted .|> FloatType)
+    return (newinstructionpointer .|> StackFloatType, newishalted .|> StackFloatType)
 end
 
 ###############################
@@ -356,7 +357,6 @@ function instr_gotoif!(
 
 end
 
-
 """
     instr_pass!(state::VMState)::VMState
 
@@ -374,6 +374,23 @@ function instr_pass!(state::VMState)::VMState
     )
 end
 
+"""
+    instr_pass!(state::VMState)::VMState
+
+Do nothing but advance instruction pointer. Returns new state.
+
+"""
+function instr_halt!(state::VMState)::VMState
+    newinstructionpointer, _ = advanceinstructionpointer(state, 1)
+    ishalted = [0,1] .|> StackFloatType
+    return VMState(
+        newinstructionpointer,
+        state.stackpointer,
+        state.stack,
+        state.variables,
+        ishalted,
+    )
+end
 
 """
     instr_pushval!(val::StackValueType, state::VMState)::VMState
@@ -446,7 +463,6 @@ Requires numericvalues at end of allvalues.
 """
 function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array
     optableindexes = optablesingle(op, numericvalues = numericvalues)
-
     xnumerics = x[end+1-length(numericvalues):end]
 
     numericprobs = []
@@ -454,7 +470,6 @@ function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array
         append!(numericprobs, sum(xnumerics[indexes]))
     end
     nonnumericprobs = x[1:end-length(numericvalues)]
-
 
     @assert sum(xnumerics) ≈ sum(numericprobs) "Numeric probabilities are conserved"
     @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
@@ -478,7 +493,6 @@ a + b - ab
 """
 function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
     optableindexes = optablepair(op, numericvalues = numericvalues)
-
     xnumerics = x[end+1-length(numericvalues):end]
     ynumerics = y[end+1-length(numericvalues):end]
     probs = xnumerics .* ynumerics'

@@ -4,7 +4,7 @@ using Flux
 Random.seed!(123);
 CUDA.allowscalar(false)
 
-FloatType = Float32
+StackFloatType = Float32
 
 if args.usegpu
     global device = gpu
@@ -17,5 +17,6 @@ end
 numericvalues = [[-Inf]; [i for i = -args.maxint:args.maxint]; [Inf]]
 nonnumericvalues = ["blank"]
 allvalues = [nonnumericvalues; numericvalues]
+ishaltedvalues = [false, true]
 blanks = fill("blank", args.stackdepth)
 blankstack = onehotbatch(blanks, allvalues)
