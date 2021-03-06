@@ -355,32 +355,43 @@ function instr_gotoif!(
     state, conditional = pop(state)
     state, destination = pop(state)
 
-    # Beginning of vector based approach to allow gpu (might be a big pain)
-    # zerohotvec = onehot(0, allvalues)
-    # probofgoto = 1 - sum((conditional .* zerohotvec))
-
+    ### Calc important indexes ###
+    # TODO these can be set once technically,
+    # but will probably be turned into const by compiler anyway
     maxint = round(Int, (length(numericvalues) - 1) / 2)
-
     zeroindex = length(allvalues) - maxint
     neginfindex = zeroindex - maxint
     maxinstrindex = zeroindex + length(state.instructionpointer)
 
-    probofgoto = 1 - conditional[zeroindex]
-    gotobeginprob = sum(destination[neginfindex:zeroindex+1])
-    jumpvalprobs = destination[zeroindex+1:maxinstrindex]
-    gotoendprob = sum(destination[maxinstrindex:end])
-    # TODO gotobegin set index 1.
-    # TODO apply advanceinstructionpointer function instead of circshift?
-    # TODO goto past end, adjust ishalted? (Or not?)
-    currentinstructionforward = (1 - probofgoto) * circshift(state.instructionpointer, 1)
-    newinstructionpointer = currentinstructionforward .+ probofgoto * jumpvalprobs
-    # TODO ishalted += gotoendprob ?
+
+
+    ### Accumulate prob mass from goto off either end ###
+    # p_gotoend = sum(state.instructionpointer[end-increment:end])
+    # p_gotobegin = sum(state.instructionpointer[1:1-increment])
+    # newinstructionpointer = [[pfirst]; middle; [plast]]
+
+    p_ofgoto = 1 - conditional[zeroindex]
+    p_gotobegin = sum(destination[neginfindex:zeroindex + 1])
+    p_gotoend = sum(destination[maxinstrindex:end])
+    jumpvalprobs = destination[zeroindex + 2:maxinstrindex - 1]
+    newinstructionpointer = [[p_gotobegin]; jumpvalprobs; [p_gotoend]]
+
+    currentinstructionforward, ishalted = advanceinstructionpointer(state, 1)
+    newinstructionpointer = (1 - p_ofgoto) * currentinstructionforward .+ p_ofgoto * newinstructionpointer
+
+    p_nothalted, p_halted = state.ishalted
+    p_halted = 1 - p_nothalted * (1 - p_gotoend)
+    newishalted = [1 - p_halted, p_halted]
+
+    @assert sum(newinstructionpointer) ≈ 1.0 "Not sum to 1: $(newinstructionpointer)\n Initial: $(state.instructionpointer)"
+    @assert sum(newishalted) ≈ 1.0
+
     return VMState(
         newinstructionpointer,
         state.stackpointer,
         state.stack,
         state.variables,
-        state.ishalted,
+        newishalted,
     )
 
 end
