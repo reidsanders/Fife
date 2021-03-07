@@ -184,8 +184,8 @@ function instr_add!(state::VMState)::VMState
     #= 
     ADD Should pop top two values, and add them, then push that value to top
     =#
-    state, x = pop(state)
-    state, y = pop(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
 
     resultvec = op_probvec(+, x, y)
     newstate = pushtostack(state, resultvec)
@@ -206,8 +206,8 @@ Pop two values of stack, subtract second from first, then push result to stack. 
 
 """
 function instr_sub!(state::VMState)::VMState
-    state, x = pop(state)
-    state, y = pop(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
 
     resultvec = op_probvec(-, x, y)
     newstate = pushtostack(state, resultvec)
@@ -228,8 +228,8 @@ Pop two values of stack, multiply them, then push result to stack. Return new st
 
 """
 function instr_mult!(state::VMState)::VMState
-    state, x = pop(state)
-    state, y = pop(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
 
     resultvec = op_probvec(*, x, y)
     newstate = pushtostack(state, resultvec)
@@ -250,8 +250,8 @@ Pop two values of stack, divide first by second, then push result to stack. Retu
 
 """
 function instr_div!(state::VMState)::VMState
-    state, x = pop(state)
-    state, y = pop(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
 
     resultvec = op_probvec(/, x, y)
     newstate = pushtostack(state, resultvec)
@@ -274,7 +274,7 @@ Pop value from stack, apply not, then push result to stack. Return new state.
 
 """
 function instr_not!(state::VMState)::VMState
-    state, x = pop(state)
+    state, x = popfromstack(state)
 
     resultvec = op_probvec(a -> float(a == 0), x)
     newstate = pushtostack(state, resultvec)
@@ -297,8 +297,8 @@ Pop top two values from stack, apply and, then push result to stack. Return new 
 
 """
 function instr_and!(state::VMState)::VMState
-    state, x = pop(state)
-    state, y = pop(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
 
     resultvec = op_probvec((a, b) -> float(a != 0 && a != 0), x, y)
     newstate = pushtostack(state, resultvec)
@@ -319,8 +319,8 @@ Swap top two values of stack. Returns new state.
 
 """
 function instr_swap!(state::VMState)::VMState
-    state, x = pop(state)
-    state, y = pop(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
 
     state = pushtostack(state, x)
     state = pushtostack(state, y)
@@ -339,41 +339,34 @@ function instr_gotoif!(
     allvalues = allvalues,
     numericvalues = numericvalues,
 )::VMState
-    state, conditional = pop(state)
-    state, destination = pop(state)
+    state, conditional = popfromstack(state)
+    state, destination = popfromstack(state)
 
     ### Calc important indexes ###
-    # TODO these can be set once technically,
-    # but will probably be turned into const by compiler anyway
     maxint = round(Int, (length(numericvalues) - 1) / 2)
     zeroindex = length(allvalues) - maxint
     neginfindex = zeroindex - maxint
     maxinstrindex = zeroindex + length(state.instrpointer)
 
-
-
     ### Accumulate prob mass from goto off either end ###
-    # p_gotoend = sum(state.instrpointer[end-increment:end])
-    # p_gotobegin = sum(state.instrpointer[1:1-increment])
-    # newinstrpointer = [[pfirst]; middle; [plast]]
-
     p_ofgoto = 1 - conditional[zeroindex]
     p_gotobegin = sum(destination[neginfindex:zeroindex+1])
-    p_gotoend = sum(destination[maxinstrindex:end])
+    p_gotopastend = sum(destination[maxinstrindex-1:end])
+    p_gotoend = destination[maxinstrindex] + p_gotopastend
     jumpvalprobs = destination[zeroindex+2:maxinstrindex-1]
     newinstrpointer = [[p_gotobegin]; jumpvalprobs; [p_gotoend]]
-
+    ### calculate both nothing goto and just stepping forward
     currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
     newinstrpointer =
         (1 - p_ofgoto) * currentinstructionforward .+ p_ofgoto * newinstrpointer
 
     p_nothalted, p_halted = state.ishalted
-    p_halted = 1 - p_nothalted * (1 - p_gotoend)
+    p_halted = 1 - p_nothalted * (1 - p_gotopastend)
     newishalted = [1 - p_halted, p_halted]
 
     @assert sum(newinstrpointer) ≈ 1.0 "Not sum to 1: $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert sum(newishalted) ≈ 1.0
-
+    # TODO gotopastend not end!!
     VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, newishalted)
 end
 
@@ -519,7 +512,7 @@ end
 Removes prob vector from stack. Returns the new state and top of stack.
 
 """
-function pop(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
+function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
     scaledreturnstack = state.stack .* state.stackpointer'
     scaledremainingstack = state.stack .* (1 .- state.stackpointer')
     scaledblankstack = blankstack .* state.stackpointer'
