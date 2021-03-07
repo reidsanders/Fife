@@ -58,8 +58,8 @@ function convert_discrete_to_continuous(
     programlen = discrete.programlen
 
     contstate = VMState(stackdepth, programlen, allvalues)
-    cont_instructionpointer =
-        onehot(discrete.instructionpointer, [i for i = 1:programlen]) * 1.0f0
+    cont_instrpointer =
+        onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
     fill!(discretestack, "blank")
@@ -76,7 +76,7 @@ function convert_discrete_to_continuous(
     contvariables = onehotbatch(discretevariables, allvalues) * 1.0f0
     contishalted = onehot(discrete.ishalted, [false, true]) * 1.0f0
     state = VMState(
-        cont_instructionpointer |> device,
+        cont_instrpointer |> device,
         contstate.stackpointer |> device,
         contstack |> device,
         contvariables |> device,
@@ -89,7 +89,7 @@ function convert_continuous_to_discrete(
     contstate::VMState,
     allvalues = allvalues,
 )::DiscreteVMState
-    instructionpointer = onecold(contstate.instructionpointer)
+    instrpointer = onecold(contstate.instrpointer)
     stackpointer = onecold(contstate.stackpointer)
     ishalted = onecold(contstate.ishalted, ishaltedvalues)
     stack = [allvalues[i] for i in onecold(contstate.stack)]
@@ -126,7 +126,7 @@ function convert_continuous_to_discrete(
             push!(newstack, x)
         end
     end
-    return DiscreteVMState(instructionpointer = instructionpointer, stack = newstack, ishalted = ishalted)
+    return DiscreteVMState(instrpointer = instrpointer, stack = newstack, ishalted = ishalted)
 end
 
 function ==(x::CircularDeque, y::CircularDeque)
@@ -139,14 +139,14 @@ function ==(x::CircularDeque, y::CircularDeque)
 end
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
-    return x.instructionpointer == y.instructionpointer &&
+    return x.instrpointer == y.instrpointer &&
            x.stack == y.stack &&
            x.variables == y.variables &&
            x.ishalted == y.ishalted
 end
 
 function ==(x::VMState, y::VMState)
-    return x.instructionpointer == y.instructionpointer &&
+    return x.instrpointer == y.instrpointer &&
            x.stackpointer == y.stackpointer &&
            x.stack == y.stack
 end

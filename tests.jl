@@ -42,18 +42,18 @@ function init_random_state(
     programlen::Int = args.programlen,
     allvalues::Union{Array,CuArray} = allvalues,
 )
-    instructionpointer = zeros(Float32, programlen)
+    instrpointer = zeros(Float32, programlen)
     stackpointer = zeros(Float32, stackdepth)
     ishalted = zeros(Float32, 2)
     stack = rand(Float32, length(allvalues), stackdepth)
     variables = rand(Float32, length(allvalues), stackdepth)
     stack = normit(stack)
     variables = normit(variables)
-    instructionpointer[1] = 1.0
+    instrpointer[1] = 1.0
     stackpointer[1] = 1.0
     ishalted[1] = 1.0 # set false
     return VMState(
-        instructionpointer |> device,
+        instrpointer |> device,
         stackpointer |> device,
         stack |> device,
         variables |> device,
@@ -81,14 +81,14 @@ check_state_asserts(newstate_instr2)
 function test_instr_halt()
     state = DiscreteVMState()
     instr_halt!(state)
-    @test state.instructionpointer == 2
+    @test state.instrpointer == 2
     @test state.ishalted
 end
 
 function test_instr_pushval()
     state = DiscreteVMState()
     instr_pushval!(3, state)
-    @test state.instructionpointer == 2
+    @test state.instrpointer == 2
     @test first(state.stack) == 3
 end
 
@@ -97,7 +97,7 @@ function test_instr_pop()
     instr_pushval!(3, state)
     instr_pushval!(5, state)
     instr_pop!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 3
 end
 
@@ -106,7 +106,7 @@ function test_instr_dup()
     instr_pushval!(3, state)
     instr_pushval!(5, state)
     instr_dup!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 5
     popfirst!(state.stack)
     @test first(state.stack) == 5
@@ -117,7 +117,7 @@ function test_instr_swap()
     instr_pushval!(3, state)
     instr_pushval!(5, state)
     instr_swap!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 3
     popfirst!(state.stack)
     @test first(state.stack) == 5
@@ -128,7 +128,7 @@ function test_instr_add()
     instr_pushval!(3, state)
     instr_pushval!(5, state)
     instr_add!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 8
 end
 
@@ -137,7 +137,7 @@ function test_instr_sub()
     instr_pushval!(3, state)
     instr_pushval!(5, state)
     instr_sub!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 2
 end
 
@@ -146,13 +146,13 @@ function test_instr_mult()
     instr_pushval!(2, state)
     instr_pushval!(3, state)
     instr_mult!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 6
     # Test out of bounds case
     instr_pushval!(5, state)
     instr_pushval!(5, state)
     instr_mult!(state)
-    @test state.instructionpointer == 7
+    @test state.instrpointer == 7
     @test first(state.stack) == Inf
 end
 
@@ -161,7 +161,7 @@ function test_instr_div()
     instr_pushval!(4, state)
     instr_pushval!(9, state)
     instr_div!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 2
 end
 
@@ -170,13 +170,13 @@ function test_instr_not()
     # test true
     instr_pushval!(3, state)
     instr_not!(state)
-    @test state.instructionpointer == 3
+    @test state.instrpointer == 3
     @test first(state.stack) == 0
     # test false
     state = DiscreteVMState()
     instr_pushval!(0, state)
     instr_not!(state)
-    @test state.instructionpointer == 3
+    @test state.instrpointer == 3
     @test first(state.stack) == 1
 end
 
@@ -186,14 +186,14 @@ function test_instr_and()
     instr_pushval!(3, state)
     instr_pushval!(1, state)
     instr_and!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 1
     # test false
     state = DiscreteVMState()
     instr_pushval!(3, state)
     instr_pushval!(0, state)
     instr_and!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 0
 end
 
@@ -202,12 +202,12 @@ function test_instr_goto()
     state = DiscreteVMState()
     instr_pushval!(6, state)
     instr_goto!(state)
-    @test state.instructionpointer == 6
+    @test state.instrpointer == 6
     # test false
     state = DiscreteVMState()
     instr_pushval!(-1, state)
     instr_goto!(state)
-    @test state.instructionpointer == 3
+    @test state.instrpointer == 3
 end
 
 function test_instr_gotoif()
@@ -216,13 +216,13 @@ function test_instr_gotoif()
     instr_pushval!(6, state)
     instr_pushval!(3, state)
     instr_gotoif!(state)
-    @test state.instructionpointer == 6
+    @test state.instrpointer == 6
     # test false
     state = DiscreteVMState()
     instr_pushval!(6, state)
     instr_pushval!(0, state)
     instr_gotoif!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
 end
 
 function test_instr_iseq()
@@ -231,14 +231,14 @@ function test_instr_iseq()
     instr_pushval!(6, state)
     instr_pushval!(6, state)
     instr_iseq!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 1
     # test false
     state = DiscreteVMState()
     instr_pushval!(6, state)
     instr_pushval!(3, state)
     instr_iseq!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 0
 end
 
@@ -248,14 +248,14 @@ function test_instr_isgt()
     instr_pushval!(6, state)
     instr_pushval!(6, state)
     instr_isgt!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 0
     # test true
     state = DiscreteVMState()
     instr_pushval!(3, state)
     instr_pushval!(6, state)
     instr_isgt!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 1
 end
 
@@ -265,21 +265,21 @@ function test_instr_isge()
     instr_pushval!(6, state)
     instr_pushval!(3, state)
     instr_isge!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 0
     # test false
     state = DiscreteVMState()
     instr_pushval!(6, state)
     instr_pushval!(6, state)
     instr_isge!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 1
     # test true
     state = DiscreteVMState()
     instr_pushval!(3, state)
     instr_pushval!(6, state)
     instr_isge!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test first(state.stack) == 1
 end
 
@@ -289,7 +289,7 @@ function test_instr_store()
     instr_pushval!(6, state)
     instr_pushval!(3, state)
     instr_store!(state)
-    @test state.instructionpointer == 4
+    @test state.instrpointer == 4
     @test state.variables[6] == 3
 end
 
@@ -302,7 +302,7 @@ function test_instr_load()
     instr_store!(state)
     @test state.variables[6] == 3
     instr_load!(state)
-    @test state.instructionpointer == 6
+    @test state.instrpointer == 6
     @test first(state.stack) == 3
 end
 
@@ -313,7 +313,7 @@ function test_convert_discrete_to_continuous()
     #instr_pushval!(6,state)
     newcontstate = convert_discrete_to_continuous(state, allvalues)
     #@test contstate == newcontstate
-    @test contstate.instructionpointer == newcontstate.instructionpointer
+    @test contstate.instrpointer == newcontstate.instrpointer
     @test contstate.stackpointer == newcontstate.stackpointer
     @test contstate.stack == newcontstate.stack
     return
@@ -326,7 +326,7 @@ function test_convert_continuous_to_discrete()
     #instr_pushval!(6,state)
     newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
     #@test contstate == newcontstate
-    @test discretestate.instructionpointer == newdiscretestate.instructionpointer
+    @test discretestate.instrpointer == newdiscretestate.instrpointer
     @test discretestate.stack == newdiscretestate.stack
     return
 end
@@ -408,14 +408,14 @@ function test_push_vmstate()
 end
 
 function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
-    @test x.instructionpointer == y.instructionpointer
+    @test x.instrpointer == y.instrpointer
     @test x.variables == y.variables
     @test x.ishalted == y.ishalted
     @test x.stack == y.stack
 end
 
 function run_equality_test(x::VMState, y::VMState)
-    @test x.instructionpointer == y.instructionpointer
+    @test x.instrpointer == y.instrpointer
     @test x.stackpointer == y.stackpointer
     @test x.stack == y.stack
     @test x.variables == y.variables
@@ -423,14 +423,14 @@ function run_equality_test(x::VMState, y::VMState)
 end
 
 function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
-    @assert x.instructionpointer == y.instructionpointer "Instructionpointer Not Equal:\n $(x.instructionpointer)\n $(y.instructionpointer)"
+    @assert x.instrpointer == y.instrpointer "instrpointer Not Equal:\n $(x.instrpointer)\n $(y.instrpointer)"
     @assert x.variables == y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
     @assert x.ishalted == y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
     @assert x.stack == y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"
 end
 
 function run_equality_asserts(x::VMState, y::VMState)
-    @assert x.instructionpointer == y.instructionpointer "Instructionpointer Not Equal:\n $(x.instructionpointer)\n $(y.instructionpointer)"
+    @assert x.instrpointer == y.instrpointer "instrpointer Not Equal:\n $(x.instrpointer)\n $(y.instrpointer)"
     @assert x.variables == y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
     @assert x.ishalted == y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
     @assert x.stack == y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"

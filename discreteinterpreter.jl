@@ -24,7 +24,7 @@ StackValueType = Real
 # Round Floats to Int (?) define convert? probably want to only clamp at end of calculations
 
 @with_kw mutable struct DiscreteVMState
-    instructionpointer::Int = 1
+    instrpointer::Int = 1
     stack::CircularDeque{StackValueType} = CircularDeque{StackValueType}(args.stackdepth)
     variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0) # StackValueType instead of Int?
     ishalted::Bool = false
@@ -41,38 +41,38 @@ function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
 end
 
 """
-    setinstructionpointer(state::DiscreteVMState, newinstructionpointer)
+    setinstrpointer(state::DiscreteVMState, newinstrpointer)
 
 Set instruction pointer respecting program length. 
 If before the beginning of program set to 1, if after end set to end, and set ishalted to true
 """
-function setinstructionpointer!(state::DiscreteVMState, targetinstructionpointer)
-    if targetinstructionpointer < 1
-        state.instructionpointer = 1
-    elseif targetinstructionpointer > state.programlen
-        state.instructionpointer = state.programlen
+function setinstrpointer!(state::DiscreteVMState, targetinstrpointer)
+    if targetinstrpointer < 1
+        state.instrpointer = 1
+    elseif targetinstrpointer > state.programlen
+        state.instrpointer = state.programlen
         state.ishalted = true
     else
-        state.instructionpointer = targetinstructionpointer
+        state.instrpointer = targetinstrpointer
     end
 end
 
 function instr_pass!(state::DiscreteVMState)
-    return state.instructionpointer += 1
+    return state.instrpointer += 1
 end
 
 function instr_halt!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     return state.ishalted = true
 end
 
 function instr_pushval!(value::StackValueType, state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     return pushfirst!(state.stack, value)
 end
 
 function instr_pop!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 1
         return
     end
@@ -80,7 +80,7 @@ function instr_pop!(state::DiscreteVMState)
 end
 
 function instr_dup!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 1
         return
     end
@@ -91,7 +91,7 @@ function instr_dup!(state::DiscreteVMState)
 end
 
 function instr_swap!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -102,7 +102,7 @@ function instr_swap!(state::DiscreteVMState)
 end
 
 function instr_add!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -112,7 +112,7 @@ function instr_add!(state::DiscreteVMState)
 end
 
 function instr_sub!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -122,7 +122,7 @@ function instr_sub!(state::DiscreteVMState)
 end
 
 function instr_mult!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -132,7 +132,7 @@ function instr_mult!(state::DiscreteVMState)
 end
 
 function instr_div!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -143,7 +143,7 @@ function instr_div!(state::DiscreteVMState)
 end
 
 function instr_not!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 1
         return
     end
@@ -155,7 +155,7 @@ function instr_not!(state::DiscreteVMState)
 end
 
 function instr_and!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -166,7 +166,7 @@ function instr_and!(state::DiscreteVMState)
 end
 
 function instr_or!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -177,19 +177,19 @@ function instr_or!(state::DiscreteVMState)
 end
 
 function instr_goto!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 1
         return
     end
     x = popfirst!(state.stack)
     # Verification of non zero, positive integer?
     if x > 0
-        state.instructionpointer = x
+        state.instrpointer = x
     end
 end
 
 function instr_gotoif!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -197,12 +197,12 @@ function instr_gotoif!(state::DiscreteVMState)
     y = popfirst!(state.stack)
     if x != 0 && y > 0
         # TODO clamp to valid length
-        state.instructionpointer = y
+        state.instrpointer = y
     end
 end
 
 function instr_iseq!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -216,7 +216,7 @@ function instr_iseq!(state::DiscreteVMState)
 end
 
 function instr_isgt!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -230,7 +230,7 @@ function instr_isgt!(state::DiscreteVMState)
 end
 
 function instr_isge!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -244,7 +244,7 @@ function instr_isge!(state::DiscreteVMState)
 end
 
 function instr_store!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.stack) < 2
         return
     end
@@ -254,7 +254,7 @@ function instr_store!(state::DiscreteVMState)
 end
 
 function instr_load!(state::DiscreteVMState)
-    state.instructionpointer += 1
+    state.instrpointer += 1
     if length(state.variables) < 1
         return
     end
