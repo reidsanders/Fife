@@ -490,7 +490,7 @@ function test_program_conversion(program)
     discretestate = DiscreteVMState()
     # Put in some misc val (TODO randomize?)
     #for val in [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]
-    for val in [1, 3, 2, 4, 0]
+    for val in [1, 3, 2, 3, 4]
         contstate = instr_pushval!(val, contstate)
         instr_pushval!(val, discretestate)
     end

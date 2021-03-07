@@ -49,7 +49,7 @@ If before the beginning of program set to 1, if after end set to end, and set is
 function setinstrpointer!(state::DiscreteVMState, targetinstrpointer)
     if targetinstrpointer < 1
         state.instrpointer = 1
-    elseif targetinstrpointer > state.programlen
+    elseif targetinstrpointer >= state.programlen
         state.instrpointer = state.programlen
         state.ishalted = true
     else
@@ -57,22 +57,23 @@ function setinstrpointer!(state::DiscreteVMState, targetinstrpointer)
     end
 end
 
+
 function instr_pass!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
 end
 
 function instr_halt!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     state.ishalted = true
 end
 
 function instr_pushval!(value::StackValueType, state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     pushfirst!(state.stack, value)
 end
 
 function instr_pop!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 1
         return
     end
@@ -80,7 +81,7 @@ function instr_pop!(state::DiscreteVMState)
 end
 
 function instr_dup!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 1
         return
     end
@@ -91,7 +92,7 @@ function instr_dup!(state::DiscreteVMState)
 end
 
 function instr_swap!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -102,7 +103,7 @@ function instr_swap!(state::DiscreteVMState)
 end
 
 function instr_add!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -112,7 +113,7 @@ function instr_add!(state::DiscreteVMState)
 end
 
 function instr_sub!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -122,7 +123,7 @@ function instr_sub!(state::DiscreteVMState)
 end
 
 function instr_mult!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -132,7 +133,7 @@ function instr_mult!(state::DiscreteVMState)
 end
 
 function instr_div!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -143,7 +144,7 @@ function instr_div!(state::DiscreteVMState)
 end
 
 function instr_not!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 1
         return
     end
@@ -155,7 +156,7 @@ function instr_not!(state::DiscreteVMState)
 end
 
 function instr_and!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -166,7 +167,7 @@ function instr_and!(state::DiscreteVMState)
 end
 
 function instr_or!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -177,7 +178,7 @@ function instr_or!(state::DiscreteVMState)
 end
 
 function instr_goto!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 1
         return
     end
@@ -189,7 +190,7 @@ function instr_goto!(state::DiscreteVMState)
 end
 
 function instr_gotoif!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -202,7 +203,7 @@ function instr_gotoif!(state::DiscreteVMState)
 end
 
 function instr_iseq!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -216,7 +217,7 @@ function instr_iseq!(state::DiscreteVMState)
 end
 
 function instr_isgt!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -230,7 +231,7 @@ function instr_isgt!(state::DiscreteVMState)
 end
 
 function instr_isge!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -244,7 +245,7 @@ function instr_isge!(state::DiscreteVMState)
 end
 
 function instr_store!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 2
         return
     end
@@ -254,7 +255,7 @@ function instr_store!(state::DiscreteVMState)
 end
 
 function instr_load!(state::DiscreteVMState)
-    state.instrpointer += 1
+    setinstrpointer!(state, state.instrpointer + 1)
     if length(state.variables) < 1
         return
     end
