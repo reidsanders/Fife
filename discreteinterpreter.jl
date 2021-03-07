@@ -49,7 +49,7 @@ If before the beginning of program set to 1, if after end set to end, and set is
 function setinstrpointer!(state::DiscreteVMState, targetinstrpointer)
     if targetinstrpointer < 1
         state.instrpointer = 1
-    elseif targetinstrpointer >= state.programlen
+    elseif targetinstrpointer > state.programlen
         state.instrpointer = state.programlen
         state.ishalted = true
     else

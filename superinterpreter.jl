@@ -138,11 +138,12 @@ function advanceinstrpointer(state::VMState, increment::Int)
         middle = state.instrpointer[2-increment:end]
         middle = [middle; zeros(abs(increment) - 1)]
     end
-    p_end = sum(state.instrpointer[end-increment:end])
+    p_pastend = sum(state.instrpointer[end+1-increment:end])
     p_begin = sum(state.instrpointer[1:1-increment])
+    p_end = p_pastend + state.instrpointer[end-increment]
     newinstrpointer = [[p_begin]; middle; [p_end]]
     p_nothalted, p_halted = state.ishalted
-    p_halted = 1 - p_nothalted * (1 - p_end)
+    p_halted = 1 - p_nothalted * (1 - p_pastend)
     newishalted = [1 - p_halted, p_halted]
 
     @assert sum(newinstrpointer) ≈ 1.0 "Not sum to 1: $(newinstrpointer)\n Initial: $(state.instrpointer)"
