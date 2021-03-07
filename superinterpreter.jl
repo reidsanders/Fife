@@ -124,13 +124,13 @@ advance instruction pointer respecting program length. Return (newinstructionpoi
 If before the beginning of program set to 1, if after end set to end, and set ishalted to true
 """
 function advanceinstructionpointer(state::VMState, increment::Int)
-    maxallowedincrement = length(state.instructionpointer) - 1
+    maxincrement = length(state.instructionpointer) - 1
     if increment == 0
         return (state.instructionpointer, state.ishalted)
-    elseif increment > maxallowedincrement
-        increment = maxallowedincrement
-    elseif increment < - maxallowedincrement
-        increment = 1 - maxallowedincrement
+    elseif increment > maxincrement
+        increment = maxincrement
+    elseif increment < - maxincrement
+        increment = 1 - maxincrement
     end
     if increment > 0
         middle = state.instructionpointer[1: end - 1 - increment]
@@ -139,12 +139,12 @@ function advanceinstructionpointer(state::VMState, increment::Int)
         middle = state.instructionpointer[2 - increment: end]
         middle = [middle; zeros(abs(increment) - 1)]
     end
-    plast = sum(state.instructionpointer[end-increment:end])
-    pfirst = sum(state.instructionpointer[1:1-increment])
-    newinstructionpointer = [[pfirst]; middle; [plast]]
-    pfalse, ptrue = state.ishalted
-    phalted = 1 - pfalse * (1 - plast)
-    newishalted = [1 - phalted, phalted]
+    p_end = sum(state.instructionpointer[end-increment:end])
+    p_begin = sum(state.instructionpointer[1:1-increment])
+    newinstructionpointer = [[p_begin]; middle; [p_end]]
+    p_nothalted, p_halted = state.ishalted
+    p_halted = 1 - p_nothalted * (1 - p_end)
+    newishalted = [1 - p_halted, p_halted]
 
     @assert sum(newinstructionpointer) ≈ 1.0 "Not sum to 1: $(newinstructionpointer)\n Initial: $(state.instructionpointer)"
     @assert sum(newishalted) ≈ 1.0
