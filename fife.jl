@@ -58,8 +58,7 @@ function convert_discrete_to_continuous(
     programlen = discrete.programlen
 
     contstate = VMState(stackdepth, programlen, allvalues)
-    cont_instrpointer =
-        onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
+    cont_instrpointer = onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
     fill!(discretestack, "blank")
@@ -75,14 +74,13 @@ function convert_discrete_to_continuous(
     end
     contvariables = onehotbatch(discretevariables, allvalues) * 1.0f0
     contishalted = onehot(discrete.ishalted, [false, true]) * 1.0f0
-    state = VMState(
+    VMState(
         cont_instrpointer |> device,
         contstate.stackpointer |> device,
         contstack |> device,
         contvariables |> device,
         contishalted |> device,
     )
-    return state
 end
 
 function convert_continuous_to_discrete(
@@ -114,7 +112,7 @@ function convert_continuous_to_discrete(
         end
     end
 
-    newvariables = DefaultDict{StackValueType, StackValueType}(0) 
+    newvariables = DefaultDict{StackValueType,StackValueType}(0)
     # default blank? blank isn't technically in it
     # Use missing instead of blank?
     for x in variables
@@ -126,7 +124,7 @@ function convert_continuous_to_discrete(
             push!(newstack, x)
         end
     end
-    return DiscreteVMState(instrpointer = instrpointer, stack = newstack, ishalted = ishalted)
+    DiscreteVMState(instrpointer = instrpointer, stack = newstack, ishalted = ishalted)
 end
 
 function ==(x::CircularDeque, y::CircularDeque)
@@ -135,18 +133,18 @@ function ==(x::CircularDeque, y::CircularDeque)
     for (i, j) in zip(x, y)
         i == j || return false
     end
-    return true
+    true
 end
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
-    return x.instrpointer == y.instrpointer &&
-           x.stack == y.stack &&
-           x.variables == y.variables &&
-           x.ishalted == y.ishalted
+    x.instrpointer == y.instrpointer &&
+        x.stack == y.stack &&
+        x.variables == y.variables &&
+        x.ishalted == y.ishalted
 end
 
 function ==(x::VMState, y::VMState)
-    return x.instrpointer == y.instrpointer &&
-           x.stackpointer == y.stackpointer &&
-           x.stack == y.stack
+    x.instrpointer == y.instrpointer &&
+        x.stackpointer == y.stackpointer &&
+        x.stack == y.stack
 end

@@ -37,7 +37,7 @@ function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
     for el in x
         push!(y, el)
     end
-    return y
+    y
 end
 
 """
@@ -58,17 +58,17 @@ function setinstrpointer!(state::DiscreteVMState, targetinstrpointer)
 end
 
 function instr_pass!(state::DiscreteVMState)
-    return state.instrpointer += 1
+    state.instrpointer += 1
 end
 
 function instr_halt!(state::DiscreteVMState)
     state.instrpointer += 1
-    return state.ishalted = true
+    state.ishalted = true
 end
 
 function instr_pushval!(value::StackValueType, state::DiscreteVMState)
     state.instrpointer += 1
-    return pushfirst!(state.stack, value)
+    pushfirst!(state.stack, value)
 end
 
 function instr_pop!(state::DiscreteVMState)
@@ -76,7 +76,7 @@ function instr_pop!(state::DiscreteVMState)
     if length(state.stack) < 1
         return
     end
-    return popfirst!(state.stack)
+    popfirst!(state.stack)
 end
 
 function instr_dup!(state::DiscreteVMState)
@@ -87,7 +87,7 @@ function instr_dup!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     pushfirst!(state.stack, x)
     pushfirst!(state.stack, x)
-    return state
+    state
 end
 
 function instr_swap!(state::DiscreteVMState)
@@ -98,7 +98,7 @@ function instr_swap!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
     pushfirst!(state.stack, x)
-    return pushfirst!(state.stack, y)
+    pushfirst!(state.stack, y)
 end
 
 function instr_add!(state::DiscreteVMState)
@@ -108,7 +108,7 @@ function instr_add!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    return pushfirst!(state.stack, x + y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x + y |> coercetostackvaluepart)
 end
 
 function instr_sub!(state::DiscreteVMState)
@@ -118,7 +118,7 @@ function instr_sub!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    return pushfirst!(state.stack, x - y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x - y |> coercetostackvaluepart)
 end
 
 function instr_mult!(state::DiscreteVMState)
@@ -128,7 +128,7 @@ function instr_mult!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    return pushfirst!(state.stack, x * y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x * y |> coercetostackvaluepart)
 end
 
 function instr_div!(state::DiscreteVMState)
@@ -139,7 +139,7 @@ function instr_div!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
     # Floor or Round?
-    return pushfirst!(state.stack, x / y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x / y |> coercetostackvaluepart)
 end
 
 function instr_not!(state::DiscreteVMState)
@@ -151,7 +151,7 @@ function instr_not!(state::DiscreteVMState)
     # but if true still set to 1
     x = popfirst!(state.stack)
     notx = 1 * (x == 0)
-    return pushfirst!(state.stack, notx)
+    pushfirst!(state.stack, notx)
 end
 
 function instr_and!(state::DiscreteVMState)
@@ -162,7 +162,7 @@ function instr_and!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
     res = 1 * (x != 0 && y != 0)
-    return pushfirst!(state.stack, res)
+    pushfirst!(state.stack, res)
 end
 
 function instr_or!(state::DiscreteVMState)
@@ -173,7 +173,7 @@ function instr_or!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
     res = 1 * (x != 0 || y != 0)
-    return pushfirst!(state.stack, res)
+    pushfirst!(state.stack, res)
 end
 
 function instr_goto!(state::DiscreteVMState)
@@ -250,7 +250,7 @@ function instr_store!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    return state.variables[y] = x
+    state.variables[y] = x
 end
 
 function instr_load!(state::DiscreteVMState)

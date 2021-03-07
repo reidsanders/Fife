@@ -101,8 +101,7 @@ function super_step(state::VMState, program, instructions)
     supervariables = cat([x.variables for x in newstates]..., dims = 3)
     ishalteds = cat([x.ishalted for x in newstates]..., dims = 3)
 
-    states =
-        VMSuperStates(instrpointers, stackpointers, stacks, supervariables, ishalteds)
+    states = VMSuperStates(instrpointers, stackpointers, stacks, supervariables, ishalteds)
     current = program .* state.instrpointer'
     summed = sum(current, dims = 2)
     summed = reshape(summed, (1, 1, :))
@@ -114,7 +113,7 @@ function super_step(state::VMState, program, instructions)
         sum(scaledstates.supervariables, dims = 3)[:, :, 1],
         sum(scaledstates.ishalteds, dims = 3)[:, :, 1],
     )
-    return normit(reduced)
+    normit(reduced)
 end
 
 """
@@ -129,14 +128,14 @@ function advanceinstrpointer(state::VMState, increment::Int)
         return (state.instrpointer, state.ishalted)
     elseif increment > maxincrement
         increment = maxincrement
-    elseif increment < - maxincrement
+    elseif increment < -maxincrement
         increment = 1 - maxincrement
     end
     if increment > 0
-        middle = state.instrpointer[1: end - 1 - increment]
+        middle = state.instrpointer[1:end-1-increment]
         middle = [zeros(abs(increment) - 1); middle]
     elseif increment < 0
-        middle = state.instrpointer[2 - increment: end]
+        middle = state.instrpointer[2-increment:end]
         middle = [middle; zeros(abs(increment) - 1)]
     end
     p_end = sum(state.instrpointer[end-increment:end])
@@ -149,7 +148,7 @@ function advanceinstrpointer(state::VMState, increment::Int)
     @assert sum(newinstrpointer) ≈ 1.0 "Not sum to 1: $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert sum(newishalted) ≈ 1.0
 
-    return (newinstrpointer .|> StackFloatType, newishalted .|> StackFloatType)
+    (newinstrpointer .|> StackFloatType, newishalted .|> StackFloatType)
 end
 
 ###############################
@@ -171,13 +170,7 @@ function instr_dup!(state::VMState)::VMState
     newcomponent = circshift(state.stack .* state.stackpointer', (0, -1))
     newstack = oldcomponent .+ newcomponent
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
-        newinstrpointer,
-        newstackpointer,
-        newstack,
-        state.variables,
-        ishalted,
-    )
+    VMState(newinstrpointer, newstackpointer, newstack, state.variables, ishalted)
 
 end
 
@@ -197,7 +190,7 @@ function instr_add!(state::VMState)::VMState
     resultvec = op_probvec(+, x, y)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
+    VMState(
         newinstrpointer,
         newstate.stackpointer,
         newstate.stack,
@@ -219,7 +212,7 @@ function instr_sub!(state::VMState)::VMState
     resultvec = op_probvec(-, x, y)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
+    VMState(
         newinstrpointer,
         newstate.stackpointer,
         newstate.stack,
@@ -241,7 +234,7 @@ function instr_mult!(state::VMState)::VMState
     resultvec = op_probvec(*, x, y)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
+    VMState(
         newinstrpointer,
         newstate.stackpointer,
         newstate.stack,
@@ -263,7 +256,7 @@ function instr_div!(state::VMState)::VMState
     resultvec = op_probvec(/, x, y)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
+    VMState(
         newinstrpointer,
         newstate.stackpointer,
         newstate.stack,
@@ -286,7 +279,7 @@ function instr_not!(state::VMState)::VMState
     resultvec = op_probvec(a -> float(a == 0), x)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
+    VMState(
         newinstrpointer,
         newstate.stackpointer,
         newstate.stack,
@@ -307,10 +300,10 @@ function instr_and!(state::VMState)::VMState
     state, x = pop(state)
     state, y = pop(state)
 
-    resultvec = op_probvec((a,b) -> float(a != 0 && a != 0), x, y)
+    resultvec = op_probvec((a, b) -> float(a != 0 && a != 0), x, y)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
+    VMState(
         newinstrpointer,
         newstate.stackpointer,
         newstate.stack,
@@ -332,13 +325,7 @@ function instr_swap!(state::VMState)::VMState
     state = pushtostack(state, x)
     state = pushtostack(state, y)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.stack,
-        state.variables,
-        ishalted,
-    )
+    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, ishalted)
 end
 
 """
@@ -371,13 +358,14 @@ function instr_gotoif!(
     # newinstrpointer = [[pfirst]; middle; [plast]]
 
     p_ofgoto = 1 - conditional[zeroindex]
-    p_gotobegin = sum(destination[neginfindex:zeroindex + 1])
+    p_gotobegin = sum(destination[neginfindex:zeroindex+1])
     p_gotoend = sum(destination[maxinstrindex:end])
-    jumpvalprobs = destination[zeroindex + 2:maxinstrindex - 1]
+    jumpvalprobs = destination[zeroindex+2:maxinstrindex-1]
     newinstrpointer = [[p_gotobegin]; jumpvalprobs; [p_gotoend]]
 
     currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
-    newinstrpointer = (1 - p_ofgoto) * currentinstructionforward .+ p_ofgoto * newinstrpointer
+    newinstrpointer =
+        (1 - p_ofgoto) * currentinstructionforward .+ p_ofgoto * newinstrpointer
 
     p_nothalted, p_halted = state.ishalted
     p_halted = 1 - p_nothalted * (1 - p_gotoend)
@@ -386,14 +374,7 @@ function instr_gotoif!(
     @assert sum(newinstrpointer) ≈ 1.0 "Not sum to 1: $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert sum(newishalted) ≈ 1.0
 
-    return VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.stack,
-        state.variables,
-        newishalted,
-    )
-
+    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, newishalted)
 end
 
 """
@@ -404,13 +385,7 @@ Do nothing but advance instruction pointer. Returns new state.
 """
 function instr_pass!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    return VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.stack,
-        state.variables,
-        ishalted,
-    )
+    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, ishalted)
 end
 
 """
@@ -421,14 +396,8 @@ Do nothing but advance instruction pointer. Returns new state.
 """
 function instr_halt!(state::VMState)::VMState
     newinstrpointer, _ = advanceinstrpointer(state, 1)
-    ishalted = [0,1] .|> StackFloatType
-    return VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.stack,
-        state.variables,
-        ishalted,
-    )
+    ishalted = [0, 1] .|> StackFloatType
+    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, ishalted)
 end
 
 """
@@ -444,13 +413,7 @@ function instr_pushval!(val::StackValueType, state::VMState)::VMState
     topscaled = valhotvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
-    return VMState(
-        newinstrpointer,
-        newstackpointer,
-        newstack,
-        state.variables,
-        state.ishalted,
-    )
+    VMState(newinstrpointer, newstackpointer, newstack, state.variables, state.ishalted)
 end
 
 ###############################
@@ -471,7 +434,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
     for numericval in numericvalues
         append!(indexmapping, [findall(x -> x == numericval, optable)])
     end
-    return indexmapping
+    indexmapping
 end
 
 """
@@ -489,7 +452,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
     for numericval in numericvalues
         append!(indexmapping, [findall(x -> x == numericval, optable)])
     end
-    return indexmapping
+    indexmapping
 end
 
 """
@@ -513,7 +476,7 @@ function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array
     @assert sum(xnumerics) ≈ sum(numericprobs) "Numeric probabilities are conserved"
     @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
 
-    return [nonnumericprobs; numericprobs]
+    [nonnumericprobs; numericprobs]
 end
 
 """
@@ -547,7 +510,7 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     @assert sum(xnumerics) * sum(ynumerics) ≈ sum(numericprobs) "Numeric probabilities are conserved"
     @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
 
-    return [nonnumericprobs; numericprobs]
+    [nonnumericprobs; numericprobs]
 end
 
 """
@@ -570,7 +533,7 @@ function pop(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
         state.ishalted,
     )
     check_state_asserts(newstate)
-    return (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
+    (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
 end
 
 """
@@ -595,11 +558,11 @@ function pushtostack(state::VMState, valvec::Array)::VMState
         state.ishalted,
     )
     check_state_asserts(newstate)
-    return newstate
+    newstate
 end
 
 function valhot(val, allvalues)
-    return [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
+    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
 end
 
 function check_state_asserts(state::VMState)
@@ -624,16 +587,16 @@ function softmaxmask(mask, prog)
     tmp = softmax(prog)
     trainable = tmp .* mask
     frozen = prog .* (1 .- mask)
-    return trainable .+ frozen
+    trainable .+ frozen
 end
 
 function normit(a::Union{Array,CuArray}; dims = 1, ϵ = epseltype(a))
     new = a .+ ϵ
-    return new ./ sum(new, dims = dims)
+    new ./ sum(new, dims = dims)
 end
 
 function normit(a::VMState; dims = 1)
-    return VMState(
+    VMState(
         normit(a.instrpointer, dims = dims),
         normit(a.stackpointer, dims = dims),
         normit(a.stack, dims = dims),
@@ -645,12 +608,12 @@ end
 function main()
     state = init_state(stackdepth, programlen)
     state = run(state, program, instructions, max_ticks)
-    return collapsed_program = onecold(program)
+    collapsed_program = onecold(program)
 end
 
 function applyfullmask(mask, prog)
     out = prog[mask]
-    return reshape(out, (size(prog)[1], :))
+    reshape(out, (size(prog)[1], :))
 end
 
 ###############################
@@ -658,17 +621,17 @@ end
 ###############################
 
 function create_random_discrete_program(len, instructions)
-    return program = [rand(instructions) for i = 1:len]
+    program = [rand(instructions) for i = 1:len]
 end
 
 function create_random_inputs(len, instructions)
-    return program = [rand(instructions) for i = 1:len]
+    program = [rand(instructions) for i = 1:len]
 end
 
 function create_trainable_mask(programlen, inputlen)
     mask = falses(programlen)
     mask[inputlen+1:end] .= true
-    return mask
+    mask
 end
 
 function VMState(
@@ -686,15 +649,13 @@ function VMState(
     stack[1, :] .= 1.0
     variables[1, :] .= 1.0
     ishalted[1] = 1.0 # set false
-    # @assert isbitstype(stack) == true
-    state = VMState(
+    VMState(
         instrpointer |> device,
         stackpointer |> device,
         stack |> device,
         variables |> device,
         ishalted |> device,
     )
-    return state
 end
 
 function get_program_with_random_inputs(program, mask)
@@ -704,7 +665,7 @@ function get_program_with_random_inputs(program, mask)
         new_program[:, i] .= false
         new_program[rand(1:num_instructions), i] = true
     end
-    return new_program
+    new_program
 end
 
 function create_program_batch(startprogram, trainmask, batch_size)
@@ -724,7 +685,7 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples = 16)
         end
         variablemaskeds[:, :, i] = newvariablemasked  # Batch
     end
-    return variablemaskeds
+    variablemaskeds
 end
 
 function run(state, program, instructions, ticks)
@@ -732,33 +693,33 @@ function run(state, program, instructions, ticks)
         state = super_step(state, program, instructions)
         # assert_no_nans(state)
     end
-    return state
+    state
 end
 
 function loss(ŷ, y)
     # TODO top of stack super position actual stack. add tiny amount of instrpointer just because
     # Technically current instruction doesn't really matter
-    return crossentropy(ŷ.stack, y.stack) +
-           crossentropy(ŷ.stackpointer, y.stackpointer) +
-           crossentropy(ŷ.instrpointer, y.instrpointer)
+    crossentropy(ŷ.stack, y.stack) +
+    crossentropy(ŷ.stackpointer, y.stackpointer) +
+    crossentropy(ŷ.instrpointer, y.instrpointer)
 end
 
 function accuracy(hidden, target, trainmask)
     samemax = onecold(hidden) .== onecold(target)
-    return result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
+    result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
 function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
     program = softmaxprog(hiddenprogram)
     target = run(blank_state, targetprogram, instructions, programlen)
     prediction = run(blank_state, program, instructions, programlen)
-    return loss(prediction, target)
+    loss(prediction, target)
 end
 
 function forward(state, target, instructions, programlen, hiddenprogram)
     program = softmaxprog(hiddenprogram)
     pred = run(state, program, instructions, programlen)
-    return loss(pred, target)
+    loss(pred, target)
 end
 
 function trainloop(variablemaskeds; batchsize = 4)
@@ -806,7 +767,7 @@ function normalize_stackpointer(state::VMState)
     stackpointermax = onecold(state.stackpointer)
     stack = circshift(state.stack, (0, 1 - stackpointermax))
     stackpointer = circshift(state.stackpointer, 1 - stackpointermax)
-    return VMState(
+    VMState(
         state.instrpointer |> device,
         stackpointer |> device,
         stack |> device,

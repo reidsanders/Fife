@@ -52,7 +52,7 @@ function init_random_state(
     instrpointer[1] = 1.0
     stackpointer[1] = 1.0
     ishalted[1] = 1.0 # set false
-    return VMState(
+    VMState(
         instrpointer |> device,
         stackpointer |> device,
         stack |> device,
@@ -465,10 +465,9 @@ function test_all_single_instr()
 end
 
 function test_program_conversion(program)
-    # test true
+    ### Basic well behaved program ###
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     discretestate = DiscreteVMState()
-    # Put in some misc val (TODO randomize?)
     for val in [1, 3, 2, 4]
         contstate = instr_pushval!(val, contstate)
         instr_pushval!(val, discretestate)
@@ -484,7 +483,29 @@ function test_program_conversion(program)
     run_equality_asserts(contstate, newcontstate)
     run_equality_asserts(discretestate, newdiscretestate)
     run_equality_test(contstate, newcontstate)
-    return run_equality_test(discretestate, newdiscretestate)
+    run_equality_test(discretestate, newdiscretestate)
+
+    ### Test program longer than val size ###
+    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    discretestate = DiscreteVMState()
+    # Put in some misc val (TODO randomize?)
+    #for val in [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]
+    for val in [1, 3, 2, 4, 0]
+        contstate = instr_pushval!(val, contstate)
+        instr_pushval!(val, discretestate)
+    end
+    for instr in program
+        contstate = instr(contstate)
+        instr(discretestate)
+    end
+    contstate = normalize_stackpointer(contstate)
+    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+    newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
+
+    run_equality_asserts(contstate, newcontstate)
+    run_equality_asserts(discretestate, newdiscretestate)
+    run_equality_test(contstate, newcontstate)
+    run_equality_test(discretestate, newdiscretestate)
 end
 
 test_push_vmstate()
