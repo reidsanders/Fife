@@ -11,11 +11,11 @@ function replacenans(x, replacement)
     end
 end
 
-function setoutofboundstoinf(x::Number; min = -Inf, max = Inf)::Number
-    if x < min
-        return -Inf
-    elseif x > max
-        return Inf
+function setoutofboundstolarge(x::Number; min = -Inf, max = Inf, large = Inf)::Number
+    if x > max
+        return large
+    elseif x < min
+        return -large
     else
         return x
     end
@@ -28,11 +28,12 @@ function roundnoninf(x::Number)
     round(Int, x)
 end
 
-function coercetostackvalue(x::Number; min = -Inf, max = Inf)
+function coercetostackvalue(T::Type, min::Number, max::Number, large::Number, x::Number)
     x = replacenans(x, 0)
-    x = setoutofboundstoinf(x; min = min, max = max)
-    roundnoninf(x)
+    x = setoutofboundstolarge(x; min = min, max = max, large = large)
+    round(T, x)
+    #roundnoninf(x)
 end
 
-export partial, replacenans, setoutofboundstoinf, roundnoninf, coercetostackvalue
+export partial, replacenans, setoutofboundstolarge, roundnoninf, coercetostackvalue
 end

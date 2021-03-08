@@ -17,7 +17,6 @@ using CUDA
 using Random
 import Base: ==
 
-#include("main.jl")
 include("fife.jl")
 
 ######################################
@@ -153,13 +152,13 @@ function test_instr_mult()
     instr_pushval!(5, state)
     instr_mult!(state)
     @test state.instrpointer == 7
-    @test first(state.stack) == Inf
+    @test first(state.stack) == largevalue
 end
 
 function test_instr_div()
     state = DiscreteVMState()
     instr_pushval!(4, state)
-    instr_pushval!(9, state)
+    instr_pushval!(7, state)
     instr_div!(state)
     @test state.instrpointer == 4
     @test first(state.stack) == 2
@@ -337,13 +336,13 @@ end
 
 function test_add_probvec()
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
-    result = op_probvec(+, x, y; numericvalues = [-Inf, 0, 1, Inf])
+    result = op_probvec(+, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7, 0.1 * 0.3 + 0.7 * 0.9, 0.3 * 0.9]
 
     x = [0.1, 0.0, 0.1, 0.8, 0.0]
     y = [0.3, 0.0, 0.4, 0.3, 0.0]
-    result = op_probvec(+, x, y; numericvalues = [-Inf, 0, 1, Inf])
+    result = op_probvec(+, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
     @test result == [
         0.1 * 0.3 + 0.1 * (1 - 0.3) + (1 - 0.1) * 0.3,
         0.0,
@@ -357,37 +356,38 @@ end
 function test_div_probvec()
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
     y = [0.0, 0.0, 0.7, 0.3, 0.0]
-    result = op_probvec(/, x, y; numericvalues = [-Inf, 0, 1, Inf])
+    result = op_probvec(/, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7 + 0.1 * 0.3, 0.9 * 0.3, 0.9 * 0.7]
 
     x = [0.0, 0.15, 0.15, 0.7, 0.0]
     y = [0.0, 0.16, 0.0, 0.56, 0.28]
-    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
     @test sum(result) == 1.0
 
     x = [0.05, 0.1, 0.15, 0.2, 0.5]
     y = [0.03, 0.13, 0.23, 0.33, 0.28]
-    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
     @test sum(result) == 1.0
-    # sum -Inf/0 -Inf/1 Inf/-1 -1/0
+    # prob of -largevalue: sum -largevalue/0 -largevalue/1 largevalue/-1 -1/0
     @test result[1] == (0.05 * 0.23) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.23)
-    # sum -1/1 1/-1
-    @test result[2] == (0.1 * 0.33) + (0.2 * 0.13)
+    ### Prob of -1: sum -1/1 1/-1, -largevalue / largevalue, largevalue/ -largevalue
+    @test result[2] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
 
-    x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
+    ### Test with nonnumeric values
     x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
     y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
-    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
     @test sum(result) == 1.0
+    ### nonumeric prob
     @test result[1] == 0.1 + 0.05 - (0.1 * 0.05)
-    # sum -Inf/0 -Inf/1 Inf/-1 -1/0
+    # prob of -largevalue: sum -largevalue/0 -largevalue/1 largevalue/-1 -1/0
     @test result[2] == (0.05 * 0.18) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.18)
-    # sum -1/1 1/-1
-    @test result[3] == (0.1 * 0.33) + (0.2 * 0.13)
+    ### Prob of -1: sum -1/1 1/-1, -largevalue / largevalue, largevalue/ -largevalue
+    @test result[3] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
     x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    result = op_probvec(/, x, y; numericvalues = [-Inf, -1, 0, 1, Inf])
+    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
     @test sum(result) == 1.0
     @test result[1] == 1.0
 end
@@ -466,64 +466,26 @@ end
 
 function test_program_conversion(program)
     ### Basic well behaved program ###
-    contstate = VMState(args.stackdepth, args.programlen, allvalues)
-    discretestate = DiscreteVMState()
-    for val in [1, 3, 2, 4]
-        contstate = instr_pushval!(val, contstate)
-        instr_pushval!(val, discretestate)
-    end
-    for instr in program
-        contstate = instr(contstate)
-        instr(discretestate)
-    end
-    contstate = normalize_stackpointer(contstate)
-    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
-    newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
+    for vals in [[1, 3, 2, 4], [1, 3, 2, 3, 4], [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]]
+        contstate = VMState(args.stackdepth, args.programlen, allvalues)
+        discretestate = DiscreteVMState()
+        for val in [1, 3, 2, 4]
+            contstate = instr_pushval!(val, contstate)
+            instr_pushval!(val, discretestate)
+        end
+        for instr in program
+            contstate = instr(contstate)
+            instr(discretestate)
+        end
+        contstate = normalize_stackpointer(contstate)
+        newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+        newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
 
-    run_equality_asserts(contstate, newcontstate)
-    run_equality_asserts(discretestate, newdiscretestate)
-    run_equality_test(contstate, newcontstate)
-    run_equality_test(discretestate, newdiscretestate)
-
-    ### Test running program equal to max programlen ###
-    contstate = VMState(args.stackdepth, args.programlen, allvalues)
-    discretestate = DiscreteVMState()
-    for val in [1, 3, 2, 3, 4]
-        contstate = instr_pushval!(val, contstate)
-        instr_pushval!(val, discretestate)
+        run_equality_asserts(contstate, newcontstate)
+        run_equality_asserts(discretestate, newdiscretestate)
+        run_equality_test(contstate, newcontstate)
+        run_equality_test(discretestate, newdiscretestate)
     end
-    for instr in program
-        contstate = instr(contstate)
-        instr(discretestate)
-    end
-    contstate = normalize_stackpointer(contstate)
-    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
-    newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
-
-    run_equality_asserts(contstate, newcontstate)
-    run_equality_asserts(discretestate, newdiscretestate)
-    run_equality_test(contstate, newcontstate)
-    run_equality_test(discretestate, newdiscretestate)
-
-    ### Test program longer than val size ###
-    contstate = VMState(args.stackdepth, args.programlen, allvalues)
-    discretestate = DiscreteVMState()
-    for val in [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]
-        contstate = instr_pushval!(val, contstate)
-        instr_pushval!(val, discretestate)
-    end
-    for instr in program
-        contstate = instr(contstate)
-        instr(discretestate)
-    end
-    contstate = normalize_stackpointer(contstate)
-    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
-    newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
-
-    run_equality_asserts(contstate, newcontstate)
-    run_equality_asserts(discretestate, newdiscretestate)
-    run_equality_test(contstate, newcontstate)
-    run_equality_test(discretestate, newdiscretestate)
 end
 
 test_push_vmstate()

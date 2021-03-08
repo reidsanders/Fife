@@ -96,7 +96,7 @@ function convert_continuous_to_discrete(
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
     # Dealing with blanks is tricky. It's not clear what is correct semantically
-    newstack = CircularDeque{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    newstack = CircularBuffer{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
             break
@@ -135,6 +135,15 @@ function ==(x::CircularDeque, y::CircularDeque)
     end
     true
 end
+
+# function ==(x::CircularBuffer, y::CircularBuffer)
+#     x.capacity != y.capacity && return false
+#     length(x) != length(y) && return false
+#     for (i, j) in zip(x, y)
+#         i == j || return false
+#     end
+#     true
+# end
 
 function ==(x::DiscreteVMState, y::DiscreteVMState)
     x.instrpointer == y.instrpointer &&

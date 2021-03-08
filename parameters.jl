@@ -4,7 +4,8 @@ using Flux
 Random.seed!(123);
 CUDA.allowscalar(false)
 
-StackFloatType = Float32
+include("utils.jl")
+using .Utils
 
 if args.usegpu
     global device = gpu
@@ -14,7 +15,14 @@ else
     @info "Training on CPU"
 end
 
-numericvalues = [[-Inf]; [i for i = -args.maxint:args.maxint]; [Inf]]
+StackFloatType = Float32
+StackValueType = Int
+largevalue = floor(StackValueType, sqrt(typemax(StackValueType)))
+
+coercetostackvaluepart =
+    partial(coercetostackvalue, StackValueType, -args.maxint, args.maxint, largevalue)
+
+numericvalues = [[-largevalue]; [i for i = -args.maxint:args.maxint]; [largevalue]]
 nonnumericvalues = ["blank"]
 allvalues = [nonnumericvalues; numericvalues]
 ishaltedvalues = [false, true]

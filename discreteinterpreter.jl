@@ -8,25 +8,28 @@ using ProgressMeter
 using Base.Threads: @threads
 using Parameters: @with_kw
 using Profile
-using DataStructures: CircularDeque, Deque, DefaultDict
+using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 using Test: @test
 
 include("utils.jl")
-using .Utils: partial, replacenans, setoutofboundstoinf, roundnoninf, coercetostackvalue
+using .Utils: partial, replacenans, setoutofboundstolarge, roundnoninf, coercetostackvalue
 
-coercetostackvaluepart(x) = coercetostackvalue(x; min = -args.maxint, max = args.maxint)
+#StackValueType = Int
+#largevalue = floor(StackValueType, sqrt(typemax(StackValueType)))
+#coercetostackvaluepart(x) = coercetostackvalue(x; min = -args.maxint, max = args.maxint, large = largevalue)
 
-StackValueType = Real
+#StackValueType = Real
 
 # Set nans to 0
-# Set > max to Inf
-# Set < max to -Inf
+# Set > max to largevalue
+# Set < max to -largevalue
 # Round Floats to Int (?) define convert? probably want to only clamp at end of calculations
 
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
-    stack::CircularDeque{StackValueType} = CircularDeque{StackValueType}(args.stackdepth)
-    variables::DefaultDict{Int,Int} = DefaultDict{Int,Int}(0) # StackValueType instead of Int?
+    stack::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.stackdepth)
+    variables::DefaultDict{StackValueType,StackValueType} =
+        DefaultDict{StackValueType,StackValueType}(0) # StackValueType instead of Int?
     ishalted::Bool = false
     programlen::Int = args.programlen
     stackdepth::Int = args.stackdepth
@@ -69,7 +72,7 @@ end
 
 function instr_pushval!(value::StackValueType, state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    pushfirst!(state.stack, value)
+    pushfirst!(state.stack, value |> coercetostackvaluepart)
 end
 
 function instr_pop!(state::DiscreteVMState)

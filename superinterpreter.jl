@@ -29,7 +29,19 @@ using Memoize
 include("utils.jl")
 using .Utils: partial
 
-StackFloatType = Float32
+@with_kw mutable struct SuperArgs
+    batchsize::Int = 2
+    lr::Float32 = 2e-4
+    epochs::Int = 2
+    stackdepth::Int = 8
+    programlen::Int = 7
+    inputlen::Int = 2 # frozen part, assumed at front for now
+    max_ticks::Int = 5
+    maxint::Int = 8
+    usegpu::Bool = false
+end
+args = SuperArgs()
+include("parameters.jl")
 
 @with_kw struct VMState
     instrpointer::Union{Array{Float32},CuArray{Float32}}
@@ -407,7 +419,7 @@ function instr_pushval!(val::StackValueType, state::VMState)::VMState
     topscaled = valhotvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
-    VMState(newinstrpointer, newstackpointer, newstack, state.variables, state.ishalted)
+    VMState(newinstrpointer, newstackpointer, newstack, state.variables, ishalted)
 end
 
 ###############################
@@ -422,8 +434,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 """
 @memoize function optablepair(op; numericvalues = numericvalues)
     optable = op.(numericvalues, numericvalues')
-    optable =
-        coercetostackvalue.(optable, min = numericvalues[2], max = numericvalues[end-1])
+    optable = coercetostackvaluepart.(optable)
     indexmapping = []
     for numericval in numericvalues
         append!(indexmapping, [findall(x -> x == numericval, optable)])
@@ -440,8 +451,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 """
 @memoize function optablesingle(op; numericvalues = numericvalues)
     optable = op.(numericvalues)
-    optable =
-        coercetostackvalue.(optable, min = numericvalues[2], max = numericvalues[end-1])
+    optable = coercetostackvaluepart.(optable)
     indexmapping = []
     for numericval in numericvalues
         append!(indexmapping, [findall(x -> x == numericval, optable)])
@@ -457,7 +467,7 @@ Apply numeric op to probability vector of mixed numeric and nonnumeric values. R
 Requires numericvalues at end of allvalues.
 
 """
-function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array
+function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array{Number}
     optableindexes = optablesingle(op, numericvalues = numericvalues)
     xnumerics = x[end+1-length(numericvalues):end]
 
