@@ -485,12 +485,30 @@ function test_program_conversion(program)
     run_equality_test(contstate, newcontstate)
     run_equality_test(discretestate, newdiscretestate)
 
+    ### Test running program equal to max programlen ###
+    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    discretestate = DiscreteVMState()
+    for val in [1, 3, 2, 3, 4]
+        contstate = instr_pushval!(val, contstate)
+        instr_pushval!(val, discretestate)
+    end
+    for instr in program
+        contstate = instr(contstate)
+        instr(discretestate)
+    end
+    contstate = normalize_stackpointer(contstate)
+    newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+    newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
+
+    run_equality_asserts(contstate, newcontstate)
+    run_equality_asserts(discretestate, newdiscretestate)
+    run_equality_test(contstate, newcontstate)
+    run_equality_test(discretestate, newdiscretestate)
+
     ### Test program longer than val size ###
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
     discretestate = DiscreteVMState()
-    # Put in some misc val (TODO randomize?)
-    #for val in [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]
-    for val in [1, 3, 2, 3, 4]
+    for val in [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]
         contstate = instr_pushval!(val, contstate)
         instr_pushval!(val, discretestate)
     end
