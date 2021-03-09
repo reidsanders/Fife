@@ -468,7 +468,7 @@ end
 function test_program_conversion(program)
     ### Basic well behaved program ###
     for vals in [[], [0], [3], [1, 3, 2, 4], [1, 3, 2, 3, 4], [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]]
-        @show vals
+        #@show vals
         contstate = VMState(args.stackdepth, args.programlen, allvalues)
         discretestate = DiscreteVMState()
         for val in vals

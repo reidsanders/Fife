@@ -156,8 +156,8 @@ function advanceinstrpointer(state::VMState, increment::Int)
     p_halted = 1 - p_nothalted * (1 - p_pastend)
     newishalted = [1 - p_halted, p_halted]
 
-    @assert isapprox(sum(newinstrpointer), 1, atol=.001) "Instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
-    @assert isapprox(sum(newishalted), 1, atol=.001)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "Instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(newishalted), 1, atol = 0.001)
 
     (newinstrpointer .|> StackFloatType, newishalted .|> StackFloatType)
 end
@@ -337,10 +337,11 @@ function instr_swap!(state::VMState)::VMState
     # prob push x blank: prob x blank + prob y blank - both blank
     xb = x[1]
     yb = y[1]
-    x[2:end] = x[2:end] * ((1-xb)*(1-yb))/(1-xb+eps(xb))
-    x[1] = xb + yb - xb*yb
-    y[2:end] = y[2:end] * ((1-xb)*(1-yb))/(1-yb+eps(xb))
-    y[1] = xb + yb - xb*yb
+    x[2:end] = x[2:end] * ((1 - xb) * (1 - yb)) / (1 - xb + eps(xb))
+    x[1] = xb + yb - xb * yb
+    y[2:end] = y[2:end] * ((1 - xb) * (1 - yb)) / (1 - yb + eps(xb))
+    y[1] = xb + yb - xb * yb
+
     state = pushtostack(state, x)
     state = pushtostack(state, y)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
@@ -358,8 +359,17 @@ function instr_gotoif!(
     allvalues = allvalues,
     numericvalues = numericvalues,
 )::VMState
-    state, conditional = popfromstack(state)
-    state, destination = popfromstack(state)
+    state, x = popfromstack(state)
+    state, y = popfromstack(state)
+    xb = x[1]
+    yb = y[1]
+    x[2:end] = x[2:end] * ((1 - xb) * (1 - yb)) / (1 - xb + eps(xb))
+    x[1] = xb + yb - xb * yb
+    y[2:end] = y[2:end] * ((1 - xb) * (1 - yb)) / (1 - yb + eps(xb))
+    y[1] = xb + yb - xb * yb
+    conditional = x
+    destination = y
+
 
     ### Calc important indexes ###
     maxint = round(Int, (length(numericvalues) - 1) / 2)
@@ -368,7 +378,11 @@ function instr_gotoif!(
     maxinstrindex = zeroindex + length(state.instrpointer)
 
     ### Accumulate prob mass from goto off either end ###
-    p_ofgoto = 1 - conditional[zeroindex]
+    p_ofgoto =
+        1 - (
+            conditional[zeroindex] + conditional[1] + destination[1] -
+            conditional[1] * destination[1]
+        ) # include blank prob
     p_gotobegin = sum(destination[neginfindex:zeroindex+1])
     p_gotopastend = sum(destination[maxinstrindex-1:end])
     p_gotoend = destination[maxinstrindex] + p_gotopastend
@@ -383,8 +397,8 @@ function instr_gotoif!(
     p_halted = 1 - p_nothalted * (1 - p_gotopastend)
     newishalted = [1 - p_halted, p_halted]
 
-    @assert isapprox(sum(newinstrpointer), 1, atol=.001) "Instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
-    @assert isapprox(sum(newishalted), 1, atol=.001)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(newishalted), 1, atol = 0.001)
     VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, newishalted)
 end
 
