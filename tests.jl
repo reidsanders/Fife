@@ -466,10 +466,10 @@ end
 
 function test_program_conversion(program)
     ### Basic well behaved program ###
-    for vals in [[1, 3, 2, 4], [1, 3, 2, 3, 4], [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]]
+    for vals in [[], [0], [3], [1, 3, 2, 4], [1, 3, 2, 3, 4], [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]]
         contstate = VMState(args.stackdepth, args.programlen, allvalues)
         discretestate = DiscreteVMState()
-        for val in [1, 3, 2, 4]
+        for val in vals
             contstate = instr_pushval!(val, contstate)
             instr_pushval!(val, discretestate)
         end
@@ -488,8 +488,39 @@ function test_program_conversion(program)
     end
 end
 
-### TODO test super_step / run.
-# create program, run for x ticks, etc
+
+function test_super_step()
+    ### TODO test super_step / run.
+    val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+    instructions = [
+        [
+            instr_pass!,
+            instr_halt!,
+            # instr_pushval!,
+            # instr_pop!,
+            instr_dup!,
+            instr_swap!,
+            instr_add!,
+            instr_sub!,
+            instr_mult!,
+            instr_div!,
+            instr_not!,
+            instr_and!,
+            # instr_goto!,
+            instr_gotoif!,
+            # instr_iseq!,
+            # instr_isgt!,
+            # instr_isge!,
+            # instr_store!,
+            # instr_load!
+        ]
+        val_instructions
+    ]
+    discrete_program = create_random_discrete_program(args.programlen, instructions)
+    program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+    state = VMState(args.stackdepth, args.programlen, allvalues)
+    state = super_step(state, program, instructions)
+end
 
 test_push_vmstate()
 test_pop_vmstate()
@@ -515,3 +546,4 @@ test_instr_load()
 test_convert_discrete_to_continuous()
 test_convert_continuous_to_discrete()
 test_all_single_instr()
+test_super_step()
