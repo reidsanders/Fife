@@ -488,6 +488,9 @@ function test_program_conversion(program)
     end
 end
 
+### TODO test super_step / run.
+# create program, run for x ticks, etc
+
 test_push_vmstate()
 test_pop_vmstate()
 test_div_probvec()

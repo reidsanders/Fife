@@ -104,8 +104,6 @@ a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
 function super_step(state::VMState, program, instructions)
-    # TODO instead of taking a state, take the separate arrays as args? Since CuArray doesn't like Structs
-    # TODO batch the individual array (eg add superpose dimension -- can that be a struct or needs to be separate?)
     newstates = [instruction(state) for instruction in instructions]
     instrpointers = cat([x.instrpointer for x in newstates]..., dims = 3)
     stackpointers = cat([x.stackpointer for x in newstates]..., dims = 3)
@@ -158,8 +156,8 @@ function advanceinstrpointer(state::VMState, increment::Int)
     p_halted = 1 - p_nothalted * (1 - p_pastend)
     newishalted = [1 - p_halted, p_halted]
 
-    @assert sum(newinstrpointer) ≈ 1.0 "Not sum to 1: $(newinstrpointer)\n Initial: $(state.instrpointer)"
-    @assert sum(newishalted) ≈ 1.0
+    @assert isapprox(sum(newinstrpointer), 1, atol=.001) "Instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(newishalted), 1, atol=.001)
 
     (newinstrpointer .|> StackFloatType, newishalted .|> StackFloatType)
 end
@@ -377,9 +375,8 @@ function instr_gotoif!(
     p_halted = 1 - p_nothalted * (1 - p_gotopastend)
     newishalted = [1 - p_halted, p_halted]
 
-    @assert sum(newinstrpointer) ≈ 1.0 "Not sum to 1: $(newinstrpointer)\n Initial: $(state.instrpointer)"
-    @assert sum(newishalted) ≈ 1.0
-    # TODO gotopastend not end!!
+    @assert isapprox(sum(newinstrpointer), 1, atol=.001) "Instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(newishalted), 1, atol=.001)
     VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, newishalted)
 end
 
@@ -703,9 +700,12 @@ end
 function loss(ŷ, y)
     # TODO top of stack super position actual stack. add tiny amount of instrpointer just because
     # Technically current instruction doesn't really matter
-    crossentropy(ŷ.stack, y.stack) +
+    # zygote doesn't like variables not being used in loss
     crossentropy(ŷ.stackpointer, y.stackpointer) +
-    crossentropy(ŷ.instrpointer, y.instrpointer)
+    crossentropy(ŷ.instrpointer, y.instrpointer) +
+    crossentropy(ŷ.stack, y.stack) +
+    crossentropy(ŷ.variables, y.variables) +
+    crossentropy(ŷ.ishalted, y.ishalted)
 end
 
 function accuracy(hidden, target, trainmask)

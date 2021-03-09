@@ -17,7 +17,7 @@ using Random
 using LoopVectorization
 using Debugger
 using Base
-import Base: +, -, *, length
+import Base: +, -, *, length, ==
 using StructArrays
 using BenchmarkTools
 using ProgressMeter

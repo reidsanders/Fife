@@ -22,7 +22,8 @@ include("parameters.jl")
 #instr_gotoif! = partial(instr_gotoiffull!, valhot(0, allvalues), nonnumericvalues)
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
-instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
+#instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
+instructions = [[instr_pass!, instr_dup!]; val_instructions]
 num_instructions = length(instructions)
 
 discrete_program = create_random_discrete_program(args.programlen, instructions)
@@ -66,7 +67,7 @@ opt = Descent(0.1)
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(hiddenprogram, numexamples = 10)
+@time trainloopsingle(hiddenprogram, numexamples = 100)
 
 second_loss =
     test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
