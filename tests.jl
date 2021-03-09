@@ -480,7 +480,7 @@ function test_program_conversion(program)
         contstate = normalize_stackpointer(contstate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
         newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
-
+        @show vals
         run_equality_asserts(contstate, newcontstate)
         run_equality_asserts(discretestate, newdiscretestate)
         run_equality_test(contstate, newcontstate)

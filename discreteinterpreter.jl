@@ -96,7 +96,10 @@ end
 
 function instr_swap!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -107,7 +110,10 @@ end
 
 function instr_add!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -117,7 +123,10 @@ end
 
 function instr_sub!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -127,7 +136,10 @@ end
 
 function instr_mult!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -137,7 +149,10 @@ end
 
 function instr_div!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -160,7 +175,10 @@ end
 
 function instr_and!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -171,7 +189,10 @@ end
 
 function instr_or!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -194,7 +215,10 @@ end
 
 function instr_gotoif!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -207,7 +231,10 @@ end
 
 function instr_iseq!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -221,7 +248,10 @@ end
 
 function instr_isgt!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -235,7 +265,10 @@ end
 
 function instr_isge!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
@@ -249,7 +282,10 @@ end
 
 function instr_store!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 2
+    if length(state.stack) < 1
+        return
+    elseif length(state.stack) < 2
+        x = popfirst!(state.stack)
         return
     end
     x = popfirst!(state.stack)
