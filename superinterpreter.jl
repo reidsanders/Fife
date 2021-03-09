@@ -333,6 +333,14 @@ function instr_swap!(state::VMState)::VMState
     state, x = popfromstack(state)
     state, y = popfromstack(state)
 
+    # TODO compensate for prob of blank in either x or y
+    # prob push x blank: prob x blank + prob y blank - both blank
+    xb = x[1]
+    yb = y[1]
+    x[2:end] = x[2:end] * ((1-xb)*(1-yb))/(1-xb+eps(xb))
+    x[1] = xb + yb - xb*yb
+    y[2:end] = y[2:end] * ((1-xb)*(1-yb))/(1-yb+eps(xb))
+    y[1] = xb + yb - xb*yb
     state = pushtostack(state, x)
     state = pushtostack(state, y)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
@@ -546,7 +554,7 @@ Note reversed arg ordering of instr in order to match regular push!
 
 """
 function pushtostack(state::VMState, valvec::Array)::VMState
-    @assert isapprox(sum(valvec), 1.0)
+    @assert isapprox(sum(valvec), 1.0) "Not sum to 1: $(sum(valvec))"
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')

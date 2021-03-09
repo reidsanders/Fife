@@ -395,9 +395,10 @@ end
 function test_pop_vmstate()
     state = VMState(args.stackdepth, args.programlen, allvalues)
     newval = valhot(2, allvalues)
-    state = pushtostack(state, newval)
-    state, popval = popfromstack(state)
+    newstate = pushtostack(state, newval)
+    newstate, popval = popfromstack(newstate)
     @test newval == popval
+    @test newstate.stack == state.stack
 end
 
 function test_push_vmstate()
@@ -467,6 +468,7 @@ end
 function test_program_conversion(program)
     ### Basic well behaved program ###
     for vals in [[], [0], [3], [1, 3, 2, 4], [1, 3, 2, 3, 4], [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3]]
+        @show vals
         contstate = VMState(args.stackdepth, args.programlen, allvalues)
         discretestate = DiscreteVMState()
         for val in vals
@@ -480,7 +482,6 @@ function test_program_conversion(program)
         contstate = normalize_stackpointer(contstate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
         newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
-        @show vals
         run_equality_asserts(contstate, newcontstate)
         run_equality_asserts(discretestate, newdiscretestate)
         run_equality_test(contstate, newcontstate)
