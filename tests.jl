@@ -31,6 +31,7 @@ include("fife.jl")
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
     maxint::Int = 8
+    trainsetsize::Int = 10
     usegpu::Bool = false
 end
 args = TestArgs()
@@ -519,8 +520,75 @@ function test_super_step()
     ]
     discrete_program = create_random_discrete_program(args.programlen, instructions)
     program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+    rand!(program)
+    program = normit(program)
     state = VMState(args.stackdepth, args.programlen, allvalues)
     state = super_step(state, program, instructions)
+    check_state_asserts(state)
+end
+
+function test_super_run_program()
+    val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+
+    instructions = [
+        [
+            instr_pass!,
+            instr_halt!,
+            # instr_pushval!,
+            # instr_pop!,
+            instr_dup!,
+            instr_swap!,
+            instr_add!,
+            instr_sub!,
+            instr_mult!,
+            instr_div!,
+            instr_not!,
+            instr_and!,
+            # instr_goto!,
+            instr_gotoif!,
+            # instr_iseq!,
+            # instr_isgt!,
+            # instr_isge!,
+            # instr_store!,
+            # instr_load!
+        ]
+        val_instructions
+    ]
+
+
+    num_instructions = length(instructions)
+
+    discrete_program = create_random_discrete_program(args.programlen, instructions)
+
+    discrete_programs = [
+        [
+            create_random_discrete_program(args.inputlen, instructions)
+            discrete_program[end-args.inputlen:end]
+        ] for x = 1:args.trainsetsize
+    ]
+
+    target_program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+    trainmask = create_trainable_mask(args.programlen, args.inputlen)
+    hiddenprogram = deepcopy(target_program)
+    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+
+
+    # Initialize
+
+    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+    softmaxprog = partial(softmaxmask, trainmaskfull |> device)
+    applyfullmaskprog = partial(applyfullmask, trainmaskfull)
+    applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
+
+    hiddenprogram = hiddenprogram |> device
+    program = softmaxprog(hiddenprogram) |> device
+    target_program = target_program |> device
+    hiddenprogram = hiddenprogram |> device
+    trainmask = trainmask |> device
+
+    blank_state = VMState(args.stackdepth, args.programlen, allvalues)
+    check_state_asserts(blank_state)
+    target = run(blank_state, target_program, instructions, 1000)
 end
 
 test_push_vmstate()
@@ -548,3 +616,4 @@ test_convert_discrete_to_continuous()
 test_convert_continuous_to_discrete()
 test_all_single_instr()
 test_super_step()
+test_super_run_program()

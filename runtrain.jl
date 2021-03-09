@@ -9,7 +9,7 @@ include("fife.jl")
     lr::Float32 = 2e-4
     epochs::Int = 50
     stackdepth::Int = 100
-    programlen::Int = 50
+    programlen::Int = 40
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 40
     maxint::Int = 50
@@ -90,7 +90,8 @@ blank_state2 = VMState(args.stackdepth, args.programlen, allvalues)
 check_state_asserts(blank_state)
 
 # TODO need to generate dataset of input, target
-target = run(blank_state, target_program, instructions, args.programlen)
+target = run(blank_state, target_program, instructions, 10)
+# target = run(blank_state, target_program, instructions, args.programlen)
 
 gradprogpart =
     partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
