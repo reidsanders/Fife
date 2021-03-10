@@ -417,11 +417,11 @@ function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
 end
 
 function run_equality_test(x::VMState, y::VMState)
-    @test x.instrpointer == y.instrpointer
-    @test x.stackpointer == y.stackpointer
-    @test x.stack == y.stack
-    @test x.variables == y.variables
-    @test x.ishalted == y.ishalted
+    @test x.instrpointer ≈ y.instrpointer
+    @test x.stackpointer ≈ y.stackpointer
+    @test x.stack ≈ y.stack
+    @test x.variables ≈ y.variables
+    @test x.ishalted ≈ y.ishalted
 end
 
 function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
@@ -432,11 +432,11 @@ function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
 end
 
 function run_equality_asserts(x::VMState, y::VMState)
-    @assert x.instrpointer == y.instrpointer "instrpointer Not Equal:\n $(x.instrpointer)\n $(y.instrpointer)"
-    @assert x.variables == y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
-    @assert x.ishalted == y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
-    @assert x.stack == y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"
-    @assert x.stackpointer == y.stackpointer "Stack Not equal\n $(x.stackpointer)\n $(y.stackpointer)"
+    @assert x.instrpointer ≈ y.instrpointer "instrpointer Not Equal:\n $(x.instrpointer)\n $(y.instrpointer)"
+    @assert x.variables ≈ y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
+    @assert x.ishalted ≈ y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
+    @assert x.stack ≈ y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"
+    @assert x.stackpointer ≈ y.stackpointer "Stack Not equal\n $(x.stackpointer)\n $(y.stackpointer)"
 end
 
 function test_all_single_instr()

@@ -9,7 +9,7 @@ include("fife.jl")
     lr::Float32 = 2e-4
     epochs::Int = 50
     stackdepth::Int = 100
-    programlen::Int = 40
+    programlen::Int = 50
     inputlen::Int = 20 # frozen part, assumed at front for now
     max_ticks::Int = 40
     maxint::Int = 50

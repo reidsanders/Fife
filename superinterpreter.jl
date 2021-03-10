@@ -482,11 +482,11 @@ Create table of all combinations of applying op to numericvalues.
 Find optable indexes that correspond to given value in numericvalues. Return this mapping.
 
 """
-#@memoize function optablepair(op; numericvalues = numericvalues)
 function optablepair(op; numericvalues = numericvalues)
+# function optablepair(op; numericvalues = numericvalues)
     optable = op.(numericvalues, numericvalues')
     optable = coercetostackvaluepart.(optable)
-    indexmapping = [[findall(x -> x == numericval, optable)] for numericval in numericvalues]
+    indexmapping = [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
 
 """
@@ -499,7 +499,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 function optablesingle(op; numericvalues = numericvalues)
     optable = op.(numericvalues)
     optable = coercetostackvaluepart.(optable)
-    indexmapping = [[findall(x -> x == numericval, optable)] for numericval in numericvalues]
+    indexmapping = [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
 
 """
@@ -514,10 +514,7 @@ function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array{N
     optableindexes = optablesingle(op, numericvalues = numericvalues)
     xnumerics = x[end+1-length(numericvalues):end]
 
-    numericprobs = []
-    for indexes in optableindexes
-        append!(numericprobs, sum(xnumerics[indexes]))
-    end
+    numericprobs = [sum(xnumerics[indexes]) for indexes in optableindexes]
     nonnumericprobs = x[1:end-length(numericvalues)]
 
     @assert sum(xnumerics) ≈ sum(numericprobs) "Numeric probabilities are conserved"
@@ -547,10 +544,6 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     probs = xnumerics .* ynumerics'
 
     numericprobs = [sum(probs[indexes]) for indexes in optableindexes]
-    # numericprobs = []
-    # for indexes in optableindexes
-    #     append!(numericprobs, sum(probs[indexes]))
-    # end
     a = x[1:end-length(numericvalues)]
     b = y[1:end-length(numericvalues)]
     nonnumericprobs = a + b - a .* b
