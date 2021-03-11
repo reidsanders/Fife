@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Fife = "66f74122-b696-4548-8e0c-e344e37b6250"
