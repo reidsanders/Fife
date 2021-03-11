@@ -1,4 +1,3 @@
-# using Flux
 using Flux:
     onehot,
     onehotbatch,
@@ -8,35 +7,10 @@ using Flux:
     glorot_uniform,
     mse,
     epseltype
-# using Flux: Optimise
 using CUDA
-# using Zygote
-# using Random
-# using LoopVectorization
-# using Debugger
-# using Base
 import Base: +, -, *, length
-# using StructArrays
-# using BenchmarkTools
 using ProgressMeter
-# using Base.Threads: @threads
 using Parameters: @with_kw
-# using Profile
-# using Memoize
-# @with_kw mutable struct SuperArgs
-#     batchsize::Int = 2
-#     lr::Float32 = 2e-4
-#     epochs::Int = 2
-#     stackdepth::Int = 8
-#     programlen::Int = 7
-#     inputlen::Int = 2 # frozen part, assumed at front for now
-#     max_ticks::Int = 5
-#     maxint::Int = 8
-#     usegpu::Bool = false
-# end
-# args = SuperArgs()
-#include("parameters.jl")
-
 StackValueType = Int
 StackFloatType = Float32
 
@@ -46,17 +20,6 @@ struct VMState
     stack::Union{Array{StackFloatType},CuArray{StackFloatType}}
     variables::Union{Array{StackFloatType},CuArray{StackFloatType}}
     ishalted::Union{Array{StackFloatType},CuArray{StackFloatType}} # [nothalted, halted]
-
-    #=
-    # Invariants here? Is it worth the extra calculation every construction though?
-    function VMState(instrpointer, stackpointer, stack, ishalted, variables)
-        @assert isapprox(sum(state.instrpointer), 1.0)
-        @assert isapprox(sum(state.stackpointer), 1.0)
-        for col in eachcol(state.stack)
-            @assert isapprox(sum(col), 1.0)
-        end
-    end
-    =#
 end
 
 struct VMSuperStates
