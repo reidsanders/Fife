@@ -6,6 +6,7 @@ using Flux:
     logitcrossentropy,
     glorot_uniform,
     mse,
+    softmax,
     epseltype
 using CUDA
 import Base: +, -, *, length
@@ -13,14 +14,18 @@ using ProgressMeter
 using Parameters: @with_kw
 StackValueType = Int
 StackFloatType = Float32
+# VMArrayType =  ?
 
-struct VMState
-    instrpointer::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    stackpointer::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    stack::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    variables::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    ishalted::Union{Array{StackFloatType},CuArray{StackFloatType}} # [nothalted, halted]
+abstract type VM{T1} end
+struct VMState{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
+    instrpointer::T1
+    stackpointer::T1
+    stack::T1
+    variables::T1
+    ishalted::T1 # [nothalted, halted]
 end
+
+VMState(a...) = VMState{Array{Float32}}(a...)
 
 struct VMSuperStates
     instrpointers::Union{Array{StackFloatType},CuArray{StackFloatType}}
@@ -619,7 +624,7 @@ end
 
 function main()
     state = init_state(stackdepth, programlen)
-    state = run(state, program, instructions, max_ticks)
+    state = runprogram(state, program, instructions, max_ticks)
     collapsed_program = onecold(program)
 end
 
@@ -632,24 +637,10 @@ end
 # Initialization functions
 ###############################
 
-function create_random_discrete_program(len, instructions)
-    program = [rand(instructions) for i = 1:len]
-end
-
-function create_random_inputs(len, instructions)
-    program = [rand(instructions) for i = 1:len]
-end
-
-function create_trainable_mask(programlen, inputlen)
-    mask = falses(programlen)
-    mask[inputlen+1:end] .= true
-    mask
-end
-
 function VMState(
     stackdepth::Int = args.stackdepth,
     programlen::Int = args.programlen,
-    allvalues::Union{Array,CuArray} = allvalues,
+    allvalues::AbstractArray = allvalues,
 )
     instrpointer = zeros(StackFloatType, programlen)
     stackpointer = zeros(StackFloatType, stackdepth)

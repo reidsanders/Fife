@@ -89,8 +89,8 @@ blank_state2 = VMState(args.stackdepth, args.programlen, allvalues)
 check_state_asserts(blank_state)
 
 # TODO need to generate dataset of input, target
-target = run(blank_state, target_program, instructions, 10)
-# target = run(blank_state, target_program, instructions, args.programlen)
+target = runprogram(blank_state, target_program, instructions, 10)
+# target = runprogram(blank_state, target_program, instructions, args.programlen)
 
 gradprogpart =
     partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
@@ -100,7 +100,7 @@ first_program = deepcopy(program)
 opt = Descent(0.1)
 
 ######################################
-# Run program train
+# runprogram program train
 ######################################
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)

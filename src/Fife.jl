@@ -18,14 +18,20 @@ using Parameters: @with_kw
 include("utils.jl")
 
 @with_kw mutable struct Args
+    batchsize::Int = 2
+    lr::Float32 = 2e-4
+    epochs::Int = 2
     stackdepth::Int = 10
     programlen::Int = 10
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
     maxint::Int = 20
+    trainsetsize::Int = 10
     usegpu::Bool = false
     StackFloatType::Type = Float32
     StackValueType::Type = Int
+
+    ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
 end
 args = Args()
 
@@ -107,14 +113,14 @@ begin
         normit,
         check_state_asserts,
         ==,
-        run,
+        runprogram,
         loss,
         accuracy,
         test,
         trainloop,
         trainloopsingle,
-        trainbatch!
-
+        trainbatch!,
+        Args
 end
 
 
@@ -231,6 +237,24 @@ function ==(x::VMState, y::VMState)
         x.stack == y.stack
 end
 
+###############################
+# Initialization functions
+###############################
+
+function create_random_discrete_program(len, instructions)
+    program = [rand(instructions) for i = 1:len]
+end
+
+function create_random_inputs(len, instructions)
+    program = [rand(instructions) for i = 1:len]
+end
+
+function create_trainable_mask(programlen, inputlen)
+    mask = falses(programlen)
+    mask[inputlen+1:end] .= true
+    mask
+end
+
 function get_program_with_random_inputs(program, mask)
     num_instructions = size(program)[1]
     new_program = copy(program)
@@ -261,7 +285,7 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples = 16)
     variablemaskeds
 end
 
-function run(state, program, instructions, ticks)
+function runprogram(state, program, instructions, ticks)
     for i = 1:ticks
         state = super_step(state, program, instructions)
         # assert_no_nans(state)
@@ -287,14 +311,14 @@ end
 
 function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
     program = softmaxprog(hiddenprogram)
-    target = run(blank_state, targetprogram, instructions, programlen)
-    prediction = run(blank_state, program, instructions, programlen)
+    target = runprogram(blank_state, targetprogram, instructions, programlen)
+    prediction = runprogram(blank_state, program, instructions, programlen)
     loss(prediction, target)
 end
 
 function forward(state, target, instructions, programlen, hiddenprogram)
     program = softmaxprog(hiddenprogram)
-    pred = run(state, program, instructions, programlen)
+    pred = runprogram(state, program, instructions, programlen)
     loss(pred, target)
 end
 

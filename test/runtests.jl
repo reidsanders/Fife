@@ -1,51 +1,75 @@
 using Fife
+using Fife: 
+    valhot,
+    pushtostack,
+    popfromstack,
+    op_probvec,
+    normalize_stackpointer,
+    create_random_discrete_program,
+    create_trainable_mask,
+    super_step,
+    softmaxmask,
+    applyfullmask
 using Test
 using Random
+using Flux:
+    onehot,
+    onehotbatch,
+    glorot_uniform
 using CUDA
 Random.seed!(123);
 CUDA.allowscalar(false)
 using Parameters: @with_kw
-#using Flux
-#using ProgressMeter
-#using Base.Threads: @threads
-#using Parameters: @with_kw
-#using DataStructures: CircularDeque, DefaultDict
-#using Flux:
-#onehot,
-#onehotbatch,
-#onecold,
-#crossentropy,
-#logitcrossentropy,
-#glorot_uniform,
-#mse,
-#epseltype
-#using CUDA
-#using Random
-#import Base: ==
 
-# @testset "trigonometric identities" begin
-#              θ = 2/3*π
-#              @test sin(-θ) ≈ -sin(θ)
-#              @test cos(-θ) ≈ cos(θ)
-#              @test sin(2θ) ≈ 2*sin(θ)*cos(θ)
-#              @test cos(2θ) ≈ cos(θ)^2 - sin(θ)^2
-# end;
 
-@with_kw mutable struct TestArgs
+
+# args = Args(
+#     batchsize = 2,
+#     lr = 2e-4,
+#     epochs = 2,
+#     stackdepth = 8,
+#     programlen = 7,
+#     inputlen = 2,
+#     max_ticks = 5,
+#     maxint = 8,
+#     trainsetsize = 10,
+#     usegpu = false,
+#     StackFloatType = Float32,
+#     StackValueType = Int
+# )
+@with_kw mutable struct Args
     batchsize::Int = 2
     lr::Float32 = 2e-4
     epochs::Int = 2
-    stackdepth::Int = 8
-    programlen::Int = 7
+    stackdepth::Int = 10
+    programlen::Int = 10
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
-    maxint::Int = 8
+    maxint::Int = 20
     trainsetsize::Int = 10
     usegpu::Bool = false
     StackFloatType::Type = Float32
     StackValueType::Type = Int
+
+    ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
 end
-args = TestArgs()
+args = Args()
+
+# @with_kw mutable struct TestArgs
+#     batchsize::Int = 2
+#     lr::Float32 = 2e-4
+#     epochs::Int = 2
+#     stackdepth::Int = 8
+#     programlen::Int = 7
+#     inputlen::Int = 2 # frozen part, assumed at front for now
+#     max_ticks::Int = 5
+#     maxint::Int = 8
+#     trainsetsize::Int = 10
+#     usegpu::Bool = false
+#     StackFloatType::Type = Float32
+#     StackValueType::Type = Int
+# end
+# args = TestArgs()
 device,
 largevalue,
 coercetostackvaluepart,
@@ -621,7 +645,7 @@ blankstack = create_dependent_values(args)
 
         blank_state = VMState(args.stackdepth, args.programlen, allvalues)
         check_state_asserts(blank_state)
-        target = run(blank_state, target_program, instructions, 1000)
+        target = runprogram(blank_state, target_program, instructions, 1000)
     end
 
     test_push_vmstate()
