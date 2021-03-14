@@ -25,14 +25,14 @@ struct VMState{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
     ishalted::T1 # [nothalted, halted]
 end
 
-VMState(a...) = VMState{Array{Float32}}(a...)
+VMState(a...) = VMState{Array{Float32}}(a...) # TODO pass?
 
-struct VMSuperStates
-    instrpointers::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    stackpointers::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    stacks::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    supervariables::Union{Array{StackFloatType},CuArray{StackFloatType}}
-    ishalteds::Union{Array{StackFloatType},CuArray{StackFloatType}}
+struct VMSuperStates{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
+    instrpointers::T1
+    stackpointers::T1
+    stacks::T1
+    supervariables::T1
+    ishalteds::T1
 end
 
 a::Number * b::VMState = VMState(

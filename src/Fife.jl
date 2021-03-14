@@ -340,11 +340,11 @@ function trainloop(variablemaskeds; batchsize = 4)
     end
 end
 
-function trainloopsingle(hiddenprogram; numexamples = 4)
+function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4)
     # TODO make true function without globals
     @showprogress for i = 1:numexamples
-        grads = gradprogpart(hiddenprogram)[end]
-        grads = applyfullmasktohidden(grads)
+        grads = gradient(forward, startstate, target, instructions, programlen, trainmaskfull)[end]
+        grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
     end
 end
