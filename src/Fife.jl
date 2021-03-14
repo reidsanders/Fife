@@ -120,6 +120,7 @@ begin
         trainloop,
         trainloopsingle,
         trainbatch!,
+        forward,
         Args
 end
 
@@ -309,15 +310,15 @@ function accuracy(hidden, target, trainmask)
     result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
-function test(hiddenprogram, targetprogram, blank_state, instructions, programlen)
-    program = softmaxprog(hiddenprogram)
+function test(hiddenprogram, targetprogram, blank_state, instructions, programlen, trainmaskfull)
+    program = softmaxmask(hiddenprogram, trainmaskfull)
     target = runprogram(blank_state, targetprogram, instructions, programlen)
     prediction = runprogram(blank_state, program, instructions, programlen)
     loss(prediction, target)
 end
 
-function forward(state, target, instructions, programlen, hiddenprogram)
-    program = softmaxprog(hiddenprogram)
+function forward(state, target, instructions, programlen, hiddenprogram, trainmaskfull)
+    program = softmaxmask(hiddenprogram, trainmaskfull)
     pred = runprogram(state, program, instructions, programlen)
     loss(pred, target)
 end

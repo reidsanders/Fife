@@ -23,20 +23,6 @@ using Parameters: @with_kw
 
 
 
-# args = Args(
-#     batchsize = 2,
-#     lr = 2e-4,
-#     epochs = 2,
-#     stackdepth = 8,
-#     programlen = 7,
-#     inputlen = 2,
-#     max_ticks = 5,
-#     maxint = 8,
-#     trainsetsize = 10,
-#     usegpu = false,
-#     StackFloatType = Float32,
-#     StackValueType = Int
-# )
 @with_kw mutable struct Args
     batchsize::Int = 2
     lr::Float32 = 2e-4
@@ -633,12 +619,11 @@ blankstack = create_dependent_values(args)
         # Initialize
 
         trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
-        softmaxprog = partial(softmaxmask, trainmaskfull |> device)
         applyfullmaskprog = partial(applyfullmask, trainmaskfull)
         applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
 
         hiddenprogram = hiddenprogram |> device
-        program = softmaxprog(hiddenprogram) |> device
+        program = softmaxmask(hiddenprogram, trainmaskfull) |> device
         target_program = target_program |> device
         hiddenprogram = hiddenprogram |> device
         trainmask = trainmask |> device

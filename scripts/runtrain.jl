@@ -1,27 +1,73 @@
 # using Pkg
 # Pkg.activate(".")
 using Fife
+using Fife: 
+    valhot,
+    pushtostack,
+    popfromstack,
+    op_probvec,
+    normalize_stackpointer,
+    create_random_discrete_program,
+    create_trainable_mask,
+    super_step,
+    softmaxmask,
+    applyfullmask
 using Parameters: @with_kw
+using Flux
+using Flux:
+    onehot,
+    onehotbatch,
+    glorot_uniform,
+    gradient
 
 ######################################
 # Global initialization
 ######################################
 
-@with_kw mutable struct TrainArgs
-    batchsize::Int = 8
+# @with_kw mutable struct TrainArgs
+#     batchsize::Int = 8
+#     lr::Float32 = 2e-4
+#     epochs::Int = 50
+#     stackdepth::Int = 100
+#     programlen::Int = 50
+#     inputlen::Int = 20 # frozen part, assumed at front for now
+#     max_ticks::Int = 40
+#     maxint::Int = 50
+#     trainsetsize::Int = 32
+#     usegpu::Bool = false
+# end
+# args = TrainArgs()
+
+@with_kw mutable struct Args
+    batchsize::Int = 2
     lr::Float32 = 2e-4
-    epochs::Int = 50
-    stackdepth::Int = 100
-    programlen::Int = 50
-    inputlen::Int = 20 # frozen part, assumed at front for now
-    max_ticks::Int = 40
-    maxint::Int = 50
-    trainsetsize::Int = 32
+    epochs::Int = 2
+    stackdepth::Int = 10
+    programlen::Int = 10
+    inputlen::Int = 2 # frozen part, assumed at front for now
+    max_ticks::Int = 5
+    maxint::Int = 20
+    trainsetsize::Int = 10
     usegpu::Bool = false
+    StackFloatType::Type = Float32
+    StackValueType::Type = Int
+
+    ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
 end
-args = TrainArgs()
+args = Args()
+
+device,
+largevalue,
+coercetostackvaluepart,
+numericvalues,
+nonnumericvalues,
+allvalues,
+ishaltedvalues,
+blanks,
+blankstack = create_dependent_values(args)
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+
 #instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
 #instructions = [[instr_pass!, instr_dup!]; val_instructions]
 #instructions = [[instr_pass!]; val_instructions]
@@ -72,12 +118,11 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 # Initialize
 
 trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
-softmaxprog = partial(softmaxmask, trainmaskfull |> device)
 applyfullmaskprog = partial(applyfullmask, trainmaskfull)
 applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
 
 hiddenprogram = hiddenprogram |> device
-program = softmaxprog(hiddenprogram) |> device
+program = softmaxmask(hiddenprogram, trainmaskfull) |> device
 target_program = target_program |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
