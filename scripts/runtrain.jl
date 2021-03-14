@@ -138,7 +138,7 @@ target = runprogram(blank_state, target_program, instructions, 10)
 # target = runprogram(blank_state, target_program, instructions, args.programlen)
 
 gradprogpart =
-    partial(gradient, forward, blank_state, target, instructions, args.programlen) # Partial?
+    partial(gradient, forward, blank_state, target, instructions, args.programlen, trainmaskfull) # Partial?
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
@@ -147,13 +147,13 @@ opt = Descent(0.1)
 ######################################
 # runprogram program train
 ######################################
-first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
 @time trainloopsingle(hiddenprogram, numexamples = 3)
 
 second_loss =
-    test(hiddenprogram, target_program, blank_state, instructions, args.programlen)
+    test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
