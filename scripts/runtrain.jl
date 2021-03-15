@@ -118,8 +118,9 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 # Initialize
 
 trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
-applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
+# applyfullmaskprog = partial(applyfullmask, trainmaskfull)
+# applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
+
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxmask(hiddenprogram, trainmaskfull) |> device
@@ -150,7 +151,7 @@ opt = Descent(0.1)
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(hiddenprogram, numexamples = 3)
+@time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
 
 second_loss =
     test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)

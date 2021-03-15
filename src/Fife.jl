@@ -12,7 +12,8 @@ using Flux:
     epseltype,
     cpu,
     gpu,
-    Optimise
+    Optimise,
+    gradient
 import Base: +, -, *, length, ==
 using Parameters: @with_kw
 include("utils.jl")
@@ -322,46 +323,46 @@ function forward(state, target, instructions, programlen, hiddenprogram, trainma
     pred = runprogram(state, program, instructions, programlen)
     loss(pred, target)
 end
-
-function trainloop(variablemaskeds; batchsize = 4)
-    # TODO make true function without globals
-    # (xbatch, ybatch)
-    # grads = applyfullmaskprog(gradprog(data[1][1]))
-    # hiddenprograms = varmasked .+ trainablemasked 
-    # targetprograms = varmasked .+ targetmasked 
-    grads = zeros(StackFloatType, size(applyfullmaskprog(hiddenprogram)))
-    @showprogress for i = 1:size(variablemaskeds)[3]
-        newgrads = gradprog(hiddenprogram)
-        grads = grads .+ applyfullmaskprog(newgrads)
-        if i > 0 & i % batchsize == 0
-            Optimise.update!(opt, trainablemasked, grads)
-            grads .= 0
-        end
-    end
-end
-
 function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4)
     # TODO make true function without globals
     @showprogress for i = 1:numexamples
-        grads = gradient(forward, startstate, target, instructions, programlen, trainmaskfull)[end]
+        grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end]
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
     end
 end
 
-function trainbatch!(data; batchsize = 8)
-    # TODO make true function without globals
-    local training_loss
-    grads = zeros(StackFloatType, size(hiddenprogram[0]))
-    @showprogress for d in data
-        # TODO split hiddenprogram from data ?
-        newgrads = gradprogpart(hiddenprogram)[end]
-        grads = grads .+ applyfullmasktohidden(newgrads)
-        if i > 0 & i % batchsize == 0
-            Optimise.update!(opt, hiddenprogram, grads)
-            grads .= 0
-        end
-    end
-end
+
+# function trainloop(variablemaskeds; batchsize = 4)
+#     # TODO make true function without globals
+#     # (xbatch, ybatch)
+#     # grads = applyfullmaskprog(gradprog(data[1][1]))
+#     # hiddenprograms = varmasked .+ trainablemasked 
+#     # targetprograms = varmasked .+ targetmasked 
+#     grads = zeros(StackFloatType, size(applyfullmaskprog(hiddenprogram)))
+#     @showprogress for i = 1:size(variablemaskeds)[3]
+#         newgrads = gradprog(hiddenprogram)
+#         grads = grads .+ applyfullmaskprog(newgrads)
+#         if i > 0 & i % batchsize == 0
+#             Optimise.update!(opt, trainablemasked, grads)
+#             grads .= 0
+#         end
+#     end
+# end
+
+# function trainbatch!(data; batchsize = 8)
+#     # TODO make true function without globals
+#     local training_loss
+#     grads = zeros(StackFloatType, size(hiddenprogram[0]))
+#     @showprogress for d in data
+#         # TODO split hiddenprogram from data ?
+#         newgrads = gradprogpart(hiddenprogram)[end]
+#         grads = grads .+ applyfullmasktohidden(newgrads)
+#         if i > 0 & i % batchsize == 0
+#             Optimise.update!(opt, hiddenprogram, grads)
+#             grads .= 0
+#         end
+#     end
+# end
 
 end
