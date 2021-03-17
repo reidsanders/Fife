@@ -12,6 +12,8 @@ using Fife:
     super_step,
     softmaxmask,
     applyfullmask
+import Fife: instr_pushval!
+
 using Parameters: @with_kw
 using Flux
 using Flux:
@@ -66,6 +68,7 @@ ishaltedvalues,
 blanks,
 blankstack = create_dependent_values(args)
 
+instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
 #instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
@@ -73,29 +76,51 @@ val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 #instructions = [[instr_pass!]; val_instructions]
 
 instructions = [
-    [
-        instr_pass!,
-        instr_halt!,
-        # instr_pushval!,
-        # instr_pop!,
-        instr_dup!,
-        instr_swap!,
-        instr_add!,
-        instr_sub!,
-        instr_mult!,
-        instr_div!,
-        instr_not!,
-        instr_and!,
-        # instr_goto!,
-        instr_gotoif!,
-        # instr_iseq!,
-        # instr_isgt!,
-        # instr_isge!,
-        # instr_store!,
-        # instr_load!
-    ]
-    val_instructions
+    instr_pass!,
+    # instr_halt!,
+    # # instr_pushval!,
+    # # instr_pop!,
+    # instr_dup!,
+    # instr_swap!,
+    # instr_add!,
+    # instr_sub!,
+    # instr_mult!,
+    # instr_div!,
+    # instr_not!,
+    # instr_and!,
+    # instr_goto!,
+    # instr_gotoif!,
+    # instr_iseq!,
+    # instr_isgt!,
+    # instr_isge!,
+    # instr_store!,
+    # instr_load!
 ]
+
+# instructions = [
+#     [
+#         instr_pass!,
+#         instr_halt!,
+#         # instr_pushval!,
+#         # instr_pop!,
+#         instr_dup!,
+#         instr_swap!,
+#         instr_add!,
+#         instr_sub!,
+#         instr_mult!,
+#         instr_div!,
+#         instr_not!,
+#         instr_and!,
+#         # instr_goto!,
+#         instr_gotoif!,
+#         # instr_iseq!,
+#         # instr_isgt!,
+#         # instr_isge!,
+#         # instr_store!,
+#         # instr_load!
+#     ]
+#     val_instructions
+# ]
 
 
 num_instructions = length(instructions)
@@ -127,6 +152,11 @@ program = softmaxmask(hiddenprogram, trainmaskfull) |> device
 target_program = target_program |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
+
+
+#global valhotvec = onehot(3, allvalues) * Float32(1) # TEMP
+# global valhotvec = zeros(44) * 1.0f0
+# valhotvec[20] = 1.0f0
 
 
 blank_state = VMState(args.stackdepth, args.programlen, allvalues)

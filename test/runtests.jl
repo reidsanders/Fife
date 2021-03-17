@@ -10,6 +10,7 @@ using Fife:
     super_step,
     softmaxmask,
     applyfullmask
+import Fife: instr_pushval!
 using Test
 using Random
 using Flux:
@@ -65,6 +66,8 @@ allvalues,
 ishaltedvalues,
 blanks,
 blankstack = create_dependent_values(args)
+instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
+# instr_pushval! = partial(instr_pushval!, allvalues)
 # include("parameters.jl")
 @testset "Fife.jl" begin
 
@@ -97,7 +100,6 @@ blankstack = create_dependent_values(args)
     end
 
     instr_2 = partial(instr_pushval!, 2)
-
     blank_state = VMState(3, 4, allvalues)
     blank_state_random = init_random_state(3, 4, allvalues)
     check_state_asserts(blank_state)

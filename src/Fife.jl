@@ -1,6 +1,6 @@
 module Fife
 
-# using Flux
+using Flux
 using Flux:
     onehot,
     onehotbatch,
@@ -323,7 +323,8 @@ function forward(state, target, instructions, programlen, hiddenprogram, trainma
     pred = runprogram(state, program, instructions, programlen)
     loss(pred, target)
 end
-function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4)
+
+function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4, opt = Descent(.1))
     # TODO make true function without globals
     @showprogress for i = 1:numexamples
         grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end]

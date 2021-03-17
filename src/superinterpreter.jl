@@ -17,22 +17,37 @@ StackFloatType = Float32
 # VMArrayType =  ?
 
 abstract type VM{T1} end
-struct VMState{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
-    instrpointer::T1
-    stackpointer::T1
-    stack::T1
-    variables::T1
-    ishalted::T1 # [nothalted, halted]
+# struct VMState{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
+#     instrpointer::T1
+#     stackpointer::T1
+#     stack::T1
+#     variables::T1
+#     ishalted::T1 # [nothalted, halted]
+# end
+struct VMState
+    instrpointer::Array
+    stackpointer::Array
+    stack::Array
+    variables::Array
+    ishalted::Array # [nothalted, halted]
 end
 
-VMState(a...) = VMState{Array{Float32}}(a...) # TODO pass?
 
-struct VMSuperStates{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
-    instrpointers::T1
-    stackpointers::T1
-    stacks::T1
-    supervariables::T1
-    ishalteds::T1
+# VMState(a...) = VMState{Array{Float32}}(a...) # TODO pass?
+
+# struct VMSuperStates{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
+#     instrpointers::T1
+#     stackpointers::T1
+#     stacks::T1
+#     supervariables::T1
+#     ishalteds::T1
+# end
+struct VMSuperStates
+    instrpointers::Array
+    stackpointers::Array
+    stacks::Array
+    supervariables::Array
+    ishalteds::Array
 end
 
 a::Number * b::VMState = VMState(
@@ -427,19 +442,27 @@ function instr_halt!(state::VMState)::VMState
 end
 
 """
-    instr_pushval!(val::StackValueType, state::VMState)::VMState
+    instr_pushval!(val::StackValueType, state::VMState, allvalues::Array)::VMState
 
 Push current val to stack. Returns new state.
 
 """
+# global valhotvec = zeros(44) * 1.0f0
+# valhotvec[20] = 1.0f0
 function instr_pushval!(
     val::StackValueType,
     state::VMState,
-    allvalues::Array = allvalues,
+    allvalues::Array,
 )::VMState
-    valhotvec = valhot(val, allvalues) # pass allvalues, and partial? 
+    # Verify that the mutation is coming from here
+    # TODO either define a manual adjoint
+    # TODO only use with partial, or try using BangBang? 
+    # valhotvec = valhot(val, allvalues) # pass allvalues, and partial? 
+    valhotvec = onehot(val, allvalues) * StackFloatType(1) # pass allvalues, and partial? 
     newstackpointer = circshift(state.stackpointer, -1)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
+    # newinstrpointer = circshift(state.instrpointer, 1)
+    # ishalted = state.ishalted
     topscaled = valhotvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')
     newstack = stackscaled .+ topscaled
