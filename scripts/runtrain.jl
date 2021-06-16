@@ -75,52 +75,52 @@ val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 #instructions = [[instr_pass!, instr_dup!]; val_instructions]
 #instructions = [[instr_pass!]; val_instructions]
 
-instructions = [
-    instr_pass!,
-    # instr_halt!,
-    # # instr_pushval!,
-    # # instr_pop!,
-    # instr_dup!,
-    # instr_swap!,
-    # instr_add!,
-    # instr_sub!,
-    # instr_mult!,
-    # instr_div!,
-    # instr_not!,
-    # instr_and!,
-    # instr_goto!,
-    # instr_gotoif!,
-    # instr_iseq!,
-    # instr_isgt!,
-    # instr_isge!,
-    # instr_store!,
-    # instr_load!
-]
-
 # instructions = [
-#     [
-#         instr_pass!,
-#         instr_halt!,
-#         # instr_pushval!,
-#         # instr_pop!,
-#         instr_dup!,
-#         instr_swap!,
-#         instr_add!,
-#         instr_sub!,
-#         instr_mult!,
-#         instr_div!,
-#         instr_not!,
-#         instr_and!,
-#         # instr_goto!,
-#         instr_gotoif!,
-#         # instr_iseq!,
-#         # instr_isgt!,
-#         # instr_isge!,
-#         # instr_store!,
-#         # instr_load!
-#     ]
-#     val_instructions
+#     instr_pass!,
+#     # instr_halt!,
+#     # # instr_pushval!,
+#     # # instr_pop!,
+#     # instr_dup!,
+#     # instr_swap!,
+#     # instr_add!,
+#     # instr_sub!,
+#     # instr_mult!,
+#     # instr_div!,
+#     # instr_not!,
+#     # instr_and!,
+#     # instr_goto!,
+#     # instr_gotoif!,
+#     # instr_iseq!,
+#     # instr_isgt!,
+#     # instr_isge!,
+#     # instr_store!,
+#     # instr_load!
 # ]
+
+instructions = [
+    [
+        instr_pass!,
+        instr_halt!,
+        # instr_pushval!,
+        # instr_pop!,
+        instr_dup!,
+        instr_swap!,
+        instr_add!,
+        # instr_sub!,
+        # instr_mult!,
+        # instr_div!,
+        # instr_not!,
+        # instr_and!,
+        # instr_goto!,
+        # instr_gotoif!,
+        # instr_iseq!,
+        # instr_isgt!,
+        # instr_isge!,
+        # instr_store!,
+        # instr_load!
+    ]
+    val_instructions
+]
 
 
 num_instructions = length(instructions)

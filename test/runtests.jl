@@ -9,7 +9,19 @@ using Fife:
     create_trainable_mask,
     super_step,
     softmaxmask,
-    applyfullmask
+    applyfullmask,
+    allvalues,
+    device,
+    StackValueType,
+    largevalue,
+    coercetostackvaluepart,
+    numericvalues,
+    nonnumericvalues,
+    allvalues,
+    ishaltedvalues,
+    blanks,
+    args
+
 import Fife: instr_pushval!
 using Test
 using Random
@@ -23,82 +35,48 @@ CUDA.allowscalar(false)
 using Parameters: @with_kw
 
 
-
-@with_kw mutable struct Args
-    batchsize::Int = 2
-    lr::Float32 = 2e-4
-    epochs::Int = 2
-    stackdepth::Int = 10
-    programlen::Int = 10
-    inputlen::Int = 2 # frozen part, assumed at front for now
-    max_ticks::Int = 5
-    maxint::Int = 20
-    trainsetsize::Int = 10
-    usegpu::Bool = false
-    StackFloatType::Type = Float32
-    StackValueType::Type = Int
-
-    ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
-end
-args = Args()
-
-# @with_kw mutable struct TestArgs
-#     batchsize::Int = 2
-#     lr::Float32 = 2e-4
-#     epochs::Int = 2
-#     stackdepth::Int = 8
-#     programlen::Int = 7
-#     inputlen::Int = 2 # frozen part, assumed at front for now
-#     max_ticks::Int = 5
-#     maxint::Int = 8
-#     trainsetsize::Int = 10
-#     usegpu::Bool = false
-#     StackFloatType::Type = Float32
-#     StackValueType::Type = Int
-# end
-# args = TestArgs()
-device,
-largevalue,
-coercetostackvaluepart,
-numericvalues,
-nonnumericvalues,
-allvalues,
-ishaltedvalues,
-blanks,
-blankstack = create_dependent_values(args)
+# device,
+# largevalue,
+# coercetostackvaluepart,
+# numericvalues,
+# nonnumericvalues,
+# allvalues,
+# ishaltedvalues,
+# blanks,
+# blankstack = create_dependent_values(args)
 instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
-# instr_pushval! = partial(instr_pushval!, allvalues)
-# include("parameters.jl")
+#instr_pushval! = partial(instr_pushval!, allvalues)
+# ## include("parameters.jl")
+
+function init_random_state(
+    stackdepth::Int,
+    programlen::Int,
+    allvalues::Union{Array,CuArray},
+)
+    instrpointer = zeros(StackValueType, programlen)
+    stackpointer = zeros(StackValueType, stackdepth)
+    ishalted = zeros(StackValueType, 2)
+    stack = rand(StackValueType, length(allvalues), stackdepth)
+    variables = rand(StackValueType, length(allvalues), stackdepth)
+    stack = normit(stack)
+    variables = normit(variables)
+    instrpointer[1] = 1.0
+    stackpointer[1] = 1.0
+    ishalted[1] = 1.0 # set false
+    VMState(
+        instrpointer |> device,
+        stackpointer |> device,
+        stack |> device,
+        variables |> device,
+        ishalted |> device,
+    )
+end
+
 @testset "Fife.jl" begin
 
     ######################################
     # Global initialization
     ######################################
-
-    function init_random_state(
-        stackdepth::Int = args.stackdepth,
-        programlen::Int = args.programlen,
-        allvalues::Union{Array,CuArray} = allvalues,
-    )
-        instrpointer = zeros(Float32, programlen)
-        stackpointer = zeros(Float32, stackdepth)
-        ishalted = zeros(Float32, 2)
-        stack = rand(Float32, length(allvalues), stackdepth)
-        variables = rand(Float32, length(allvalues), stackdepth)
-        stack = normit(stack)
-        variables = normit(variables)
-        instrpointer[1] = 1.0
-        stackpointer[1] = 1.0
-        ishalted[1] = 1.0 # set false
-        VMState(
-            instrpointer |> device,
-            stackpointer |> device,
-            stack |> device,
-            variables |> device,
-            ishalted |> device,
-        )
-    end
-
     instr_2 = partial(instr_pushval!, 2)
     blank_state = VMState(3, 4, allvalues)
     blank_state_random = init_random_state(3, 4, allvalues)
@@ -111,25 +89,26 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
     #check_state_asserts(newstate)
     check_state_asserts(newstate_instr2)
 
+
     #############################
     # Discrete tests
     #############################
 
-    function test_instr_halt()
+    function test_instr_halt(args)
         state = DiscreteVMState()
         instr_halt!(state)
         @test state.instrpointer == 2
         @test state.ishalted
     end
 
-    function test_instr_pushval()
+    function test_instr_pushval(args)
         state = DiscreteVMState()
         instr_pushval!(3, state)
         @test state.instrpointer == 2
         @test first(state.stack) == 3
     end
 
-    function test_instr_pop()
+    function test_instr_pop(args)
         state = DiscreteVMState()
         instr_pushval!(3, state)
         instr_pushval!(5, state)
@@ -138,7 +117,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 3
     end
 
-    function test_instr_dup()
+    function test_instr_dup(args)
         state = DiscreteVMState()
         instr_pushval!(3, state)
         instr_pushval!(5, state)
@@ -149,7 +128,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 5
     end
 
-    function test_instr_swap()
+    function test_instr_swap(args)
         state = DiscreteVMState()
         instr_pushval!(3, state)
         instr_pushval!(5, state)
@@ -160,7 +139,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 5
     end
 
-    function test_instr_add()
+    function test_instr_add(args)
         state = DiscreteVMState()
         instr_pushval!(3, state)
         instr_pushval!(5, state)
@@ -169,7 +148,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 8
     end
 
-    function test_instr_sub()
+    function test_instr_sub(args)
         state = DiscreteVMState()
         instr_pushval!(3, state)
         instr_pushval!(5, state)
@@ -178,7 +157,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 2
     end
 
-    function test_instr_mult()
+    function test_instr_mult(args)
         state = DiscreteVMState()
         instr_pushval!(2, state)
         instr_pushval!(3, state)
@@ -193,7 +172,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == largevalue
     end
 
-    function test_instr_div()
+    function test_instr_div(args)
         state = DiscreteVMState()
         instr_pushval!(4, state)
         instr_pushval!(7, state)
@@ -202,7 +181,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 2
     end
 
-    function test_instr_not()
+    function test_instr_not(args)
         state = DiscreteVMState()
         # test true
         instr_pushval!(3, state)
@@ -217,7 +196,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 1
     end
 
-    function test_instr_and()
+    function test_instr_and(args)
         state = DiscreteVMState()
         # test true
         instr_pushval!(3, state)
@@ -234,7 +213,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 0
     end
 
-    function test_instr_goto()
+    function test_instr_goto(args)
         # test true
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -247,7 +226,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test state.instrpointer == 3
     end
 
-    function test_instr_gotoif()
+    function test_instr_gotoif(args)
         # test true
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -262,7 +241,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test state.instrpointer == 4
     end
 
-    function test_instr_iseq()
+    function test_instr_iseq(args)
         # test true
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -279,7 +258,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 0
     end
 
-    function test_instr_isgt()
+    function test_instr_isgt(args)
         # test false
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -296,7 +275,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 1
     end
 
-    function test_instr_isge()
+    function test_instr_isge(args)
         # test false
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -320,7 +299,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test first(state.stack) == 1
     end
 
-    function test_instr_store()
+    function test_instr_store(args)
         # test true
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -330,7 +309,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test state.variables[6] == 3
     end
 
-    function test_instr_load()
+    function test_instr_load(args)
         # test true
         state = DiscreteVMState()
         instr_pushval!(6, state)
@@ -344,7 +323,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
     end
 
 
-    function test_convert_discrete_to_continuous()
+    function test_convert_discrete_to_continuous(args)
         contstate = VMState(args.stackdepth, args.programlen, allvalues)
         state = DiscreteVMState()
         #instr_pushval!(6,state)
@@ -356,7 +335,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         return
     end
 
-    function test_convert_continuous_to_discrete()
+    function test_convert_continuous_to_discrete(args)
         # test true
         contstate = VMState(args.stackdepth, args.programlen, allvalues)
         discretestate = DiscreteVMState()
@@ -372,7 +351,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
     # run different combinations and compare.
 
 
-    function test_add_probvec()
+    function test_add_probvec(args)
         x = [0.0, 0.0, 0.1, 0.9, 0.0]
         result = op_probvec(+, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
         @test sum(result) == 1.0
@@ -391,7 +370,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test sum(result) == 1.0
     end
 
-    function test_div_probvec()
+    function test_div_probvec(args)
         x = [0.0, 0.0, 0.1, 0.9, 0.0]
         y = [0.0, 0.0, 0.7, 0.3, 0.0]
         result = op_probvec(/, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
@@ -430,7 +409,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test result[1] == 1.0
     end
 
-    function test_pop_vmstate()
+    function test_pop_vmstate(args)
         state = VMState(args.stackdepth, args.programlen, allvalues)
         newval = valhot(2, allvalues)
         newstate = pushtostack(state, newval)
@@ -439,7 +418,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @test newstate.stack == state.stack
     end
 
-    function test_push_vmstate()
+    function test_push_vmstate(args)
         state = VMState(args.stackdepth, args.programlen, allvalues)
         newval = valhot(2, allvalues)
         state = pushtostack(state, newval)
@@ -476,7 +455,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         @assert x.stackpointer ≈ y.stackpointer "Stack Not equal\n $(x.stackpointer)\n $(y.stackpointer)"
     end
 
-    function test_all_single_instr()
+    function test_all_single_instr(args)
         instructions = [
             instr_pass!,
             instr_halt!,
@@ -499,11 +478,11 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
             # instr_load!
         ]
         for instr in instructions
-            test_program_conversion([instr])
+            test_program_conversion(args, [instr])
         end
     end
 
-    function test_program_conversion(program)
+    function test_program_conversion(args, program)
         ### Basic well behaved program ###
         for vals in [
             [],
@@ -535,7 +514,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
     end
 
 
-    function test_super_step()
+    function test_super_step(args)
         ### TODO test super_step / run.
         val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
         instructions = [
@@ -571,7 +550,7 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         check_state_asserts(state)
     end
 
-    function test_super_run_program()
+    function test_super_run_program(args)
         val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
         instructions = [
@@ -635,30 +614,30 @@ instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, s
         target = runprogram(blank_state, target_program, instructions, 1000)
     end
 
-    test_push_vmstate()
-    test_pop_vmstate()
-    test_div_probvec()
-    test_instr_halt()
-    test_instr_pushval()
-    test_instr_pop()
-    test_instr_dup()
-    test_instr_swap()
-    test_instr_add()
-    test_instr_sub()
-    test_instr_mult()
-    test_instr_div()
-    test_instr_not()
-    test_instr_and()
-    test_instr_goto()
-    test_instr_gotoif()
-    test_instr_iseq()
-    test_instr_isgt()
-    test_instr_isge()
-    test_instr_store()
-    test_instr_load()
-    test_convert_discrete_to_continuous()
-    test_convert_continuous_to_discrete()
-    test_all_single_instr()
-    test_super_step()
-    test_super_run_program()
+    test_push_vmstate(args)
+    test_pop_vmstate(args)
+    test_div_probvec(args)
+    test_instr_halt(args)
+    test_instr_pushval(args)
+    test_instr_pop(args)
+    test_instr_dup(args)
+    test_instr_swap(args)
+    test_instr_add(args)
+    test_instr_sub(args)
+    test_instr_mult(args)
+    test_instr_div(args)
+    test_instr_not(args)
+    test_instr_and(args)
+    test_instr_goto(args)
+    test_instr_gotoif(args)
+    test_instr_iseq(args)
+    test_instr_isgt(args)
+    test_instr_isge(args)
+    test_instr_store(args)
+    test_instr_load(args)
+    test_convert_discrete_to_continuous(args)
+    test_convert_continuous_to_discrete(args)
+    test_all_single_instr(args)
+    test_super_step(args)
+    test_super_run_program(args)
 end
