@@ -585,7 +585,7 @@ Note reversed arg ordering of instr in order to match regular push!
 
 """
 function pushtostack(state::VMState, valvec::Array)::VMState
-    @assert isapprox(sum(valvec), 1.0) "Not sum to 1: $(sum(valvec))"
+    @assert isapprox(sum(valvec), 1.0) "Value vector doesn't sum to 1: $(sum(valvec))"
     newstackpointer = circshift(state.stackpointer, -1)
     topscaled = valvec * newstackpointer'
     stackscaled = state.stack .* (1 .- newstackpointer')

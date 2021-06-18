@@ -13,6 +13,7 @@ using Fife:
     allvalues,
     device,
     StackValueType,
+    StackFloatType,
     largevalue,
     coercetostackvaluepart,
     numericvalues,
@@ -30,7 +31,7 @@ using Flux:
     onehotbatch,
     glorot_uniform,
     gradient
-using Yota: grad
+# using Yota: grad
 using CUDA
 Random.seed!(123);
 CUDA.allowscalar(false)
@@ -55,11 +56,11 @@ function init_random_state(
     programlen::Int,
     allvalues::Union{Array,CuArray},
 )
-    instrpointer = zeros(StackValueType, programlen)
-    stackpointer = zeros(StackValueType, stackdepth)
-    ishalted = zeros(StackValueType, 2)
-    stack = rand(StackValueType, length(allvalues), stackdepth)
-    variables = rand(StackValueType, length(allvalues), stackdepth)
+    instrpointer = zeros(StackFloatType, programlen)
+    stackpointer = zeros(StackFloatType, stackdepth)
+    ishalted = zeros(StackFloatType, 2)
+    stack = rand(StackFloatType, length(allvalues), stackdepth)
+    variables = rand(StackFloatType, length(allvalues), stackdepth)
     stack = normit(stack)
     variables = normit(variables)
     instrpointer[1] = 1.0
@@ -698,6 +699,6 @@ end
     test_all_single_instr(args)
     test_super_step(args)
     test_super_run_program(args)
-    test_train(args)
     test_all_gradient_single_instr(args)
+    test_train(args)
 end

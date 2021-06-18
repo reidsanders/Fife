@@ -15,7 +15,7 @@ using Flux:
     Optimise,
     gradient
 
-using Yota: grad
+# using Yota: grad
 import Base: +, -, *, length, ==
 using Parameters: @with_kw
 include("utils.jl")
@@ -328,8 +328,8 @@ end
 
 function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4, opt = Descent(.1))
     @showprogress for i = 1:numexamples
-        # grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end]
-        grads = grad(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)
+        grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end]
+        # grads = grad(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
     end
