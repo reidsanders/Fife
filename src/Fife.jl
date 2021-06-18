@@ -24,8 +24,8 @@ include("utils.jl")
     batchsize::Int = 2
     lr::Float32 = 2e-4
     epochs::Int = 2
-    stackdepth::Int = 10
-    programlen::Int = 10
+    stackdepth::Int = 11
+    programlen::Int = 13
     inputlen::Int = 2 # frozen part, assumed at front for now
     max_ticks::Int = 5
     maxint::Int = 20

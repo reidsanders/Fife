@@ -91,6 +91,32 @@ end
     #check_state_asserts(newstate)
     check_state_asserts(newstate_instr2)
 
+    val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+    instructions = [
+        [
+            instr_pass!,
+            instr_halt!,
+            # instr_pushval!,
+            # instr_pop!,
+            instr_dup!,
+            instr_swap!,
+            instr_add!,
+            instr_sub!,
+            instr_mult!,
+            instr_div!,
+            instr_not!,
+            instr_and!,
+            # instr_goto!,
+            instr_gotoif!,
+            # instr_iseq!,
+            # instr_isgt!,
+            # instr_isge!,
+            # instr_store!,
+            # instr_load!
+        ]
+        val_instructions
+    ]
+
 
     #############################
     # Discrete tests
@@ -458,27 +484,6 @@ end
     end
 
     function test_all_single_instr(args)
-        instructions = [
-            instr_pass!,
-            instr_halt!,
-            # instr_pushval!,
-            # instr_pop!,
-            instr_dup!,
-            instr_swap!,
-            instr_add!,
-            instr_sub!,
-            instr_mult!,
-            instr_div!,
-            instr_not!,
-            instr_and!,
-            # instr_goto!,
-            instr_gotoif!,
-            # instr_iseq!,
-            # instr_isgt!,
-            # instr_isge!,
-            # instr_store!,
-            # instr_load!
-        ]
         for instr in instructions
             test_program_conversion(args, [instr])
         end
@@ -518,31 +523,6 @@ end
 
     function test_super_step(args)
         ### TODO test super_step / run.
-        val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
-        instructions = [
-            [
-                instr_pass!,
-                instr_halt!,
-                # instr_pushval!,
-                # instr_pop!,
-                instr_dup!,
-                instr_swap!,
-                instr_add!,
-                instr_sub!,
-                instr_mult!,
-                instr_div!,
-                instr_not!,
-                instr_and!,
-                # instr_goto!,
-                instr_gotoif!,
-                # instr_iseq!,
-                # instr_isgt!,
-                # instr_isge!,
-                # instr_store!,
-                # instr_load!
-            ]
-            val_instructions
-        ]
         discrete_program = create_random_discrete_program(args.programlen, instructions)
         program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
         rand!(program)
@@ -617,34 +597,6 @@ end
     end
 
     function test_train(args)
-        val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
-
-        instructions = [
-            [
-                instr_pass!,
-                instr_halt!,
-                # instr_pushval!,
-                # instr_pop!,
-                instr_dup!,
-                instr_swap!,
-                instr_add!,
-                instr_sub!,
-                instr_mult!,
-                instr_div!,
-                instr_not!,
-                instr_and!,
-                # instr_goto!,
-                instr_gotoif!,
-                # instr_iseq!,
-                # instr_isgt!,
-                # instr_isge!,
-                # instr_store!,
-                # instr_load!
-            ]
-            val_instructions
-        ]
-
-
         num_instructions = length(instructions)
 
         discrete_program = create_random_discrete_program(args.programlen, instructions)
@@ -685,8 +637,11 @@ end
         ######################################
         first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
         first_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
-
-        grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        try
+            grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        catch e
+            println("Exception uncaught by test: \n {e}")
+        end
         # @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
         # for i = 1:5
         #     grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
@@ -698,6 +653,23 @@ end
             test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
         second_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
         @show second_loss - first_loss
+    end
+
+    function test_all_gradient_single_instr(args)
+        for instr in instructions
+            test_gradient_single_instr(args, instr)
+        end
+    end
+
+    function test_gradient_single_instr(args, instr)
+        blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues)
+        blank_state_random2 = init_random_state(args.stackdepth, args.programlen, allvalues)
+        grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+        # try
+        #     grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+        # catch e
+        #     println("Exception uncaught by test: \n $e")
+        # end
     end
 
     test_push_vmstate(args)
@@ -727,4 +699,5 @@ end
     test_super_step(args)
     test_super_run_program(args)
     test_train(args)
+    test_all_gradient_single_instr(args)
 end
