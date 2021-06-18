@@ -4,13 +4,17 @@ authors = ["Reid Sanders"]
 version = "0.1.0"
 
 [deps]
+AutoGrad = "6710c13c-97f1-543f-91c5-74e8f7d95b35"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+Yota = "cd998857-8626-517d-b929-70ad188a48f0"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]

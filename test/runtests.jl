@@ -28,7 +28,9 @@ using Random
 using Flux:
     onehot,
     onehotbatch,
-    glorot_uniform
+    glorot_uniform,
+    gradient
+using Yota: grad
 using CUDA
 Random.seed!(123);
 CUDA.allowscalar(false)
@@ -614,6 +616,90 @@ end
         target = runprogram(blank_state, target_program, instructions, 1000)
     end
 
+    function test_train(args)
+        val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+
+        instructions = [
+            [
+                instr_pass!,
+                instr_halt!,
+                # instr_pushval!,
+                # instr_pop!,
+                instr_dup!,
+                instr_swap!,
+                instr_add!,
+                instr_sub!,
+                instr_mult!,
+                instr_div!,
+                instr_not!,
+                instr_and!,
+                # instr_goto!,
+                instr_gotoif!,
+                # instr_iseq!,
+                # instr_isgt!,
+                # instr_isge!,
+                # instr_store!,
+                # instr_load!
+            ]
+            val_instructions
+        ]
+
+
+        num_instructions = length(instructions)
+
+        discrete_program = create_random_discrete_program(args.programlen, instructions)
+
+        discrete_programs = [
+            [
+                create_random_discrete_program(args.inputlen, instructions)
+                discrete_program[end-args.inputlen:end]
+            ] for x = 1:args.trainsetsize
+        ]
+
+        target_program =
+            convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+        trainmask = create_trainable_mask(args.programlen, args.inputlen)
+        hiddenprogram = deepcopy(target_program)
+        hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+
+
+        # Initialize
+
+        trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+        applyfullmaskprog = partial(applyfullmask, trainmaskfull)
+        applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
+
+        hiddenprogram = hiddenprogram |> device
+        program = softmaxmask(hiddenprogram, trainmaskfull) |> device
+        target_program = target_program |> device
+        hiddenprogram = hiddenprogram |> device
+        trainmask = trainmask |> device
+
+        blank_state = VMState(args.stackdepth, args.programlen, allvalues)
+        check_state_asserts(blank_state)
+        target = runprogram(blank_state, target_program, instructions, 1000)
+
+
+        ######################################
+        # runprogram program train
+        ######################################
+        first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
+        first_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
+
+        grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        # @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
+        # for i = 1:5
+        #     grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        #     grads = grads .* trainmaskfull
+        #     Optimise.update!(opt, hiddenprogram, grads)
+        # end
+
+        second_loss =
+            test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
+        second_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
+        @show second_loss - first_loss
+    end
+
     test_push_vmstate(args)
     test_pop_vmstate(args)
     test_div_probvec(args)
@@ -640,4 +726,5 @@ end
     test_all_single_instr(args)
     test_super_step(args)
     test_super_run_program(args)
+    test_train(args)
 end

@@ -11,7 +11,19 @@ using Fife:
     create_trainable_mask,
     super_step,
     softmaxmask,
-    applyfullmask
+    applyfullmask,
+    allvalues,
+    device,
+    StackValueType,
+    largevalue,
+    coercetostackvaluepart,
+    numericvalues,
+    nonnumericvalues,
+    allvalues,
+    ishaltedvalues,
+    blanks,
+    blankstack,
+    args
 import Fife: instr_pushval!
 
 using Parameters: @with_kw
@@ -40,33 +52,36 @@ using Flux:
 # end
 # args = TrainArgs()
 
-@with_kw mutable struct Args
-    batchsize::Int = 2
-    lr::Float32 = 2e-4
-    epochs::Int = 2
-    stackdepth::Int = 10
-    programlen::Int = 10
-    inputlen::Int = 2 # frozen part, assumed at front for now
-    max_ticks::Int = 5
-    maxint::Int = 20
-    trainsetsize::Int = 10
-    usegpu::Bool = false
-    StackFloatType::Type = Float32
-    StackValueType::Type = Int
+# @with_kw mutable struct Args
+#     batchsize::Int = 2
+#     lr::Float32 = 2e-4
+#     epochs::Int = 2
+#     stackdepth::Int = 10
+#     programlen::Int = 10
+#     inputlen::Int = 2 # frozen part, assumed at front for now
+#     max_ticks::Int = 5
+#     maxint::Int = 20
+#     trainsetsize::Int = 10
+#     usegpu::Bool = false
+#     StackFloatType::Type = Float32
+#     StackValueType::Type = Int
 
-    ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
-end
-args = Args()
+#     ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
+# end
+# args = Args()
 
-device,
-largevalue,
-coercetostackvaluepart,
-numericvalues,
-nonnumericvalues,
-allvalues,
-ishaltedvalues,
-blanks,
-blankstack = create_dependent_values(args)
+# device,
+# largevalue,
+# coercetostackvaluepart,
+# numericvalues,
+# nonnumericvalues,
+# allvalues,
+# ishaltedvalues,
+# blanks,
+# blankstack = create_dependent_values(args)
+
+
+
 
 instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
