@@ -16,6 +16,7 @@ using Flux:
     gradient
 
 # using Yota: grad
+using Memoize
 import Base: +, -, *, length, ==
 using Parameters: @with_kw
 include("utils.jl")

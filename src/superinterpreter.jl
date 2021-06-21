@@ -83,6 +83,10 @@ a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(
 )
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
+function op_not(x::Number)::StackFloatType
+    x == 0
+end
+
 function super_step(state::VMState, program, instructions)
     newstates = [instruction(state) for instruction in instructions]
     instrpointers = cat([x.instrpointer for x in newstates]..., dims = 3)
@@ -274,7 +278,7 @@ Pop value from stack, apply not, then push result to stack. Return new state.
 function instr_not!(state::VMState)::VMState
     state, x = popfromstack(state)
 
-    resultvec = op_probvec(a -> float(a == 0), x)
+    resultvec = op_probvec(op_not, x)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"

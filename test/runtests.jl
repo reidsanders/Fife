@@ -37,7 +37,7 @@ using CUDA
 Random.seed!(123);
 CUDA.allowscalar(false)
 using Parameters: @with_kw
-
+using Profile
 
 # device,
 # largevalue,
@@ -644,7 +644,7 @@ end
         catch e
             println("Exception uncaught by test: \n {e}")
         end
-        @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3, opt = Descent(.01))
+        @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 100, opt = Descent(.01))
         # for i = 1:5
         #     grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
         #     grads = grads .* trainmaskfull
@@ -757,6 +757,6 @@ end
     test_super_step(args)
     test_super_run_program(args)
     test_all_gradient_single_instr(args)
-    test_train(args)
+    # test_train(args)
     # test_gradient_op_probvec(args)
 end
