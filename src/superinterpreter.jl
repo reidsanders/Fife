@@ -274,7 +274,8 @@ Pop value from stack, apply not, then push result to stack. Return new state.
 function instr_not!(state::VMState)::VMState
     state, x = popfromstack(state)
 
-    resultvec = op_probvec(a -> float(a == 0), x)
+    # resultvec = op_probvec(a -> float(a == 0), x)
+    resultvec = x
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
@@ -328,13 +329,15 @@ function instr_swap!(state::VMState)::VMState
     # prob push x blank: prob x blank + prob y blank - both blank
     xb = x[1]
     yb = y[1]
-    x[2:end] = x[2:end] * ((1 - xb) * (1 - yb)) / (1 - xb + eps(xb))
-    x[1] = xb + yb - xb * yb
-    y[2:end] = y[2:end] * ((1 - xb) * (1 - yb)) / (1 - yb + eps(xb))
-    y[1] = xb + yb - xb * yb
+    x1 = xb + yb - xb * yb
+    y1 = xb + yb - xb * yb
+    xend = x[2:end] * ((1 - xb) * (1 - yb)) / (1 - xb + eps(xb))
+    yend = y[2:end] * ((1 - xb) * (1 - yb)) / (1 - yb + eps(xb))
+    xcomb = [x1; xend]
+    ycomb = [y1; yend]
 
-    state = pushtostack(state, x)
-    state = pushtostack(state, y)
+    state = pushtostack(state, xcomb)
+    state = pushtostack(state, ycomb)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
@@ -509,7 +512,7 @@ Apply numeric op to probability vector of mixed numeric and nonnumeric values. R
 Requires numericvalues at end of allvalues.
 
 """
-function op_probvec(op, x::Array; numericvalues::Array = numericvalues)::Array{Number}
+function op_probvec(op, x::Array; numericvalues::Array = numericvalues)
     optableindexes = optablesingle(op, numericvalues = numericvalues)
     xnumerics = x[end+1-length(numericvalues):end]
 

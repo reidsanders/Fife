@@ -654,6 +654,7 @@ end
             test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
         second_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
         @show second_loss - first_loss
+        @test second_loss < first_loss
     end
 
     function test_all_gradient_single_instr(args)
@@ -665,12 +666,67 @@ end
     function test_gradient_single_instr(args, instr)
         blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues)
         blank_state_random2 = init_random_state(args.stackdepth, args.programlen, allvalues)
-        grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+        # grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+        try
+            grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+        catch e
+            println("$instr test_gradient_single_instr. Exception: \n $e")
+        end
+        @test true
+    end
+
+    function test_gradient_op_probvec(args)
+
+        function optablesingle2(op; numericvalues = numericvalues)
+            optable = op.(numericvalues)
+            optable = coercetostackvaluepart.(optable)
+            indexmapping = [findall(x -> x == numericval, optable) for numericval in numericvalues]
+        end
+
+        op(a) = float(a == 0)
+        # optableindexes = optablesingle2(op)
+
+        function op_prob_sum(op, x)
+            optableindexes = optablesingle2(op, numericvalues = numericvalues)
+            xnumerics = x[end+1-length(numericvalues):end]
+            numericprobs = [sum(xnumerics[indexes]) for indexes in optableindexes]
+            nonnumericprobs = x[1:end-length(numericvalues)]
+            xnew = [nonnumericprobs; numericprobs]
+        end
+
+        function op_probvec2(op, x::Array)
+            optableindexes = optablesingle2(op, numericvalues = numericvalues)
+            xnumerics = x[end+1-length(numericvalues):end]
+
+            numericprobs = [sum(xnumerics[indexes]) for indexes in optableindexes]
+            nonnumericprobs = x[1:end-length(numericvalues)]
+
+            xnew = [nonnumericprobs; numericprobs]
+        end
+
+        function op_prob_sum3(op, x)
+            xnew = op_probvec2(op, x)
+            sum(xnew)
+        end
+
+        function op_prob_sum2(op, x)
+            xnew = op_prob_sum(op, x)
+            sum(xnew)
+        end
+
+        startstate = init_random_state(args.stackdepth, args.programlen, allvalues)
+        state, x = popfromstack(startstate)
+        # grad_instr = gradient(op_prob_sum, op, x)
+        grad_instr = gradient(op_prob_sum2, op, x)
+        grad_instr = gradient(op_prob_sum3, op, x)
+
+
         # try
         #     grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
         # catch e
-        #     println("Exception uncaught by test: \n $e")
+        #     println("$instr test_gradient_single_instr. Exception: \n $e")
         # end
+        @test true
     end
 
     test_push_vmstate(args)
@@ -701,4 +757,5 @@ end
     test_super_run_program(args)
     test_all_gradient_single_instr(args)
     test_train(args)
+    # test_gradient_op_probvec(args)
 end
