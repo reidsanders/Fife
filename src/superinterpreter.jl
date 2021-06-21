@@ -274,8 +274,7 @@ Pop value from stack, apply not, then push result to stack. Return new state.
 function instr_not!(state::VMState)::VMState
     state, x = popfromstack(state)
 
-    # resultvec = op_probvec(a -> float(a == 0), x)
-    resultvec = x
+    resultvec = op_probvec(a -> float(a == 0), x)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"

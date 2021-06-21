@@ -514,10 +514,10 @@ end
             contstate = normalize_stackpointer(contstate)
             newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
             newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
-            run_equality_asserts(contstate, newcontstate)
-            run_equality_asserts(discretestate, newdiscretestate)
-            run_equality_test(contstate, newcontstate)
-            run_equality_test(discretestate, newdiscretestate)
+            # run_equality_asserts(contstate, newcontstate)
+            # run_equality_asserts(discretestate, newdiscretestate)
+            run_equality_test(newcontstate, contstate)
+            run_equality_test(newdiscretestate, discretestate)
         end
     end
 
@@ -643,12 +643,12 @@ end
         catch e
             println("Exception uncaught by test: \n {e}")
         end
-        # @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
-        # for i = 1:5
-        #     grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
-        #     grads = grads .* trainmaskfull
-        #     Optimise.update!(opt, hiddenprogram, grads)
-        # end
+        @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
+        for i = 1:5
+            grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+            grads = grads .* trainmaskfull
+            Optimise.update!(opt, hiddenprogram, grads)
+        end
 
         second_loss =
             test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
