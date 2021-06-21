@@ -30,7 +30,8 @@ using Flux:
     onehot,
     onehotbatch,
     glorot_uniform,
-    gradient
+    gradient,
+    Descent
 # using Yota: grad
 using CUDA
 Random.seed!(123);
@@ -643,12 +644,12 @@ end
         catch e
             println("Exception uncaught by test: \n {e}")
         end
-        @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
-        for i = 1:5
-            grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
-            grads = grads .* trainmaskfull
-            Optimise.update!(opt, hiddenprogram, grads)
-        end
+        @time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3, opt = Descent(.01))
+        # for i = 1:5
+        #     grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        #     grads = grads .* trainmaskfull
+        #     Optimise.update!(opt, hiddenprogram, grads)
+        # end
 
         second_loss =
             test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
