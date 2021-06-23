@@ -142,8 +142,10 @@ function convert_discrete_to_continuous(
 )::VMState
     stackdepth = discrete.stackdepth
     programlen = discrete.programlen
+    inputlen = discrete.inputlen
+    outputlen = discrete.outputlen
 
-    contstate = VMState(stackdepth, programlen, allvalues, args.inputlen, args.outputlen)
+    contstate = VMState(stackdepth, programlen, allvalues, inputlen, outputlen)
     cont_instrpointer = onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
@@ -153,16 +155,35 @@ function convert_discrete_to_continuous(
     end
     contstack = onehotbatch(discretestack, allvalues) * 1.0f0
 
+    discreteinput = Array{Any,1}(undef, inputlen)
+    fill!(discreteinput, "blank")
+    for (i, x) in enumerate(discrete.input)
+        discretestack[i] = x
+    end
+    continput = onehotbatch(discreteinput, allvalues) * 1.0f0
+
+    discreteoutput = Array{Any,1}(undef, outputlen)
+    fill!(discreteoutput, "blank")
+    for (i, x) in enumerate(discrete.output)
+        discreteoutput[i] = x
+    end
+    contoutput = onehotbatch(discreteoutput, allvalues) * 1.0f0
+
     discretevariables = Array{Any,1}(undef, stackdepth)
     fill!(discretevariables, "blank")
     for (k, v) in discrete.variables
         discretevariables[k] = v
     end
     contvariables = onehotbatch(discretevariables, allvalues) * 1.0f0
+
     contishalted = onehot(discrete.ishalted, [false, true]) * 1.0f0
     VMState(
         cont_instrpointer |> device,
         contstate.stackpointer |> device,
+        contstate.inputpointer |> device,
+        contstate.outputpointer |> device,
+        continput |> device,
+        contoutput |> device,
         contstack |> device,
         contvariables |> device,
         contishalted |> device,
@@ -175,18 +196,24 @@ function convert_continuous_to_discrete(
 )::DiscreteVMState
     instrpointer = onecold(contstate.instrpointer)
     stackpointer = onecold(contstate.stackpointer)
+    inputpointer = onecold(contstate.stackpointer)
+    outputpointer = onecold(contstate.stackpointer)
     ishalted = onecold(contstate.ishalted, ishaltedvalues)
     stack = [allvalues[i] for i in onecold(contstate.stack)]
+    input = [allvalues[i] for i in onecold(contstate.input)]
+    output = [allvalues[i] for i in onecold(contstate.output)]
     variables = [allvalues[i] for i in onecold(contstate.variables)]
     #variables = onecold(contstate.stack)
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
+    stack = circshift(input, 1 - inputpointer) 
+    stack = circshift(output, 1 - outputpointer) 
     # Dealing with blanks is tricky. It's not clear what is correct semantically
     newstack = CircularBuffer{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
             break
-            # or break... discrete can't have blank values on stack, but removing them 
+            # discrete can't have blank values on stack, but removing them 
             # is confusing and may mess up behavior if the superinterpreter is 
             # depending on there being a blank there
             # TODO either break or 
@@ -195,6 +222,24 @@ function convert_continuous_to_discrete(
         else
             # TODO convert to int ?
             push!(newstack, x)
+        end
+    end
+
+    newinput = CircularBuffer{StackValueType}(size(contstate.input)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    for x in input
+        if x == "blank"
+            break
+        else
+            push!(newinput, x)
+        end
+    end
+
+    newoutput = CircularBuffer{StackValueType}(size(contstate.output)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    for x in output
+        if x == "blank"
+            break
+        else
+            push!(newoutput, x)
         end
     end
 

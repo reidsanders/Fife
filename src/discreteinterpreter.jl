@@ -22,6 +22,8 @@ StackFloatType = Float32
         DefaultDict{StackValueType,StackValueType}(0) # StackValueType instead of Int?
     ishalted::Bool = false
     programlen::Int = args.programlen
+    inputlen::Int = args.inputlen
+    outputlen::Int = args.outputlen
     stackdepth::Int = args.stackdepth
 end
 
