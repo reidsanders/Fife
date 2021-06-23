@@ -351,13 +351,13 @@ end
 
 function test_instr_write(args)
     state = DiscreteVMState()
-    pushfirst!(state.input, 3)
-    pushfirst!(state.input, 5)
-    instr_read!(state)
+    pushfirst!(state.stack, 3)
+    pushfirst!(state.stack, 5)
+    instr_write!(state)
 
     @test state.instrpointer == 2
-    @test first(state.stack) == 5
-    @test first(state.input) == 3
+    @test first(state.stack) == 3
+    @test first(state.output) == 5
 end
 
 
@@ -567,6 +567,8 @@ function test_super_run_program(args)
             # instr_isge!,
             # instr_store!,
             # instr_load!
+            instr_read!
+            instr_write!
         ]
         val_instructions
     ]

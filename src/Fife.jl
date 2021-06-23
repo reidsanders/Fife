@@ -316,7 +316,14 @@ function accuracy(hidden, target, trainmask)
     result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
-function test(hiddenprogram, targetprogram, blank_state, instructions, programlen, trainmaskfull)
+function test(
+    hiddenprogram,
+    targetprogram,
+    blank_state,
+    instructions,
+    programlen,
+    trainmaskfull,
+)
     program = softmaxmask(hiddenprogram, trainmaskfull)
     target = runprogram(blank_state, targetprogram, instructions, programlen)
     prediction = runprogram(blank_state, program, instructions, programlen)
@@ -329,9 +336,26 @@ function forward(state, target, instructions, programlen, hiddenprogram, trainma
     loss(pred, target)
 end
 
-function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4, opt = Descent(.1))
+function trainloopsingle(
+    hiddenprogram,
+    startstate,
+    target,
+    instructions,
+    programlen,
+    trainmaskfull;
+    numexamples = 4,
+    opt = Descent(0.1),
+)
     @showprogress for i = 1:numexamples
-        grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end-1] # end-1 for hidden?
+        grads = gradient(
+            forward,
+            startstate,
+            target,
+            instructions,
+            programlen,
+            hiddenprogram,
+            trainmaskfull,
+        )[end-1] # end-1 for hidden?
         # grads = grad(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)

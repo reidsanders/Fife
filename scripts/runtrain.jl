@@ -1,7 +1,7 @@
 # using Pkg
 # Pkg.activate(".")
 using Fife
-using Fife: 
+using Fife:
     valhot,
     pushtostack,
     popfromstack,
@@ -28,11 +28,7 @@ import Fife: instr_pushval!
 
 using Parameters: @with_kw
 using Flux
-using Flux:
-    onehot,
-    onehotbatch,
-    glorot_uniform,
-    gradient
+using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
 ######################################
 # Global initialization
@@ -83,7 +79,8 @@ using Flux:
 
 
 
-instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
+instr_pushval!(val::args.StackValueType, state::VMState) =
+    instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
 #instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
@@ -183,8 +180,15 @@ check_state_asserts(blank_state)
 target = runprogram(blank_state, target_program, instructions, args.max_ticks)
 # target = runprogram(blank_state, target_program, instructions, args.programlen)
 
-gradprogpart =
-    partial(gradient, forward, blank_state, target, instructions, args.programlen, trainmaskfull) # Partial?
+gradprogpart = partial(
+    gradient,
+    forward,
+    blank_state,
+    target,
+    instructions,
+    args.programlen,
+    trainmaskfull,
+) # Partial?
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
@@ -193,13 +197,34 @@ opt = Descent(0.001)
 ######################################
 # runprogram program train
 ######################################
-first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
+first_loss = test(
+    hiddenprogram,
+    target_program,
+    blank_state,
+    instructions,
+    args.programlen,
+    trainmaskfull,
+)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 10000)
+@time trainloopsingle(
+    hiddenprogram,
+    blank_state,
+    target,
+    instructions,
+    args.programlen,
+    trainmaskfull,
+    numexamples = 10000,
+)
 
-second_loss =
-    test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
+second_loss = test(
+    hiddenprogram,
+    target_program,
+    blank_state,
+    instructions,
+    args.programlen,
+    trainmaskfull,
+)
 second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy

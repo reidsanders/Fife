@@ -27,6 +27,10 @@ abstract type VM{T1} end
 struct VMState
     instrpointer::Array
     stackpointer::Array
+    inputpointer::Array
+    outputpointer::Array
+    input::Array
+    output::Array
     stack::Array
     variables::Array
     ishalted::Array # [nothalted, halted]
@@ -45,6 +49,10 @@ end
 struct VMSuperStates
     instrpointers::Array
     stackpointers::Array
+    inputpointers::Array
+    outputpointers::Array
+    inputs::Array
+    outputs::Array
     stacks::Array
     supervariables::Array
     ishalteds::Array
@@ -53,14 +61,23 @@ end
 a::Number * b::VMState = VMState(
     a * b.instrpointer,
     a * b.stackpointer,
+    a * b.inputpointer,
+    a * b.outputpointer,
+    a * b.input,
+    a * b.output,
     a * b.stack,
     a * b.variables,
     a * b.ishalted,
 )
 a::VMState * b::Number = b * a
+
 a::VMState + b::VMState = VMState(
     a.instrpointer + b.instrpointer,
     a.stackpointer + b.stackpointer,
+    a.inputpointer + b.inputpointer,
+    a.outputpointer + b.outputpointer,
+    a.input + b.input,
+    a.output + b.output,
     a.stack + b.stack,
     a.variables + b.variables,
     a.ishalted + b.ishalted,
@@ -68,19 +85,29 @@ a::VMState + b::VMState = VMState(
 a::VMState - b::VMState = VMState(
     a.instrpointer - b.instrpointer,
     a.stackpointer - b.stackpointer,
+    a.inputpointer - b.inputpointer,
+    a.outputpointer - b.outputpointer,
+    a.input - b.input,
+    a.output - b.output,
     a.stack - b.stack,
     a.variables - b.variables,
     a.ishalted - b.ishalted,
 )
 
 length(a::VMSuperStates) = size(a.instrpointers)[3]
+
 a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(
     a .* b.instrpointers,
     a .* b.stackpointers,
+    a .* b.inputpointer,
+    a .* b.outputpointer,
+    a .* b.input,
+    a .* b.output,
     a .* b.stacks,
     a .* b.supervariables,
     a .* b.ishalteds,
 )
+
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
 function op_not(x::Number)::StackFloatType
@@ -91,18 +118,36 @@ function super_step(state::VMState, program, instructions)
     newstates = [instruction(state) for instruction in instructions]
     instrpointers = cat([x.instrpointer for x in newstates]..., dims = 3)
     stackpointers = cat([x.stackpointer for x in newstates]..., dims = 3)
+    inputpointers = cat([x.inputpointer for x in newstates]..., dims = 3)
+    outputpointers = cat([x.outputpointer for x in newstates]..., dims = 3)
+    inputs = cat([x.input for x in newstates]..., dims = 3)
+    outputs = cat([x.output for x in newstates]..., dims = 3)
     stacks = cat([x.stack for x in newstates]..., dims = 3)
     supervariables = cat([x.variables for x in newstates]..., dims = 3)
     ishalteds = cat([x.ishalted for x in newstates]..., dims = 3)
 
-    states = VMSuperStates(instrpointers, stackpointers, stacks, supervariables, ishalteds)
-    current = program .* state.instrpointer'
-    summed = sum(current, dims = 2)
-    summed = reshape(summed, (1, 1, :))
-    scaledstates = summed * states
+    states = VMSuperStates(
+        instrpointers,
+        stackpointers,
+        inputpointers,
+        outputpointers,
+        inputs,
+        outputs,
+        stacks,
+        supervariables,
+        ishalteds,
+    )
+    currentprogram = program .* state.instrpointer'
+    summedprogram = sum(currentprogram, dims = 2)
+    summedprogram = reshape(summedprogram, (1, 1, :))
+    scaledstates = summedprogram * states
     reduced = VMState(
         sum(scaledstates.instrpointers, dims = 3)[:, :, 1],
         sum(scaledstates.stackpointers, dims = 3)[:, :, 1],
+        sum(scaledstates.inputpointers, dims = 3)[:, :, 1],
+        sum(scaledstates.outputpointers, dims = 3)[:, :, 1],
+        sum(scaledstates.inputs, dims = 3)[:, :, 1],
+        sum(scaledstates.outputs, dims = 3)[:, :, 1],
         sum(scaledstates.stacks, dims = 3)[:, :, 1],
         sum(scaledstates.supervariables, dims = 3)[:, :, 1],
         sum(scaledstates.ishalteds, dims = 3)[:, :, 1],
@@ -158,9 +203,6 @@ Get top of stack, then push it to stack. Return new state.
 
 """
 function instr_dup!(state::VMState)::VMState
-    #= 
-    DUP Should duplicate top of stack, and push to top of stack 
-    =#
     newstackpointer = circshift(state.stackpointer, -1)
     oldcomponent = state.stack .* (1 .- newstackpointer)'
     newcomponent = circshift(state.stack .* state.stackpointer', (0, -1))
@@ -168,7 +210,17 @@ function instr_dup!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(newinstrpointer, newstackpointer, newstack, state.variables, ishalted)
+    VMState(
+        newinstrpointer,
+        newstackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        newstack,
+        state.variables,
+        ishalted,
+    )
 end
 
 """
@@ -189,6 +241,10 @@ function instr_add!(state::VMState)::VMState
     VMState(
         newinstrpointer,
         newstate.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstate.stack,
         state.variables,
         ishalted,
@@ -213,6 +269,10 @@ function instr_sub!(state::VMState)::VMState
     VMState(
         newinstrpointer,
         newstate.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstate.stack,
         state.variables,
         ishalted,
@@ -237,6 +297,10 @@ function instr_mult!(state::VMState)::VMState
     VMState(
         newinstrpointer,
         newstate.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstate.stack,
         state.variables,
         ishalted,
@@ -261,6 +325,10 @@ function instr_div!(state::VMState)::VMState
     VMState(
         newinstrpointer,
         newstate.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstate.stack,
         state.variables,
         ishalted,
@@ -286,6 +354,10 @@ function instr_not!(state::VMState)::VMState
     VMState(
         newinstrpointer,
         newstate.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstate.stack,
         state.variables,
         ishalted,
@@ -312,6 +384,10 @@ function instr_and!(state::VMState)::VMState
     VMState(
         newinstrpointer,
         newstate.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstate.stack,
         state.variables,
         ishalted,
@@ -328,8 +404,6 @@ function instr_swap!(state::VMState)::VMState
     state, x = popfromstack(state)
     state, y = popfromstack(state)
 
-    # TODO compensate for prob of blank in either x or y
-    # prob push x blank: prob x blank + prob y blank - both blank
     xb = x[1]
     yb = y[1]
     x1 = xb + yb - xb * yb
@@ -344,7 +418,17 @@ function instr_swap!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, ishalted)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
+        state.variables,
+        ishalted,
+    )
 end
 
 """
@@ -417,7 +501,17 @@ function instr_gotoif!(
     newinstrpointer = normit(newinstrpointer) # TODO may be covering up a bug
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.01) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(newishalted), 1, atol = 0.01)
-    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, newishalted)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
+        state.variables,
+        newishalted,
+    )
 end
 
 """
@@ -430,7 +524,17 @@ function instr_pass!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, ishalted)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
+        state.variables,
+        ishalted,
+    )
 end
 
 """
@@ -444,8 +548,49 @@ function instr_halt!(state::VMState)::VMState
     ishalted = [0, 1]# .|> StackFloatType
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(newinstrpointer, state.stackpointer, state.stack, state.variables, ishalted)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
+        state.variables,
+        ishalted,
+    )
 end
+
+"""
+    instr_read!(state::VMState)::VMState
+
+Get input, then push to stack. Return new state.
+
+"""
+function instr_read!(state::VMState)::VMState
+
+    oldcomponent = state.stack .* (1 .- newstackpointer)'
+    newcomponent = circshift(state.stack .* state.stackpointer', (0, -1))
+    newstack = oldcomponent .+ newcomponent
+    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
+
+    state = pushtostack(state, x)
+
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(ishalted), 1, atol = 0.001)
+    VMState(
+        newinstrpointer,
+        newstackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        newstack,
+        state.variables,
+        ishalted,
+    )
+end
+
 
 """
     instr_pushval!(val::StackValueType, state::VMState, allvalues::Array)::VMState
@@ -455,11 +600,7 @@ Push current val to stack. Returns new state.
 """
 # global valhotvec = zeros(44) * 1.0f0
 # valhotvec[20] = 1.0f0
-function instr_pushval!(
-    val::StackValueType,
-    state::VMState,
-    allvalues::Array,
-)::VMState
+function instr_pushval!(val::StackValueType, state::VMState, allvalues::Array)::VMState
     # Verify that the mutation is coming from here
     # TODO either define a manual adjoint
     # TODO only use with partial, or try using BangBang? 
@@ -474,7 +615,17 @@ function instr_pushval!(
     newstack = stackscaled .+ topscaled
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(newinstrpointer, newstackpointer, newstack, state.variables, ishalted)
+    VMState(
+        newinstrpointer,
+        newstackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        newstack,
+        state.variables,
+        ishalted,
+    )
 end
 
 ###############################
@@ -560,7 +711,7 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
 end
 
 """
-    pop(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
+    popfromstack(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
 
 Removes prob vector from stack. Returns the new state and top of stack.
 
@@ -574,6 +725,10 @@ function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Ar
     newstate = VMState(
         state.instrpointer,
         newstackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstack,
         state.variables,
         state.ishalted,
@@ -581,6 +736,35 @@ function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Ar
     check_state_asserts(newstate)
     (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
 end
+
+"""
+    popfrominput(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
+
+Removes prob vector from stack. Returns the new state and top of stack.
+
+"""
+function popfrominput(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
+    scaledreturninput = state.input .* state.inputpointer'
+    scaledremaininginput = state.input .* (1 .- state.inputpointer')
+    scaledblankinput = blankinput .* state.inputpointer'
+    newinput = scaledremaininginput .+ scaledblankinput
+    newinputpointer = circshift(state.inputpointer, 1)
+    newstate = VMState(
+        state.instrpointer,
+        newstackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        newstack,
+        state.variables,
+        state.ishalted,
+    )
+    newstate = pushtostack(newstate, scaledreturn) #TODO edit all VMStates?
+    check_state_asserts(newstate)
+    newstate
+end
+
 
 """
     pushtostack(state::VMState, valvec::Array)::VMState
@@ -599,6 +783,10 @@ function pushtostack(state::VMState, valvec::Array)::VMState
     newstate = VMState(
         state.instrpointer,
         newstackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
         newstack,
         state.variables,
         state.ishalted,
@@ -645,6 +833,10 @@ function normit(a::VMState; dims = 1)
     VMState(
         normit(a.instrpointer, dims = dims),
         normit(a.stackpointer, dims = dims),
+        normit(a.inputpointer, dims = dims),
+        normit(a.outputpointer, dims = dims),
+        normit(a.input, dims = dims),
+        normit(a.output, dims = dims),
         normit(a.stack, dims = dims),
         normit(a.variables, dims = dims),
         normit(a.ishalted, dims = dims),
@@ -670,20 +862,32 @@ function VMState(
     stackdepth::Int = args.stackdepth,
     programlen::Int = args.programlen,
     allvalues::AbstractArray = allvalues,
+    inputlen::Int = args.inputlen,
+    outputlen::Int = args.outputlen,
 )
     instrpointer = zeros(StackFloatType, programlen)
     stackpointer = zeros(StackFloatType, stackdepth)
     ishalted = zeros(StackFloatType, 2)
     stack = zeros(StackFloatType, length(allvalues), stackdepth)
+    input = zeros(StackFloatType, length(allvalues), inputlen)
+    output = zeros(StackFloatType, length(allvalues), outputlen)
     variables = zeros(StackFloatType, length(allvalues), stackdepth)
     instrpointer[1] = 1.0
     stackpointer[1] = 1.0
+    inputpointer[1] = 1.0
+    outputpointer[1] = 1.0
     stack[1, :] .= 1.0
+    input[1, :] .= 1.0
+    output[1, :] .= 1.0
     variables[1, :] .= 1.0
     ishalted[1] = 1.0 # set false
     VMState(
         instrpointer |> device,
         stackpointer |> device,
+        inputpointer |> device,
+        outputpointer |> device,
+        input |> device,
+        output |> device,
         stack |> device,
         variables |> device,
         ishalted |> device,
@@ -697,6 +901,10 @@ function normalize_stackpointer(state::VMState)
     VMState(
         state.instrpointer |> device,
         stackpointer |> device,
+        state.inputpointer |> device,
+        state.outputpointer |> device,
+        state.input |> device,
+        state.output |> device,
         stack |> device,
         state.variables |> device,
         state.ishalted |> device,
