@@ -867,6 +867,8 @@ function VMState(
 )
     instrpointer = zeros(StackFloatType, programlen)
     stackpointer = zeros(StackFloatType, stackdepth)
+    inputpointer = zeros(StackFloatType, stackdepth)
+    outputpointer = zeros(StackFloatType, stackdepth)
     ishalted = zeros(StackFloatType, 2)
     stack = zeros(StackFloatType, length(allvalues), stackdepth)
     input = zeros(StackFloatType, length(allvalues), inputlen)

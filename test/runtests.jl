@@ -68,7 +68,7 @@ end
 # Global initialization
 ######################################
 instr_2 = partial(instr_pushval!, 2)
-blank_state = VMState(3, 4, allvalues)
+blank_state = VMState(3, 4, allvalues, args.inputlen, args.outputlen)
 blank_state_random = init_random_state(3, 4, allvalues)
 check_state_asserts(blank_state)
 check_state_asserts(blank_state_random)
@@ -363,7 +363,7 @@ end
 
 
 function test_convert_discrete_to_continuous(args)
-    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     state = DiscreteVMState()
     #instr_pushval!(6,state)
     newcontstate = convert_discrete_to_continuous(state, allvalues)
@@ -376,7 +376,7 @@ end
 
 function test_convert_continuous_to_discrete(args)
     # test true
-    contstate = VMState(args.stackdepth, args.programlen, allvalues)
+    contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     discretestate = DiscreteVMState()
     #instr_pushval!(6,state)
     newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
@@ -449,7 +449,7 @@ function test_div_probvec(args)
 end
 
 function test_pop_vmstate(args)
-    state = VMState(args.stackdepth, args.programlen, allvalues)
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     newval = valhot(2, allvalues)
     newstate = pushtostack(state, newval)
     newstate, popval = popfromstack(newstate)
@@ -458,7 +458,7 @@ function test_pop_vmstate(args)
 end
 
 function test_push_vmstate(args)
-    state = VMState(args.stackdepth, args.programlen, allvalues)
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     newval = valhot(2, allvalues)
     state = pushtostack(state, newval)
     @test state.stack[:, end] == newval
@@ -511,7 +511,7 @@ function test_program_conversion(args, program)
         [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3],
     ]
         #@show vals
-        contstate = VMState(args.stackdepth, args.programlen, allvalues)
+        contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
         discretestate = DiscreteVMState()
         for val in vals
             contstate = instr_pushval!(val, contstate)
@@ -538,7 +538,7 @@ function test_super_step(args)
     program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
     rand!(program)
     program = normit(program)
-    state = VMState(args.stackdepth, args.programlen, allvalues)
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     state = super_step(state, program, instructions)
     check_state_asserts(state)
 end
@@ -604,7 +604,7 @@ function test_super_run_program(args)
     hiddenprogram = hiddenprogram |> device
     trainmask = trainmask |> device
 
-    blank_state = VMState(args.stackdepth, args.programlen, allvalues)
+    blank_state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     check_state_asserts(blank_state)
     target = runprogram(blank_state, target_program, instructions, 1000)
 end
@@ -644,7 +644,7 @@ function test_train(args)
     hiddenprogram = hiddenprogram |> device
     trainmask = trainmask |> device
 
-    blank_state = VMState(args.stackdepth, args.programlen, allvalues)
+    blank_state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     check_state_asserts(blank_state)
     target = runprogram(blank_state, target_program, instructions, 10)
 
