@@ -44,20 +44,34 @@ function init_random_state(
     stackdepth::Int,
     programlen::Int,
     allvalues::Union{Array,CuArray},
+    inputlen::Int,
+    outputlen::Int,
 )
     instrpointer = zeros(StackFloatType, programlen)
     stackpointer = zeros(StackFloatType, stackdepth)
+    inputpointer = zeros(StackFloatType, stackdepth)
+    outputpointer = zeros(StackFloatType, stackdepth)
     ishalted = zeros(StackFloatType, 2)
+    input = rand(StackFloatType, length(allvalues), inputlen)
+    output = rand(StackFloatType, length(allvalues), outputlen)
     stack = rand(StackFloatType, length(allvalues), stackdepth)
     variables = rand(StackFloatType, length(allvalues), stackdepth)
+    input = normit(input)
+    output = normit(output)
     stack = normit(stack)
     variables = normit(variables)
     instrpointer[1] = 1.0
     stackpointer[1] = 1.0
+    inputpointer[1] = 1.0
+    outputpointer[1] = 1.0
     ishalted[1] = 1.0 # set false
     VMState(
         instrpointer |> device,
         stackpointer |> device,
+        inputpointer |> device,
+        outputpointer |> device,
+        input |> device,
+        output |> device,
         stack |> device,
         variables |> device,
         ishalted |> device,
