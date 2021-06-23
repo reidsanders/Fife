@@ -32,25 +32,13 @@ using Flux:
     glorot_uniform,
     gradient,
     Descent
-# using Yota: grad
 using CUDA
 Random.seed!(123);
 CUDA.allowscalar(false)
 using Parameters: @with_kw
 using Profile
 using BenchmarkTools
-# device,
-# largevalue,
-# coercetostackvaluepart,
-# numericvalues,
-# nonnumericvalues,
-# allvalues,
-# ishaltedvalues,
-# blanks,
-# blankstack = create_dependent_values(args)
 instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
-#instr_pushval! = partial(instr_pushval!, allvalues)
-# ## include("parameters.jl")
 
 function init_random_state(
     stackdepth::Int,
@@ -600,16 +588,20 @@ function test_train(args)
     num_instructions = length(instructions)
 
     discrete_program = create_random_discrete_program(args.programlen, instructions)
+    # inputvalues = [rand(val_instructions) for i in 1:args.inputlen]
+    # discreteinputprogram = create_random_discrete_program(args.inputlen, val_instructions)
+    # discretetrainableprogram = create_random_discrete_program(args.programlen - args.inputlen, instructions)
+    # inputvalues = [rand(val_instructions) for i in 1:args.inputlen]
 
-    discrete_programs = [
-        [
-            create_random_discrete_program(args.inputlen, instructions)
-            discrete_program[end-args.inputlen:end]
-        ] for x = 1:args.trainsetsize
-    ]
+    # discrete_programs = [
+    #     [
+    #         create_random_discrete_program(args.inputlen, instructions)
+    #         discrete_program[end-args.inputlen:end]
+    #     ] for x = 1:args.trainsetsize
+    # ]
 
     target_program =
-        convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+        convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
     trainmask = create_trainable_mask(args.programlen, args.inputlen)
     hiddenprogram = deepcopy(target_program)
     hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
@@ -759,6 +751,3 @@ end
     test_train(args)
     # test_gradient_op_probvec(args)
 end
-
-@profile test_super_step(args)
-Profile.print()

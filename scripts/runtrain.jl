@@ -180,7 +180,7 @@ blank_state2 = VMState(args.stackdepth, args.programlen, allvalues)
 check_state_asserts(blank_state)
 
 # TODO need to generate dataset of input, target
-target = runprogram(blank_state, target_program, instructions, 10)
+target = runprogram(blank_state, target_program, instructions, args.max_ticks)
 # target = runprogram(blank_state, target_program, instructions, args.programlen)
 
 gradprogpart =
@@ -188,7 +188,7 @@ gradprogpart =
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
-opt = Descent(0.1)
+opt = Descent(0.001)
 
 ######################################
 # runprogram program train
@@ -196,7 +196,7 @@ opt = Descent(0.1)
 first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
 first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 3)
+@time trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 10000)
 
 second_loss =
     test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)

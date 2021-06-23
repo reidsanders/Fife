@@ -329,7 +329,7 @@ end
 
 function trainloopsingle(hiddenprogram, startstate, target, instructions, programlen, trainmaskfull; numexamples = 4, opt = Descent(.1))
     @showprogress for i = 1:numexamples
-        grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end]
+        grads = gradient(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)[end-1] # end-1 for hidden?
         # grads = grad(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
