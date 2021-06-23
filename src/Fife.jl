@@ -15,7 +15,6 @@ using Flux:
     Optimise,
     gradient
 
-# using Yota: grad
 using Memoize
 import Base: +, -, *, length, ==
 using Parameters: @with_kw
@@ -27,7 +26,8 @@ include("utils.jl")
     epochs::Int = 2
     stackdepth::Int = 11
     programlen::Int = 13
-    inputlen::Int = 2 # frozen part, assumed at front for now
+    inputlen::Int = 2
+    outputlen::Int = 2
     max_ticks::Int = 5
     maxint::Int = 20
     trainsetsize::Int = 10
@@ -109,6 +109,8 @@ begin
         instr_isge!,
         instr_store!,
         instr_load!,
+        instr_read!,
+        instr_write!,
         VMState,
         DiscreteVMState,
         convert_continuous_to_discrete,

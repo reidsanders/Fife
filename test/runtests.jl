@@ -338,6 +338,29 @@ function test_instr_load(args)
     @test first(state.stack) == 3
 end
 
+function test_instr_read(args)
+    state = DiscreteVMState()
+    pushfirst!(state.input, 3)
+    pushfirst!(state.input, 5)
+    instr_read!(state)
+
+    @test state.instrpointer == 2
+    @test first(state.stack) == 5
+    @test first(state.input) == 3
+end
+
+function test_instr_write(args)
+    state = DiscreteVMState()
+    pushfirst!(state.input, 3)
+    pushfirst!(state.input, 5)
+    instr_read!(state)
+
+    @test state.instrpointer == 2
+    @test first(state.stack) == 5
+    @test first(state.input) == 3
+end
+
+
 
 function test_convert_discrete_to_continuous(args)
     contstate = VMState(args.stackdepth, args.programlen, allvalues)
@@ -742,12 +765,13 @@ end
     test_instr_isge(args)
     test_instr_store(args)
     test_instr_load(args)
+    test_instr_read(args)
     test_convert_discrete_to_continuous(args)
     test_convert_continuous_to_discrete(args)
     test_all_single_instr(args)
     test_super_step(args)
     test_super_run_program(args)
     test_all_gradient_single_instr(args)
-    test_train(args)
+    # test_train(args)
     # test_gradient_op_probvec(args)
 end

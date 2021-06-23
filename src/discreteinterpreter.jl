@@ -16,6 +16,8 @@ StackFloatType = Float32
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
     stack::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.stackdepth)
+    input::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.inputlen)
+    output::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.outputlen)
     variables::DefaultDict{StackValueType,StackValueType} =
         DefaultDict{StackValueType,StackValueType}(0) # StackValueType instead of Int?
     ishalted::Bool = false
@@ -291,4 +293,16 @@ function instr_load!(state::DiscreteVMState)
         x = popfirst!(state.stack)
         pushfirst!(state.stack, state.variables[x])
     end
+end
+
+function instr_read!(state::DiscreteVMState)
+    setinstrpointer!(state, state.instrpointer + 1)
+    x = popfirst!(state.input)
+    pushfirst!(state.stack, x)
+end
+
+function instr_write!(state::DiscreteVMState)
+    setinstrpointer!(state, state.instrpointer + 1)
+    x = popfirst!(state.stack)
+    pushfirst!(state.output, x)
 end
