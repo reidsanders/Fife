@@ -83,7 +83,7 @@ end
 ######################################
 instr_2 = partial(instr_pushval!, 2)
 blank_state = VMState(3, 4, allvalues, args.inputlen, args.outputlen)
-blank_state_random = init_random_state(3, 4, allvalues)
+blank_state_random = init_random_state(3, 4, allvalues, args.inputlen, args.outputlen)
 check_state_asserts(blank_state)
 check_state_asserts(blank_state_random)
 
@@ -694,8 +694,8 @@ function test_all_gradient_single_instr(args)
 end
 
 function test_gradient_single_instr(args, instr)
-    blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues)
-    blank_state_random2 = init_random_state(args.stackdepth, args.programlen, allvalues)
+    blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    blank_state_random2 = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     # grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
     try
         grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
@@ -744,7 +744,7 @@ function test_gradient_op_probvec(args)
         sum(xnew)
     end
 
-    startstate = init_random_state(args.stackdepth, args.programlen, allvalues)
+    startstate = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     state, x = popfromstack(startstate)
     # grad_instr = gradient(op_prob_sum, op, x)
     grad_instr = gradient(op_prob_sum2, op, x)
