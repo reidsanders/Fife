@@ -26,8 +26,8 @@ include("utils.jl")
     epochs::Int = 2
     stackdepth::Int = 11
     programlen::Int = 13
-    inputlen::Int = 2
-    outputlen::Int = 2
+    inputlen::Int = 7
+    outputlen::Int = 8
     max_ticks::Int = 5
     maxint::Int = 20
     trainsetsize::Int = 10
@@ -61,6 +61,10 @@ function create_dependent_values(args)
     ishaltedvalues = [false, true]
     blanks = fill("blank", args.stackdepth)
     blankstack = onehotbatch(blanks, allvalues)
+    inputblanks = fill("blank", args.inputlen)
+    blankinput = onehotbatch(inputblanks, allvalues)
+    outputblanks = fill("blank", args.outputlen)
+    blankoutput = onehotbatch(outputblanks, allvalues)
 
     (
         device,
@@ -72,6 +76,8 @@ function create_dependent_values(args)
         ishaltedvalues,
         blanks,
         blankstack,
+        blankinput,
+        blankoutput,
     )
 end
 
@@ -83,7 +89,9 @@ nonnumericvalues,
 allvalues,
 ishaltedvalues,
 blanks,
-blankstack = create_dependent_values(args)
+blankstack, 
+blankinput,
+blankoutput = create_dependent_values(args)
 
 include("discreteinterpreter.jl")
 include("superinterpreter.jl")
@@ -117,6 +125,7 @@ begin
         convert_discrete_to_continuous,
         create_dependent_values,
         normit,
+        fillinput,
         check_state_asserts,
         ==,
         runprogram,

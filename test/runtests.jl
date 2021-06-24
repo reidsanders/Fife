@@ -2,7 +2,9 @@ using Fife
 using Fife: 
     valhot,
     pushtostack,
+    pushtooutput,
     popfromstack,
+    popfrominput,
     op_probvec,
     normalize_stackpointer,
     create_random_discrete_program,
@@ -471,6 +473,25 @@ function test_pop_vmstate(args)
     @test newstate.stack == state.stack
 end
 
+function test_popfrominput(args)
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    newinput = fillinput([2,5,3], args.inputlen)
+    state = VMState(
+        state.instrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        newinput,
+        state.output,
+        state.stack,
+        state.variables,
+        state.ishalted,
+    )
+    newstate, popval = popfrominput(state)
+    @test newinput[1] == popval
+    @test newinput[2] == first(state.input)
+end
+
 function test_push_vmstate(args)
     state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     newval = valhot(2, allvalues)
@@ -478,17 +499,30 @@ function test_push_vmstate(args)
     @test state.stack[:, end] == newval
 end
 
+function test_pushtooutput(args)
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    newval = valhot(2, allvalues)
+    state = pushtooutput(state, newval)
+    @test state.output[:, end] == newval
+end
+
 function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
     @test x.instrpointer == y.instrpointer
+    @test x.input == y.input
+    @test x.output == y.output
+    @test x.stack == y.stack
     @test x.variables == y.variables
     @test x.ishalted == y.ishalted
-    @test x.stack == y.stack
 end
 
 function run_equality_test(x::VMState, y::VMState)
     @test x.instrpointer ≈ y.instrpointer
     @test x.stackpointer ≈ y.stackpointer
+    @test x.inputpointer ≈ y.inputpointer
+    @test x.outputpointer ≈ y.outputpointer
     @test x.stack ≈ y.stack
+    @test x.input ≈ y.input
+    @test x.output ≈ y.output
     @test x.variables ≈ y.variables
     @test x.ishalted ≈ y.ishalted
 end
@@ -581,8 +615,8 @@ function test_super_run_program(args)
             # instr_isge!,
             # instr_store!,
             # instr_load!
-            instr_read!,
-            instr_write!,
+            # instr_read!,
+            # instr_write!,
         ]
         val_instructions
     ]
@@ -761,6 +795,8 @@ end
 
 @testset "Fife.jl" begin
     test_push_vmstate(args)
+    test_pushtooutput(args)
+    test_popfrominput(args)
     test_pop_vmstate(args)
     test_div_probvec(args)
     test_instr_halt(args)

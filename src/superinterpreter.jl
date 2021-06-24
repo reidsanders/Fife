@@ -568,24 +568,44 @@ Get input, then push to stack. Return new state.
 
 """
 function instr_read!(state::VMState)::VMState
-
-    oldcomponent = state.stack .* (1 .- newstackpointer)'
-    newcomponent = circshift(state.stack .* state.stackpointer', (0, -1))
-    newstack = oldcomponent .+ newcomponent
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-
+    state, x = popfrominput(state)
     state = pushtostack(state, x)
-
+    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     VMState(
         newinstrpointer,
-        newstackpointer,
+        state.stackpointer,
         state.inputpointer,
         state.outputpointer,
         state.input,
         state.output,
-        newstack,
+        state.stack,
+        state.variables,
+        ishalted,
+    )
+end
+
+"""
+    instr_write!(state::VMState)::VMState
+
+Pop top value of stack, and push value to output. Return new state.
+
+"""
+function instr_write!(state::VMState)::VMState
+    state, x = popfromstack(state)
+    state = pushtooutput(state, x)
+    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(ishalted), 1, atol = 0.001)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
         state.variables,
         ishalted,
     )
@@ -718,6 +738,7 @@ Removes prob vector from stack. Returns the new state and top of stack.
 """
 function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
     scaledreturnstack = state.stack .* state.stackpointer'
+    valvec = dropdims(sum(scaledreturnstack, dims = 2), dims = 2)
     scaledremainingstack = state.stack .* (1 .- state.stackpointer')
     scaledblankstack = blankstack .* state.stackpointer'
     newstack = scaledremainingstack .+ scaledblankstack
@@ -734,35 +755,36 @@ function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Ar
         state.ishalted,
     )
     check_state_asserts(newstate)
-    (newstate, dropdims(sum(scaledreturnstack, dims = 2), dims = 2))
+    (newstate, valvec)
 end
 
 """
-    popfrominput(state::VMState; blankstack = blankstack)::Tuple(::VMState, ::Array)
+    popfrominput(state::VMState; blankinput = blankinput)::Tuple(::VMState, ::Array)
 
 Removes prob vector from stack. Returns the new state and top of stack.
 
 """
-function popfrominput(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
+function popfrominput(state::VMState; blankinput = blankinput)::Tuple{VMState,Array}
     scaledreturninput = state.input .* state.inputpointer'
+    valvec = dropdims(sum(scaledreturninput, dims = 2), dims = 2)
     scaledremaininginput = state.input .* (1 .- state.inputpointer')
     scaledblankinput = blankinput .* state.inputpointer'
     newinput = scaledremaininginput .+ scaledblankinput
     newinputpointer = circshift(state.inputpointer, 1)
     newstate = VMState(
         state.instrpointer,
-        newstackpointer,
-        state.inputpointer,
+        state.stackpointer,
+        newinputpointer,
         state.outputpointer,
-        state.input,
+        newinput,
         state.output,
-        newstack,
+        state.stack,
         state.variables,
         state.ishalted,
     )
-    newstate = pushtostack(newstate, scaledreturn) #TODO edit all VMStates?
+    # newstate = pushtostack(newstate, valvec) #TODO edit all VMStates?
     check_state_asserts(newstate)
-    newstate
+    (newstate, valvec)
 end
 
 
@@ -793,6 +815,52 @@ function pushtostack(state::VMState, valvec::Array)::VMState
     )
     check_state_asserts(newstate)
     newstate
+end
+
+"""
+    pushtooutput(state::VMState, valvec::Array)::VMState
+
+Push prob vector to output based on current outputpointer prob. Returns new state.
+
+Note reversed arg ordering of instr in order to match regular push!
+
+"""
+function pushtooutput(state::VMState, valvec::Array)::VMState
+    @assert isapprox(sum(valvec), 1.0) "Value vector doesn't sum to 1: $(sum(valvec))"
+    @show state.output
+    @show valvec
+    newoutputpointer = circshift(state.outputpointer, -1)
+    topscaled = valvec * newoutputpointer'
+    outputscaled = state.output .* (1 .- newoutputpointer')
+    newoutput = outputscaled .+ topscaled
+    newstate = VMState(
+        state.instrpointer,
+        newoutputpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        newoutput,
+        state.stack,
+        state.variables,
+        state.ishalted,
+    )
+    check_state_asserts(newstate)
+    newstate
+end
+
+"""
+    fillinput(state::VMState; blankinput = blankinput)::Tuple{VMState,Array}
+
+Populates onehot input stack from array. Returns the input stack.
+
+"""
+function fillinput(input::Array{StackValueType}, inputlen::Int)::Array{StackFloatType}
+    sinput = Array{Any,1}(undef, inputlen)
+    fill!(sinput, "blank")
+    for (i, x) in enumerate(input)
+        sinput[i] = x
+    end
+    onehotbatch(sinput, allvalues) * 1.0
 end
 
 function valhot(val, allvalues)
@@ -867,8 +935,8 @@ function VMState(
 )
     instrpointer = zeros(StackFloatType, programlen)
     stackpointer = zeros(StackFloatType, stackdepth)
-    inputpointer = zeros(StackFloatType, stackdepth)
-    outputpointer = zeros(StackFloatType, stackdepth)
+    inputpointer = zeros(StackFloatType, inputlen)
+    outputpointer = zeros(StackFloatType, outputlen)
     ishalted = zeros(StackFloatType, 2)
     stack = zeros(StackFloatType, length(allvalues), stackdepth)
     input = zeros(StackFloatType, length(allvalues), inputlen)
