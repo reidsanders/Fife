@@ -617,7 +617,7 @@ function test_super_run_program(args)
             # instr_store!,
             # instr_load!
             instr_read!,
-            # instr_write!,
+            instr_write!,
         ]
         val_instructions
     ]

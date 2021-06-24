@@ -827,17 +827,15 @@ Note reversed arg ordering of instr in order to match regular push!
 """
 function pushtooutput(state::VMState, valvec::Array)::VMState
     @assert isapprox(sum(valvec), 1.0) "Value vector doesn't sum to 1: $(sum(valvec))"
-    @show state.output
-    @show valvec
     newoutputpointer = circshift(state.outputpointer, -1)
     topscaled = valvec * newoutputpointer'
     outputscaled = state.output .* (1 .- newoutputpointer')
     newoutput = outputscaled .+ topscaled
     newstate = VMState(
         state.instrpointer,
-        newoutputpointer,
+        state.stackpointer,
         state.inputpointer,
-        state.outputpointer,
+        newoutputpointer,
         state.input,
         newoutput,
         state.stack,
