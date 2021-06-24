@@ -488,8 +488,9 @@ function test_popfrominput(args)
         state.ishalted,
     )
     newstate, popval = popfrominput(state)
-    @test newinput[1] == popval
-    @test newinput[2] == first(state.input)
+    @test newinput[:, 1] == popval
+    @test newinput[:, 2] == newstate.input[:, 2]
+    @test newinput[:, end] == newstate.input[:, 1]
 end
 
 function test_push_vmstate(args)

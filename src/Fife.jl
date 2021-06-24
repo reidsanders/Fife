@@ -205,8 +205,8 @@ function convert_continuous_to_discrete(
 )::DiscreteVMState
     instrpointer = onecold(contstate.instrpointer)
     stackpointer = onecold(contstate.stackpointer)
-    inputpointer = onecold(contstate.stackpointer)
-    outputpointer = onecold(contstate.stackpointer)
+    inputpointer = onecold(contstate.inputpointer)
+    outputpointer = onecold(contstate.outputpointer)
     ishalted = onecold(contstate.ishalted, ishaltedvalues)
     stack = [allvalues[i] for i in onecold(contstate.stack)]
     input = [allvalues[i] for i in onecold(contstate.input)]
@@ -215,8 +215,8 @@ function convert_continuous_to_discrete(
     #variables = onecold(contstate.stack)
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
-    stack = circshift(input, 1 - inputpointer) 
-    stack = circshift(output, 1 - outputpointer) 
+    input = circshift(input, 1 - inputpointer) 
+    output = circshift(output, 1 - outputpointer) 
     # Dealing with blanks is tricky. It's not clear what is correct semantically
     newstack = CircularBuffer{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
@@ -264,7 +264,7 @@ function convert_continuous_to_discrete(
             push!(newstack, x)
         end
     end
-    DiscreteVMState(instrpointer = instrpointer, stack = newstack, ishalted = ishalted)
+    DiscreteVMState(instrpointer = instrpointer, input = newinput, output = newoutput, stack = newstack, ishalted = ishalted)
 end
 
 function ==(x::CircularDeque, y::CircularDeque)
