@@ -693,30 +693,42 @@ function test_train(args)
     hiddenprogram = hiddenprogram |> device
     trainmask = trainmask |> device
 
-    blank_state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    check_state_asserts(blank_state)
-    target = runprogram(blank_state, target_program, instructions, 10)
+    # Initialize start state with input
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    start_state = VMState(
+        state.instrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        fillinput([2,5,3], args.inputlen),
+        state.output,
+        state.stack,
+        state.variables,
+        state.ishalted,
+    )
+    check_state_asserts(start_state)
+    target = runprogram(start_state, target_program, instructions, 10)
 
 
     ######################################
     # runprogram program train
     ######################################
-    first_loss = test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
+    first_loss = test(hiddenprogram, target_program, start_state, instructions, args.programlen, trainmaskfull)
     first_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
     try
-        grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        grads = gradient(forward, start_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
     catch e
         println("Exception uncaught by test: \n {e}")
     end
-    trainloopsingle(hiddenprogram, blank_state, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
+    trainloopsingle(hiddenprogram, start_state, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
     # for i = 1:5
-    #     grads = gradient(forward, blank_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+    #     grads = gradient(forward, start_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
     #     grads = grads .* trainmaskfull
     #     Optimise.update!(opt, hiddenprogram, grads)
     # end
 
     second_loss =
-        test(hiddenprogram, target_program, blank_state, instructions, args.programlen, trainmaskfull)
+        test(hiddenprogram, target_program, start_state, instructions, args.programlen, trainmaskfull)
     second_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
     @show second_loss - first_loss
     @test second_loss < first_loss
@@ -825,6 +837,6 @@ end
     test_super_step(args)
     test_super_run_program(args)
     test_all_gradient_single_instr(args)
-    # test_train(args)
-    # test_gradient_op_probvec(args)
+    test_train(args)
+    test_gradient_op_probvec(args)
 end

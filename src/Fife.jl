@@ -354,16 +354,24 @@ function runprogram(state, program, instructions, ticks)
     state
 end
 
-function loss(ŷ, y)
+# function loss(ŷ, y)
+#     # TODO top of stack super position actual stack. add tiny amount of instrpointer just because
+#     # Technically current instruction doesn't really matter
+#     # zygote doesn't like variables not being used in loss
+#     crossentropy(ŷ.stackpointer, y.stackpointer) +
+#     crossentropy(ŷ.instrpointer, y.instrpointer) +
+#     crossentropy(ŷ.stack, y.stack) +
+#     crossentropy(ŷ.variables, y.variables) +
+#     crossentropy(ŷ.ishalted, y.ishalted)
+# end
+
+function loss(ŷ::VMState, y::VMState)
     # TODO top of stack super position actual stack. add tiny amount of instrpointer just because
     # Technically current instruction doesn't really matter
     # zygote doesn't like variables not being used in loss
-    crossentropy(ŷ.stackpointer, y.stackpointer) +
-    crossentropy(ŷ.instrpointer, y.instrpointer) +
-    crossentropy(ŷ.stack, y.stack) +
-    crossentropy(ŷ.variables, y.variables) +
-    crossentropy(ŷ.ishalted, y.ishalted)
+    crossentropy(ŷ.output, y.output)
 end
+
 
 function accuracy(hidden, target, trainmask)
     samemax = onecold(hidden) .== onecold(target)
