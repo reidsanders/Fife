@@ -298,12 +298,18 @@ end
 
 function instr_read!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
+    if length(state.input) < 1
+        return
+    end
     x = popfirst!(state.input)
     pushfirst!(state.stack, x)
 end
 
 function instr_write!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
+    if length(state.stack) < 1
+        return
+    end
     x = popfirst!(state.stack)
     pushfirst!(state.output, x)
 end

@@ -978,3 +978,25 @@ function normalize_stackpointer(state::VMState)
         state.ishalted |> device,
     )
 end
+
+function normalize_iopointers(state::VMState)
+    # Output pointer
+    outputpointermax = onecold(state.outputpointer)
+    output = circshift(state.output, (0, 1 - outputpointermax))
+    outputpointer = circshift(state.outputpointer, 1 - outputpointermax)
+    # Input pointer
+    inputpointermax = onecold(state.inputpointer)
+    input = circshift(state.input, (0, 1 - inputpointermax))
+    inputpointer = circshift(state.inputpointer, 1 - inputpointermax)
+    VMState(
+        state.instrpointer |> device,
+        state.stackpointer |> device,
+        inputpointer |> device,
+        outputpointer |> device,
+        input |> device,
+        output |> device,
+        state.stack |> device,
+        state.variables |> device,
+        state.ishalted |> device,
+    )
+end

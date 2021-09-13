@@ -7,6 +7,7 @@ using Fife:
     popfrominput,
     op_probvec,
     normalize_stackpointer,
+    normalize_iopointers,
     create_random_discrete_program,
     create_trainable_mask,
     super_step,
@@ -34,6 +35,7 @@ using Flux:
     glorot_uniform,
     gradient,
     Descent
+using ProgressMeter
 using CUDA
 Random.seed!(123);
 CUDA.allowscalar(false)
@@ -112,6 +114,8 @@ instructions = [
         instr_and!,
         # instr_goto!,
         instr_gotoif!,
+        instr_write!,
+        instr_read!,
         # instr_iseq!,
         # instr_isgt!,
         # instr_isge!,
@@ -571,6 +575,7 @@ function test_program_conversion(args, program)
             instr(discretestate)
         end
         contstate = normalize_stackpointer(contstate)
+        contstate = normalize_iopointers(contstate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
         newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
         # run_equality_asserts(contstate, newcontstate)
@@ -674,8 +679,7 @@ function test_train(args)
     #     ] for x = 1:args.trainsetsize
     # ]
 
-    target_program =
-        convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
+    target_program = convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
     trainmask = create_trainable_mask(args.programlen, args.inputlen)
     hiddenprogram = deepcopy(target_program)
     hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
@@ -695,7 +699,7 @@ function test_train(args)
 
     # Initialize start state with input
     state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    start_state = VMState(
+    startstate = VMState(
         state.instrpointer,
         state.stackpointer,
         state.inputpointer,
@@ -706,29 +710,37 @@ function test_train(args)
         state.variables,
         state.ishalted,
     )
-    check_state_asserts(start_state)
-    target = runprogram(start_state, target_program, instructions, 10)
+    check_state_asserts(startstate)
+    target = runprogram(startstate, target_program, instructions, 10)
 
 
     ######################################
     # runprogram program train
     ######################################
-    first_loss = test(hiddenprogram, target_program, start_state, instructions, args.programlen, trainmaskfull)
+    first_loss = test(hiddenprogram, target_program, startstate, instructions, args.programlen, trainmaskfull)
     first_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
     try
-        grads = gradient(forward, start_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
+        grads = gradient(forward, startstate, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
     catch e
         println("Exception uncaught by test: \n {e}")
     end
-    trainloopsingle(hiddenprogram, start_state, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
-    # for i = 1:5
-    #     grads = gradient(forward, start_state, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
-    #     grads = grads .* trainmaskfull
-    #     Optimise.update!(opt, hiddenprogram, grads)
-    # end
+    # trainloopsingle(hiddenprogram, startstate, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
+    opt = Descent(.000001)
+    @showprogress for i = 1:10
+        grads = gradient(
+            forward,
+            startstate,
+            target,
+            instructions,
+            args.programlen,
+            hiddenprogram,
+            trainmaskfull,
+        )[end-1] # end-1 for hidden?
+        grads = grads .* trainmaskfull
+        Optimise.update!(opt, hiddenprogram, grads)
+    end
 
-    second_loss =
-        test(hiddenprogram, target_program, start_state, instructions, args.programlen, trainmaskfull)
+    second_loss = test(hiddenprogram, target_program, startstate, instructions, args.programlen, trainmaskfull)
     second_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
     @show second_loss - first_loss
     @test second_loss < first_loss
