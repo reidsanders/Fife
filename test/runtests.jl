@@ -34,7 +34,9 @@ using Flux:
     onehotbatch,
     glorot_uniform,
     gradient,
-    Descent
+    Descent,
+    Optimise
+
 using ProgressMeter
 using CUDA
 Random.seed!(123);
@@ -98,6 +100,7 @@ newstate_instr2 = instr_2(blank_state_random)
 check_state_asserts(newstate_instr2)
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+# instructions = val_instructions
 instructions = [
     [
         instr_pass!,
@@ -114,8 +117,8 @@ instructions = [
         instr_and!,
         # instr_goto!,
         instr_gotoif!,
-        instr_write!,
-        instr_read!,
+        # instr_write!,
+        # instr_read!,
         # instr_iseq!,
         # instr_isgt!,
         # instr_isge!,
@@ -549,6 +552,7 @@ end
 
 function test_all_single_instr(args)
     for instr in instructions
+        println("Test Single Instruction: $(instr)")
         test_program_conversion(args, [instr])
     end
 end
@@ -819,36 +823,37 @@ function test_gradient_op_probvec(args)
 end
 
 @testset "Fife.jl" begin
-    test_push_vmstate(args)
-    test_pushtooutput(args)
-    test_popfrominput(args)
-    test_pop_vmstate(args)
-    test_div_probvec(args)
-    test_instr_halt(args)
-    test_instr_pushval(args)
-    test_instr_pop(args)
-    test_instr_dup(args)
-    test_instr_swap(args)
-    test_instr_add(args)
-    test_instr_sub(args)
-    test_instr_mult(args)
-    test_instr_div(args)
-    test_instr_not(args)
-    test_instr_and(args)
-    test_instr_goto(args)
-    test_instr_gotoif(args)
-    test_instr_iseq(args)
-    test_instr_isgt(args)
-    test_instr_isge(args)
-    test_instr_store(args)
-    test_instr_load(args)
-    test_instr_read(args)
-    test_convert_discrete_to_continuous(args)
-    test_convert_continuous_to_discrete(args)
+    # test_push_vmstate(args)
+    # test_pushtooutput(args)
+    # test_popfrominput(args)
+    # test_pop_vmstate(args)
+    # test_div_probvec(args)
+    # test_instr_halt(args)
+    # test_instr_pushval(args)
+    # test_instr_pop(args)
+    # test_instr_dup(args)
+    # test_instr_swap(args)
+    # test_instr_add(args)
+    # test_instr_sub(args)
+    # test_instr_mult(args)
+    # test_instr_div(args)
+    # test_instr_not(args)
+    # test_instr_and(args)
+    # test_instr_goto(args)
+    # test_instr_gotoif(args)
+    # test_instr_iseq(args)
+    # test_instr_isgt(args)
+    # test_instr_isge(args)
+    # test_instr_store(args)
+    # test_instr_load(args)
+    # test_instr_read(args)
+    # test_instr_write(args)
+    # test_convert_discrete_to_continuous(args)
+    # test_convert_continuous_to_discrete(args)
     test_all_single_instr(args)
-    test_super_step(args)
-    test_super_run_program(args)
-    test_all_gradient_single_instr(args)
-    test_train(args)
-    test_gradient_op_probvec(args)
+    # test_super_step(args)
+    # test_super_run_program(args)
+    # test_all_gradient_single_instr(args)
+    # test_train(args)
+    # test_gradient_op_probvec(args)
 end

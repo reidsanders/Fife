@@ -311,5 +311,6 @@ function instr_write!(state::DiscreteVMState)
         return
     end
     x = popfirst!(state.stack)
+    # setinstrpointer!(state, state.instrpointer + 1)
     pushfirst!(state.output, x)
 end
