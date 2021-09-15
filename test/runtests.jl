@@ -117,8 +117,8 @@ instructions = [
         instr_and!,
         # instr_goto!,
         instr_gotoif!,
-        # instr_write!,
-        # instr_read!,
+        instr_write!,
+        instr_read!,
         # instr_iseq!,
         # instr_isgt!,
         # instr_isge!,
@@ -584,7 +584,7 @@ function test_program_conversion(args, program)
         newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
         # run_equality_asserts(contstate, newcontstate)
         # run_equality_asserts(discretestate, newdiscretestate)
-        run_equality_test(newcontstate, contstate)
+        # run_equality_test(newcontstate, contstate)
         run_equality_test(newdiscretestate, discretestate)
     end
 end
