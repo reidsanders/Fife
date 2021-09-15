@@ -222,12 +222,18 @@ function convert_continuous_to_discrete(
     for x in stack
         if x == "blank"
             break
+            #TODO BUG
             # discrete can't have blank values on stack, but removing them 
             # is confusing and may mess up behavior if the superinterpreter is 
             # depending on there being a blank there
             # TODO either break or 
             # allow "blank" values on discrete stack? 
             # That would complicate the discrete operations a lot.
+            # Use Union{Int, nothing}  ? Where nothing represents blank?
+            # Or use magic int
+            # Or use special type for blank, and have a union. Then dispatch based on that. Requires redefining *,+, etc
+            # Or define composite type with bool? for isblank ismax ismin. Which still requires defining math ops
+            # should the buffers be "prefilled" or not?
         else
             # TODO convert to int ?
             push!(newstack, x)

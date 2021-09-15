@@ -10,8 +10,48 @@ using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 # using Test: @test
 
 # include("utils.jl")
-StackValueType = Int
+# StackValueType = Int
 StackFloatType = Float32
+
+@with_kw struct StackValueType
+    val::Int = 0
+    blank::Bool = true
+    max::Bool = false
+    min::Bool = false
+    # OrderedPair(x1,x2,x3,x4) = x > y ? error("out of order") : new(x,y)
+end
+# StackValue(x) = StackValue(val = x)
+function StackValueType(x)
+    if x >= args.maxint
+        return StackValueType(val=0,blank=false,max=true,min=false)
+    elseif x <= -args.maxint
+        return StackValueType(val=0,blank=false,max=false,min=true)
+    else
+        return StackValueType(val=x,blank=false,max=false,min=false)
+    end
+end
+
+function +(x::StackValueType, y::StackValueType)
+    if x.blank || y.blank
+        return StackValueType()
+    elseif x.max
+        if y.min 
+            return StackValueType(0)
+        else
+            return StackValueType(blank=false, max=true)
+        end
+    elseif y.max
+        if x.min 
+            return StackValueType(0)
+        else
+            return StackValueType(blank=false, max=true)
+        end
+    elseif y.min || x.min
+        return StackValueType(blank=false, min=true)
+    end
+
+    StackValueType(x + y)
+end
 
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
