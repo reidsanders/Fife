@@ -1,6 +1,6 @@
 # using Debugger
 # using Base
-import Base: +, -, *, length, convert
+import Base: +, -, *, length, convert, ==
 # using BenchmarkTools
 # using ProgressMeter
 # using Base.Threads: @threads
@@ -10,10 +10,10 @@ using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 # using Test: @test
 
 # include("utils.jl")
-# StackValueType = Int
+# StackValue = Int
 StackFloatType = Float32
 
-@with_kw struct StackValueType
+@with_kw struct StackValue
     val::Int = 0
     blank::Bool = true
     max::Bool = false
@@ -21,45 +21,96 @@ StackFloatType = Float32
     # OrderedPair(x1,x2,x3,x4) = x > y ? error("out of order") : new(x,y)
 end
 # StackValue(x) = StackValue(val = x)
-function StackValueType(x)
+function StackValue(x)
     if x >= args.maxint
-        return StackValueType(val=0,blank=false,max=true,min=false)
+        return StackValue(val=0,blank=false,max=true,min=false)
     elseif x <= -args.maxint
-        return StackValueType(val=0,blank=false,max=false,min=true)
+        return StackValue(val=0,blank=false,max=false,min=true)
     else
-        return StackValueType(val=x,blank=false,max=false,min=false)
+        return StackValue(val=x,blank=false,max=false,min=false)
     end
 end
 
-function +(x::StackValueType, y::StackValueType)
+function +(x::StackValue, y::StackValue)
     if x.blank || y.blank
-        return StackValueType()
+        return StackValue()
     elseif x.max
         if y.min 
-            return StackValueType(0)
+            return StackValue(0)
         else
-            return StackValueType(blank=false, max=true)
+            return StackValue(blank=false, max=true)
         end
     elseif y.max
         if x.min 
-            return StackValueType(0)
+            return StackValue(0)
         else
-            return StackValueType(blank=false, max=true)
+            return StackValue(blank=false, max=true)
         end
     elseif y.min || x.min
-        return StackValueType(blank=false, min=true)
+        return StackValue(blank=false, min=true)
     end
 
-    StackValueType(x + y)
+    StackValue(x.val + y.val)
 end
+
+function *(x::StackValue, y::StackValue)
+    if x.blank || y.blank
+        return StackValue()
+    elseif x.max & y.min || x.min & y.max
+        return StackValue(blank=false, min=true)
+    elseif x.max & y.max || x.min & y.min
+        return StackValue(blank=false, max=true)
+    elseif x.max || y.max
+        return StackValue(blank=false, max=true)
+    elseif x.min || y.min
+        return StackValue(blank=false, min=true)
+    end
+
+    StackValue(x.val * y.val)
+end
+
+function *(x::Number, y::StackValue)
+    if y.blank
+        return StackValue()
+    elseif y.max & x > 0 || y.min & x < 0
+        return StackValue(blank=false, max=true)
+    elseif y.max & x < 0 || y.min & x > 0
+        return StackValue(blank=false, min=true)
+    end
+
+    StackValue(x * y.val)
+end
+x::StackValue * y::Number = y * x
+
+x::Number + y::StackValue = StackValue(x) + y
+x::StackValue + y::Number = y + x
+x::StackValue - y::StackValue = x + -1 * y
+x::Number - y::StackValue = StackValue(x) - y
+x::StackValue - y::Number = x - StackValue(y)
+
+
+function ==(x::StackValue, y::StackValue)
+    if y.blank && x.blank || y.max && x.max || y.min && x.min
+        return true
+    end
+    x.val == y.val
+end
+
+x::StackValue == y::Number = x == StackValue(y)
+x::Number == y::StackValue = StackValue(x) == y
+
+function convert(::Type{StackValue}, x::Number)
+    StackValue(x)
+end
+
 
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
-    input::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.inputlen)
-    output::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.outputlen)
-    stack::CircularBuffer{StackValueType} = CircularBuffer{StackValueType}(args.stackdepth)
-    variables::DefaultDict{StackValueType,StackValueType} =
-        DefaultDict{StackValueType,StackValueType}(0) # StackValueType instead of Int?
+    input::CircularBuffer{StackValue} = CircularBuffer{StackValue}(args.inputlen)
+    output::CircularBuffer{StackValue} = CircularBuffer{StackValue}(args.outputlen)
+    stack::CircularBuffer{StackValue} = CircularBuffer{StackValue}(args.stackdepth)
+    variables::DefaultDict{StackValue,StackValue} =
+        DefaultDict{StackValue,StackValue}(0) # StackValue instead of Int?
     ishalted::Bool = false
     programlen::Int = args.programlen
     inputlen::Int = args.inputlen
@@ -101,7 +152,7 @@ function instr_halt!(state::DiscreteVMState)
     state.ishalted = true
 end
 
-function instr_pushval!(value::StackValueType, state::DiscreteVMState)
+function instr_pushval!(value::StackValue, state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
     pushfirst!(state.stack, value |> coercetostackvaluepart)
 end

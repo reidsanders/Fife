@@ -1,5 +1,6 @@
 module Fife
 
+using Base: Bool
 using Flux
 using Flux:
     onehot,
@@ -20,6 +21,7 @@ import Base: +, -, *, length, ==
 using Parameters: @with_kw
 include("utils.jl")
 
+#TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2
     lr::Float32 = 2e-4
