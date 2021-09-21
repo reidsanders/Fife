@@ -16,6 +16,7 @@ using Fife:
     allvalues,
     device,
     StackValueType,
+    StackValue,
     StackFloatType,
     largevalue,
     coercetostackvaluepart,
@@ -45,7 +46,7 @@ using Parameters: @with_kw
 using Profile
 using BenchmarkTools
 instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
-
+#TODO StackValueType substitute? Or split into discrete and not
 function init_random_state(
     stackdepth::Int,
     programlen::Int,
@@ -822,6 +823,18 @@ function test_gradient_op_probvec(args)
     @test true
 end
 
+function test_stackvaluetype(args)
+    # include("../src/types.jl")
+    a = 3
+    b = 5
+    anew = StackValue(a) 
+    bnew = StackValue(b) 
+    @test a == anew
+end
+
+@testset "StackValue" begin
+    test_stackvaluetype(args)
+end
 @testset "Fife.jl" begin
     # test_push_vmstate(args)
     # test_pushtooutput(args)
@@ -850,7 +863,7 @@ end
     # test_instr_write(args)
     # test_convert_discrete_to_continuous(args)
     # test_convert_continuous_to_discrete(args)
-    test_all_single_instr(args)
+    # test_all_single_instr(args)
     # test_super_step(args)
     # test_super_run_program(args)
     # test_all_gradient_single_instr(args)

@@ -141,6 +141,99 @@ begin
         Args
 end
 
+#########################
+#     StackValueType    #
+#########################
+@with_kw struct StackValue
+    val::Int = 0
+    blank::Bool = true
+    max::Bool = false
+    min::Bool = false
+    # OrderedPair(x1,x2,x3,x4) = x > y ? error("out of order") : new(x,y)
+end
+# StackValue(x) = StackValue(val = x)
+function StackValue(x)
+    if x >= args.maxint
+        return StackValue(val=0,blank=false,max=true,min=false)
+    elseif x <= -args.maxint
+        return StackValue(val=0,blank=false,max=false,min=true)
+    else
+        return StackValue(val=x,blank=false,max=false,min=false)
+    end
+end
+
+function +(x::StackValue, y::StackValue)
+    if x.blank || y.blank
+        return StackValue()
+    elseif x.max
+        if y.min 
+            return StackValue(0)
+        else
+            return StackValue(blank=false, max=true)
+        end
+    elseif y.max
+        if x.min 
+            return StackValue(0)
+        else
+            return StackValue(blank=false, max=true)
+        end
+    elseif y.min || x.min
+        return StackValue(blank=false, min=true)
+    end
+
+    StackValue(x.val + y.val)
+end
+
+function *(x::StackValue, y::StackValue)
+    if x.blank || y.blank
+        return StackValue()
+    elseif x.max & y.min || x.min & y.max
+        return StackValue(blank=false, min=true)
+    elseif x.max & y.max || x.min & y.min
+        return StackValue(blank=false, max=true)
+    elseif x.max || y.max
+        return StackValue(blank=false, max=true)
+    elseif x.min || y.min
+        return StackValue(blank=false, min=true)
+    end
+
+    StackValue(x.val * y.val)
+end
+
+function *(x::Number, y::StackValue)
+    if y.blank
+        return StackValue()
+    elseif y.max & x > 0 || y.min & x < 0
+        return StackValue(blank=false, max=true)
+    elseif y.max & x < 0 || y.min & x > 0
+        return StackValue(blank=false, min=true)
+    end
+
+    StackValue(x * y.val)
+end
+x::StackValue * y::Number = y * x
+
+x::Number + y::StackValue = StackValue(x) + y
+x::StackValue + y::Number = y + x
+x::StackValue - y::StackValue = x + -1 * y
+x::Number - y::StackValue = StackValue(x) - y
+x::StackValue - y::Number = x - StackValue(y)
+
+
+function ==(x::StackValue, y::StackValue)
+    if y.blank && x.blank || y.max && x.max || y.min && x.min
+        return true
+    end
+    x.val == y.val
+end
+
+x::StackValue == y::Number = x == StackValue(y)
+x::Number == y::StackValue = StackValue(x) == y
+
+function convert(::Type{StackValue}, x::Number)
+    StackValue(x)
+end
+#########################
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
