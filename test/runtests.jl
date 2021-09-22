@@ -45,7 +45,8 @@ CUDA.allowscalar(false)
 using Parameters: @with_kw
 using Profile
 using BenchmarkTools
-instr_pushval!(val::args.StackValueType, state::VMState) = instr_pushval!(val, state, allvalues)
+instr_pushval!(val::StackValueType, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged
+# instr_pushval!(val::Int, state::VMState) = instr_pushval!(StackValueType(val), state)
 #TODO StackValueType substitute? Or split into discrete and not
 function init_random_state(
     stackdepth::Int,
@@ -829,20 +830,38 @@ function test_stackvaluetype(args)
     b = 5
     anew = StackValue(a) 
     bnew = StackValue(b) 
+    amax = StackValue(args.maxint + 1)
+    amin = StackValue(-args.maxint - 1)
+    ablank = StackValue()
     @test a == anew
+    @test a * b == anew * bnew
+    @test a + b == anew + bnew
+    @test a - b == anew - bnew
+    @test a - bnew == anew - bnew
+    @test a + bnew == anew + bnew
+    @test a * bnew == anew * bnew
+    @test amax + a == amax
+    @test amax * a == amax
+    @test amax - a == amax
+    @test amax * -1 == amin
+    @test amax * amin == amin
+    @test amax + amin == 0
+    @test ablank + amin == ablank
+    @test amax * 0 == 0
+    @test amin * 0 == 0
 end
 
 @testset "StackValue" begin
     test_stackvaluetype(args)
 end
 @testset "Fife.jl" begin
-    # test_push_vmstate(args)
-    # test_pushtooutput(args)
-    # test_popfrominput(args)
-    # test_pop_vmstate(args)
-    # test_div_probvec(args)
-    # test_instr_halt(args)
-    # test_instr_pushval(args)
+    test_push_vmstate(args)
+    test_pushtooutput(args)
+    test_popfrominput(args)
+    test_pop_vmstate(args)
+    test_div_probvec(args)
+    test_instr_halt(args)
+    test_instr_pushval(args)
     # test_instr_pop(args)
     # test_instr_dup(args)
     # test_instr_swap(args)

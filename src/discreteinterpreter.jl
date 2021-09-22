@@ -52,6 +52,8 @@ function instr_pushval!(value::StackValue, state::DiscreteVMState)
     pushfirst!(state.stack, value |> coercetostackvaluepart)
 end
 
+instr_pushval!(val::Int, state::DiscreteVMState) = instr_pushval!(StackValue(val), state)
+
 function instr_pop!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
     if length(state.stack) < 1
