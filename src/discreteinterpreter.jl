@@ -49,7 +49,7 @@ end
 
 function instr_pushval!(value::StackValue, state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    pushfirst!(state.stack, value |> coercetostackvaluepart)
+    pushfirst!(state.stack, value)
 end
 
 instr_pushval!(val::Int, state::DiscreteVMState) = instr_pushval!(StackValue(val), state)
@@ -97,7 +97,7 @@ function instr_add!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    pushfirst!(state.stack, x + y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x + y)
 end
 
 function instr_sub!(state::DiscreteVMState)
@@ -110,7 +110,7 @@ function instr_sub!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    pushfirst!(state.stack, x - y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x - y)
 end
 
 function instr_mult!(state::DiscreteVMState)
@@ -123,7 +123,7 @@ function instr_mult!(state::DiscreteVMState)
     end
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
-    pushfirst!(state.stack, x * y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x * y)
 end
 
 function instr_div!(state::DiscreteVMState)
@@ -137,7 +137,7 @@ function instr_div!(state::DiscreteVMState)
     x = popfirst!(state.stack)
     y = popfirst!(state.stack)
     # Floor or Round?
-    pushfirst!(state.stack, x / y |> coercetostackvaluepart)
+    pushfirst!(state.stack, x / y)
 end
 
 function instr_not!(state::DiscreteVMState)
