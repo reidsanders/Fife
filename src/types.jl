@@ -14,6 +14,10 @@ DiscreteStackFloat = Float32
     # OrderedPair(x1,x2,x3,x4) = x > y ? error("out of order") : new(x,y)
 end
 # StackValue(x) = StackValue(val = x)
+
+"""
+    Assignment
+"""
 function StackValue(x)
     if x >= args.maxint
         return StackValue(val=0,blank=false,max=true,min=false)
@@ -24,6 +28,10 @@ function StackValue(x)
     end
 end
 
+
+"""
+    Addition
+"""
 function +(x::StackValue, y::StackValue)
     if x.blank || y.blank
         return StackValue()
@@ -46,6 +54,13 @@ function +(x::StackValue, y::StackValue)
     StackValue(x.val + y.val)
 end
 
+x::Number + y::StackValue = StackValue(x) + y
+x::StackValue + y::Number = y + x
+
+
+"""
+    Multiplication
+"""
 function *(x::StackValue, y::StackValue)
     if x.blank || y.blank
         return StackValue()
@@ -75,7 +90,16 @@ function *(x::Number, y::StackValue)
 end
 x::StackValue * y::Number = y * x
 
-# Division
+"""
+    Subtraction
+"""
+x::StackValue - y::StackValue = x + -1 * y
+x::Number - y::StackValue = StackValue(x) - y
+x::StackValue - y::Number = x - StackValue(y)
+
+"""
+    Division
+"""
 function /(x::StackValue, y::StackValue)
     if x.blank || y.blank
         return StackValue()
@@ -134,7 +158,9 @@ function /(x::StackValue, y::Number)
     StackValue(round(x.val / y))
 end
 
-# Comparison operators
+"""
+    Comparison
+"""
 function <(x::StackValue, y::StackValue)
     # TODO blank comparison is semantically unclear
     if x.blank || y.blank
@@ -151,12 +177,6 @@ x::Number < y::StackValue = StackValue(x) < y
 x::StackValue < y::Number = x < StackValue(y)
 
 
-x::Number + y::StackValue = StackValue(x) + y
-x::StackValue + y::Number = y + x
-x::StackValue - y::StackValue = x + -1 * y
-x::Number - y::StackValue = StackValue(x) - y
-x::StackValue - y::Number = x - StackValue(y)
-
 
 function ==(x::StackValue, y::StackValue)
     if y.blank && x.blank || y.max && x.max || y.min && x.min
@@ -170,6 +190,10 @@ x::Number == y::StackValue = StackValue(x) == y
 
 function convert(::Type{StackValue}, x::Number)
     StackValue(x)
+end
+
+function convert(::Type{T}, x::StackValue) where T <: Number
+    T(x.val)
 end
 
 function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
