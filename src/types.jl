@@ -97,7 +97,7 @@ function /(x::StackValue, y::StackValue)
         return StackValue(0)
     end
 
-    StackValue(x.val ÷ y.val)
+    StackValue(round(x.val / y.val))
 end
 
 function /(x::Number, y::StackValue)
@@ -111,7 +111,7 @@ function /(x::Number, y::StackValue)
         return StackValue(0)
     end
 
-    StackValue(x ÷ y.val)
+    StackValue(round(x / y.val))
 end
 
 function /(x::StackValue, y::Number)
@@ -131,7 +131,7 @@ function /(x::StackValue, y::Number)
         return StackValue(blank=false, min=true)
     end
 
-    StackValue(x.val ÷ y)
+    StackValue(round(x.val / y))
 end
 
 x::Number + y::StackValue = StackValue(x) + y
