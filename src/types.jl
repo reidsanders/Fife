@@ -204,8 +204,16 @@ function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
     y
 end
 
-function convert(::Type{CircularDeque{T}}, x::CircularDeque{StackValue}) where {T}
-    y = CircularDeque{StackValue}(length(x))
+# function convert(::Type{CircularDeque{T}}, x::CircularDeque{StackValue}) where {T}
+#     y = CircularDeque{StackValue}(length(x))
+#     for el in x
+#         push!(y, el)
+#     end
+#     y
+# end
+
+function convert(::Type{CircularBuffer{T}}, x::CircularBuffer{StackValue}) where {T}
+    y = CircularBuffer{T}(length(x))
     for el in x
         push!(y, el)
     end
