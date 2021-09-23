@@ -858,6 +858,10 @@ function test_stackvaluetype(args)
     @test anew / cnew == round(a / c)
     @test cnew / anew == round(c / a)
     @test cnew / bnew == round(c / b)
+    @test cnew < 0
+    @test amax > a
+    @test amin < a
+    @test !(ablank < a)
 end
 
 @testset "StackValue" begin

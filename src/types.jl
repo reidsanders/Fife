@@ -1,4 +1,4 @@
-import Base: +, -, *, /, length, convert, ==
+import Base: +, -, *, /, length, convert, ==, <, >
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 
@@ -133,6 +133,23 @@ function /(x::StackValue, y::Number)
 
     StackValue(round(x.val / y))
 end
+
+# Comparison operators
+function <(x::StackValue, y::StackValue)
+    # TODO blank comparison is semantically unclear
+    if x.blank || y.blank
+        return false
+    elseif x.max || y.min
+        return false
+    elseif x.min || y.max
+        return true
+    end
+
+    return x.val < y.val
+end
+x::Number < y::StackValue = StackValue(x) < y
+x::StackValue < y::Number = x < StackValue(y)
+
 
 x::Number + y::StackValue = StackValue(x) + y
 x::StackValue + y::Number = y + x
