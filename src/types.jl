@@ -1,4 +1,4 @@
-import Base: +, -, *, length, convert, ==
+import Base: +, -, *, /, length, convert, ==
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 
@@ -49,9 +49,9 @@ end
 function *(x::StackValue, y::StackValue)
     if x.blank || y.blank
         return StackValue()
-    elseif x.max & y.min || x.min & y.max
+    elseif (x.max && y.min) || (x.min && y.max)
         return StackValue(blank=false, min=true)
-    elseif x.max & y.max || x.min & y.min
+    elseif (x.max && y.max) || (x.min && y.min)
         return StackValue(blank=false, max=true)
     elseif x.max || y.max
         return StackValue(blank=false, max=true)
@@ -65,15 +65,74 @@ end
 function *(x::Number, y::StackValue)
     if y.blank
         return StackValue()
-    elseif y.max & x > 0 || y.min & x < 0
+    elseif (y.max && x > 0) || (y.min && x < 0)
         return StackValue(blank=false, max=true)
-    elseif y.max & x < 0 || y.min & x > 0
+    elseif (y.max && x < 0) || (y.min && x > 0)
         return StackValue(blank=false, min=true)
     end
 
     StackValue(x * y.val)
 end
 x::StackValue * y::Number = y * x
+
+# Division
+function /(x::StackValue, y::StackValue)
+    if x.blank || y.blank
+        return StackValue()
+    elseif (x.max && y.min) || (x.min && y.max)
+        return StackValue(-1)
+    elseif (x.max && y.max) || (x.min && y.min)
+        return StackValue(1)
+    elseif (x.max || x.val > 0) && y == 0
+        return StackValue(blank=false, max=true)
+    elseif (x.min || x.val < 0) && y == 0
+        return StackValue(blank=false, min=true)
+    elseif x.val == 0
+        return StackValue(0)
+    elseif x.min
+        return StackValue(blank=false, min=true)
+    elseif x.max
+        return StackValue(blank=false, max=true)
+    elseif y.min || y.max
+        return StackValue(0)
+    end
+
+    StackValue(x.val ÷ y.val)
+end
+
+function /(x::Number, y::StackValue)
+    if y.blank
+        return StackValue()
+    elseif x > 0 && y == 0
+        return StackValue(blank=false, max=true)
+    elseif x < 0 && y == 0
+        return StackValue(blank=false, min=true)
+    elseif x == 0 || y.max || y.min
+        return StackValue(0)
+    end
+
+    StackValue(x ÷ y.val)
+end
+
+function /(x::StackValue, y::Number)
+    if x.blank
+        return StackValue()
+    elseif x.max & y ≥ 0 
+        return StackValue(blank=false, max=true)
+    elseif x.min & y ≥ 0 
+        return StackValue(blank=false, min=true)
+    elseif x.max & y ≤ 0 
+        return StackValue(blank=false, min=true)
+    elseif x.min & y ≤ 0 
+        return StackValue(blank=false, max=true)
+    elseif x.val > 0 & y == 0
+        return StackValue(blank=false, max=true)
+    elseif x.val < 0 & y == 0
+        return StackValue(blank=false, min=true)
+    end
+
+    StackValue(x.val ÷ y)
+end
 
 x::Number + y::StackValue = StackValue(x) + y
 x::StackValue + y::Number = y + x

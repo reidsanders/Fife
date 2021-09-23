@@ -828,8 +828,10 @@ function test_stackvaluetype(args)
     # include("../src/types.jl")
     a = 3
     b = 5
+    c = -5
     anew = StackValue(a) 
     bnew = StackValue(b) 
+    cnew = StackValue(c) 
     amax = StackValue(args.maxint + 1)
     amin = StackValue(-args.maxint - 1)
     ablank = StackValue()
@@ -849,43 +851,50 @@ function test_stackvaluetype(args)
     @test ablank + amin == ablank
     @test amax * 0 == 0
     @test amin * 0 == 0
+    @test amax / 0 == amax
+    @test anew / 0 == amax
+    @test amin / 0 == amin
+    @test cnew / 0 == amin
+    @test anew / cnew == a ÷ c
+    @test cnew / anew == c ÷ a
+    @test cnew / bnew == c ÷ b
 end
 
 @testset "StackValue" begin
     test_stackvaluetype(args)
 end
-@testset "Fife.jl" begin
-    test_push_vmstate(args)
-    test_pushtooutput(args)
-    test_popfrominput(args)
-    test_pop_vmstate(args)
-    test_div_probvec(args)
-    test_instr_halt(args)
-    test_instr_pushval(args)
-    # test_instr_pop(args)
-    # test_instr_dup(args)
-    # test_instr_swap(args)
-    # test_instr_add(args)
-    # test_instr_sub(args)
-    # test_instr_mult(args)
-    # test_instr_div(args)
-    # test_instr_not(args)
-    # test_instr_and(args)
-    # test_instr_goto(args)
-    # test_instr_gotoif(args)
-    # test_instr_iseq(args)
-    # test_instr_isgt(args)
-    # test_instr_isge(args)
-    # test_instr_store(args)
-    # test_instr_load(args)
-    # test_instr_read(args)
-    # test_instr_write(args)
-    # test_convert_discrete_to_continuous(args)
-    # test_convert_continuous_to_discrete(args)
-    # test_all_single_instr(args)
-    # test_super_step(args)
-    # test_super_run_program(args)
-    # test_all_gradient_single_instr(args)
-    # test_train(args)
-    # test_gradient_op_probvec(args)
-end
+# @testset "Fife.jl" begin
+#     test_push_vmstate(args)
+#     test_pushtooutput(args)
+#     test_popfrominput(args)
+#     test_pop_vmstate(args)
+#     test_div_probvec(args)
+#     test_instr_halt(args)
+#     test_instr_pushval(args)
+#     test_instr_pop(args)
+#     test_instr_dup(args)
+#     test_instr_swap(args)
+#     test_instr_add(args)
+#     test_instr_sub(args)
+#     test_instr_mult(args)
+#     test_instr_div(args)
+#     test_instr_not(args)
+#     test_instr_and(args)
+#     test_instr_goto(args)
+#     test_instr_gotoif(args)
+#     test_instr_iseq(args)
+#     test_instr_isgt(args)
+#     test_instr_isge(args)
+#     test_instr_store(args)
+#     test_instr_load(args)
+#     test_instr_read(args)
+#     test_instr_write(args)
+#     test_convert_discrete_to_continuous(args)
+#     test_convert_continuous_to_discrete(args)
+#     test_all_single_instr(args)
+#     test_super_step(args)
+#     test_super_run_program(args)
+#     test_all_gradient_single_instr(args)
+#     test_train(args)
+#     test_gradient_op_probvec(args)
+# end
