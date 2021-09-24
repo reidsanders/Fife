@@ -21,6 +21,21 @@ Create state for discrete stack based vm
     stackdepth::Int = args.stackdepth
 end
 
+function DiscreteVMState(params)
+    DiscreteVMState(
+        1,
+        CircularBuffer{StackValue}(params.inputlen),
+        CircularBuffer{StackValue}(params.outputlen),
+        CircularBuffer{StackValue}(params.stackdepth),
+        DefaultDict{StackValue,StackValue}(0),
+        false,
+        params.programlen,
+        params.inputlen,
+        params.outputlen,
+        params.stackdepth,
+    )
+end
+
 """
     setinstrpointer(state::DiscreteVMState, newinstrpointer)
 
