@@ -212,8 +212,16 @@ end
 #     y
 # end
 
-function convert(::Type{CircularBuffer{T}}, x::CircularBuffer{StackValue}) where {T}
-    y = CircularBuffer{T}(length(x))
+# function convert(::Type{CircularBuffer{T}}, x::CircularBuffer{StackValue}) where {T}
+#     y = CircularBuffer{T}(length(x))
+#     for el in x
+#         push!(y, el)
+#     end
+#     y
+# end
+
+function convert(::Type{CircularBuffer{StackValue}}, x::CircularBuffer{T}) where T <: Number
+    y = CircularBuffer{StackValue}(length(x))
     for el in x
         push!(y, el)
     end
