@@ -14,16 +14,7 @@ using ProgressMeter
 using Parameters: @with_kw
 StackValueType = Int
 StackFloatType = Float32
-# VMArrayType =  ?
 
-abstract type VM{T1} end
-# struct VMState{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
-#     instrpointer::T1
-#     stackpointer::T1
-#     stack::T1
-#     variables::T1
-#     ishalted::T1 # [nothalted, halted]
-# end
 struct VMState
     instrpointer::Array
     stackpointer::Array
@@ -36,16 +27,6 @@ struct VMState
     ishalted::Array # [nothalted, halted]
 end
 
-
-# VMState(a...) = VMState{Array{Float32}}(a...) # TODO pass?
-
-# struct VMSuperStates{T1 <: AbstractArray{<:AbstractFloat}} <: VM{T1}
-#     instrpointers::T1
-#     stackpointers::T1
-#     stacks::T1
-#     supervariables::T1
-#     ishalteds::T1
-# end
 struct VMSuperStates
     instrpointers::Array
     stackpointers::Array

@@ -222,7 +222,8 @@ function convert_continuous_to_discrete(
     newstack = CircularBuffer{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
-            break
+            push!(newstack, StackValue())
+            # break
             #TODO BUG
             # discrete can't have blank values on stack, but removing them 
             # is confusing and may mess up behavior if the superinterpreter is 
