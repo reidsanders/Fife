@@ -9,9 +9,9 @@ Create state for discrete stack based vm
 """
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
-    input::CircularBuffer{StackValue} = CircularBuffer{StackValue}(args.inputlen)
-    output::CircularBuffer{StackValue} = CircularBuffer{StackValue}(args.outputlen)
-    stack::CircularBuffer{StackValue} = CircularBuffer{StackValue}(args.stackdepth)
+    input::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.inputlen), StackValue())
+    output::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.outputlen), StackValue())
+    stack::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.stackdepth), StackValue())
     variables::DefaultDict{StackValue,StackValue} =
         DefaultDict{StackValue,StackValue}(0) # StackValue instead of Int?
     ishalted::Bool = false
@@ -24,9 +24,9 @@ end
 function DiscreteVMState(params)
     DiscreteVMState(
         1,
-        CircularBuffer{StackValue}(params.inputlen),
-        CircularBuffer{StackValue}(params.outputlen),
-        CircularBuffer{StackValue}(params.stackdepth),
+        fill!(CircularBuffer{StackValue}(params.inputlen), StackValue()),
+        fill!(CircularBuffer{StackValue}(params.outputlen), StackValue()),
+        fill!(CircularBuffer{StackValue}(params.stackdepth), StackValue()),
         DefaultDict{StackValue,StackValue}(0),
         false,
         params.programlen,
