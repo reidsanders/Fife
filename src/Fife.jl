@@ -141,7 +141,7 @@ function convert_discrete_to_continuous(
     cont_instrpointer = onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
-    fill!(discretestack, Stack)
+    fill!(discretestack, StackValue())
     for (i, x) in enumerate(discrete.stack)
         discretestack[i] = x
     end

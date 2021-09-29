@@ -830,7 +830,7 @@ end
 Populates onehot input stack from array. Returns the input stack.
 
 """
-function fillinput(input::Array{StackValue}, inputlen::Int)::Array{StackFloat}
+function fillinput(input::Array{StackValue}, inputlen::Int)::Array{StackFloatType}
     sinput = Array{StackValue,1}(undef, inputlen)
     fill!(sinput, StackValue())
     for (i, x) in enumerate(input)
@@ -839,7 +839,7 @@ function fillinput(input::Array{StackValue}, inputlen::Int)::Array{StackFloat}
     onehotbatch(sinput, allvalues) * 1.0 # TODO |> StackFloat instead of * 1.0?
 end
 
-function fillinput(input::Array{Int}, inputlen::Int)::Array{StackFloat}
+function fillinput(input::Array{Int}, inputlen::Int)::Array{StackFloatType}
     fillinput(StackValue.(input), inputlen)
 end
 
