@@ -17,7 +17,6 @@ using Fife:
     device,
     StackValue,
     StackFloatType,
-    coercetostackvaluepart,
     numericvalues,
     nonnumericvalues,
     allvalues,
@@ -771,7 +770,7 @@ function test_gradient_op_probvec(args)
 
     function optablesingle2(op; numericvalues = numericvalues)
         optable = op.(numericvalues)
-        optable = coercetostackvaluepart.(optable)
+        # optable = coercetostackvaluepart.(optable)
         indexmapping = [findall(x -> x == numericval, optable) for numericval in numericvalues]
     end
 

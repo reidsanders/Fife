@@ -20,7 +20,8 @@ using Memoize
 import Base: +, -, *, length, ==
 using Parameters: @with_kw
 include("utils.jl")
-
+include("discreteinterpreter.jl")
+# include("types.jl")
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2
@@ -82,7 +83,6 @@ blankstack,
 blankinput,
 blankoutput = create_dependent_values(args)
 
-include("discreteinterpreter.jl")
 include("superinterpreter.jl")
 
 begin

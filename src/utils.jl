@@ -26,9 +26,3 @@ function roundnoninf(x::Number)
     end
     round(Int, x)
 end
-
-function coercetostackvalue(T::Type, min::Number, max::Number, large::Number, x::Number)
-    x = replacenans(x, 0)
-    x = setoutofboundstolarge(x; min = min, max = max, large = large)
-    round(T, x)
-end
