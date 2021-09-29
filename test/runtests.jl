@@ -13,7 +13,6 @@ using Fife:
     super_step,
     softmaxmask,
     applyfullmask,
-    allvalues,
     device,
     StackValue,
     StackFloatType,
@@ -42,7 +41,9 @@ CUDA.allowscalar(false)
 using Parameters: @with_kw
 using Profile
 using BenchmarkTools
-instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged
+instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged?
+instr_pushval!(val::Int, state::VMState, allvalues::Array) = instr_pushval!(StackValue(val), state, allvalues)
+instr_pushval!(val::Int, state::VMState) = instr_pushval!(val, state, allvalues)
 
 function init_random_state(
     stackdepth::Int,
@@ -770,8 +771,7 @@ function test_gradient_op_probvec(args)
 
     function optablesingle2(op; numericvalues = numericvalues)
         optable = op.(numericvalues)
-        # optable = coercetostackvaluepart.(optable)
-        indexmapping = [findall(x -> x == numericval, optable) for numericval in numericvalues]
+        [findall(x -> x == numericval, optable) for numericval in numericvalues]
     end
 
     op(a) = float(a == 0)

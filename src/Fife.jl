@@ -60,7 +60,6 @@ function create_dependent_values(args)
 
     (
         device,
-        coercetostackvaluepart,
         numericvalues,
         nonnumericvalues,
         allvalues,
@@ -73,7 +72,6 @@ function create_dependent_values(args)
 end
 
 device,
-coercetostackvaluepart,
 numericvalues,
 nonnumericvalues,
 allvalues,
