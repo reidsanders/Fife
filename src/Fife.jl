@@ -47,7 +47,7 @@ function create_dependent_values(args)
         @info "Training on CPU"
     end
     numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
-    nonnumericvalues = [StackValue]
+    nonnumericvalues = [StackValue()]
     allvalues = [nonnumericvalues; numericvalues]
     ishaltedvalues = [false, true]
     blanks = fill(StackValue(), args.stackdepth)
@@ -143,28 +143,28 @@ function convert_discrete_to_continuous(
     cont_instrpointer = onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
-    fill!(discretestack, "blank")
+    fill!(discretestack, Stack)
     for (i, x) in enumerate(discrete.stack)
         discretestack[i] = x
     end
     contstack = onehotbatch(discretestack, allvalues) * 1.0f0
 
     discreteinput = Array{Any,1}(undef, inputlen)
-    fill!(discreteinput, "blank")
+    fill!(discreteinput, StackValue())
     for (i, x) in enumerate(discrete.input)
         discretestack[i] = x
     end
     continput = onehotbatch(discreteinput, allvalues) * 1.0f0
 
     discreteoutput = Array{Any,1}(undef, outputlen)
-    fill!(discreteoutput, "blank")
+    fill!(discreteoutput, StackValue())
     for (i, x) in enumerate(discrete.output)
         discreteoutput[i] = x
     end
     contoutput = onehotbatch(discreteoutput, allvalues) * 1.0f0
 
     discretevariables = Array{Any,1}(undef, stackdepth)
-    fill!(discretevariables, "blank")
+    fill!(discretevariables, StackValue())
     for (k, v) in discrete.variables
         discretevariables[k] = v
     end
@@ -205,7 +205,7 @@ function convert_continuous_to_discrete(
     # Dealing with blanks is tricky. It's not clear what is correct semantically
     newstack = CircularBuffer{StackValue}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
-        if x == "blank"
+        if x == StackValue()
             push!(newstack, StackValue())
         else
             # TODO convert to int ?
@@ -215,7 +215,7 @@ function convert_continuous_to_discrete(
 
     newinput = CircularBuffer{StackValue}(size(contstate.input)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in input
-        if x == "blank"
+        if x == StackValue()
             push!(newinput, StackValue())
         else
             push!(newinput, x)
@@ -224,7 +224,7 @@ function convert_continuous_to_discrete(
 
     newoutput = CircularBuffer{StackValue}(size(contstate.output)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in output
-        if x == "blank"
+        if x == StackValue()
             push!(newoutput, StackValue())
         else
             push!(newoutput, x)
