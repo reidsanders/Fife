@@ -71,21 +71,14 @@ instr_pushval!(val::Int, state::DiscreteVMState) = instr_pushval!(StackValue(val
 
 function instr_pop!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    end
     popfirst!(state.stack)
 end
 
 function instr_dup!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    end
     x = popfirst!(state.stack)
     pushfirst!(state.stack, x)
     pushfirst!(state.stack, x)
-    state
 end
 
 function instr_swap!(state::DiscreteVMState)
