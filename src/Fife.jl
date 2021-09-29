@@ -46,7 +46,7 @@ function create_dependent_values(args)
         device = cpu
         @info "Training on CPU"
     end
-    numericvalues = [[-largevalue]; [i for i = -args.maxint:args.maxint]; [largevalue]]
+    numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
     nonnumericvalues = [StackValue]
     allvalues = [nonnumericvalues; numericvalues]
     ishaltedvalues = [false, true]
@@ -59,7 +59,6 @@ function create_dependent_values(args)
 
     (
         device,
-        largevalue,
         coercetostackvaluepart,
         numericvalues,
         nonnumericvalues,
@@ -73,7 +72,6 @@ function create_dependent_values(args)
 end
 
 device,
-largevalue,
 coercetostackvaluepart,
 numericvalues,
 nonnumericvalues,

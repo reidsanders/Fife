@@ -17,7 +17,6 @@ using Fife:
     device,
     StackValue,
     StackFloatType,
-    largevalue,
     coercetostackvaluepart,
     numericvalues,
     nonnumericvalues,
@@ -208,7 +207,7 @@ function test_instr_mult(args)
     instr_pushval!(5, state)
     instr_mult!(state)
     @test state.instrpointer == 7
-    @test first(state.stack) == largevalue
+    @test first(state.stack) == args.maxint
 end
 
 function test_instr_div(args)
@@ -415,13 +414,13 @@ end
 
 function test_add_probvec(args)
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
-    result = op_probvec(+, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
+    result = op_probvec(+, x, y; numericvalues = [-args.maxint, 0, 1, args.maxint])
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7, 0.1 * 0.3 + 0.7 * 0.9, 0.3 * 0.9]
 
     x = [0.1, 0.0, 0.1, 0.8, 0.0]
     y = [0.3, 0.0, 0.4, 0.3, 0.0]
-    result = op_probvec(+, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
+    result = op_probvec(+, x, y; numericvalues = [-args.maxint, 0, 1, args.maxint])
     @test result == [
         0.1 * 0.3 + 0.1 * (1 - 0.3) + (1 - 0.1) * 0.3,
         0.0,
@@ -435,38 +434,38 @@ end
 function test_div_probvec(args)
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
     y = [0.0, 0.0, 0.7, 0.3, 0.0]
-    result = op_probvec(/, x, y; numericvalues = [-largevalue, 0, 1, largevalue])
+    result = op_probvec(/, x, y; numericvalues = [-args.maxint, 0, 1, args.maxint])
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7 + 0.1 * 0.3, 0.9 * 0.3, 0.9 * 0.7]
 
     x = [0.0, 0.15, 0.15, 0.7, 0.0]
     y = [0.0, 0.16, 0.0, 0.56, 0.28]
-    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
+    result = op_probvec(/, x, y; numericvalues = [-args.maxint, -1, 0, 1, args.maxint])
     @test sum(result) == 1.0
 
     x = [0.05, 0.1, 0.15, 0.2, 0.5]
     y = [0.03, 0.13, 0.23, 0.33, 0.28]
-    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
+    result = op_probvec(/, x, y; numericvalues = [-args.maxint, -1, 0, 1, args.maxint])
     @test sum(result) == 1.0
-    # prob of -largevalue: sum -largevalue/0 -largevalue/1 largevalue/-1 -1/0
+    # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
     @test result[1] == (0.05 * 0.23) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.23)
-    ### Prob of -1: sum -1/1 1/-1, -largevalue / largevalue, largevalue/ -largevalue
+    ### Prob of -1: sum -1/1 1/-1, -args.maxint / args.maxint, args.maxint/ -args.maxint
     @test result[2] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
 
     ### Test with nonnumeric values
     x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
     y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
-    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
+    result = op_probvec(/, x, y; numericvalues = [-args.maxint, -1, 0, 1, args.maxint])
     @test sum(result) == 1.0
     ### nonumeric prob
     @test result[1] == 0.1 + 0.05 - (0.1 * 0.05)
-    # prob of -largevalue: sum -largevalue/0 -largevalue/1 largevalue/-1 -1/0
+    # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
     @test result[2] == (0.05 * 0.18) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.18)
-    ### Prob of -1: sum -1/1 1/-1, -largevalue / largevalue, largevalue/ -largevalue
+    ### Prob of -1: sum -1/1 1/-1, -args.maxint / args.maxint, args.maxint/ -args.maxint
     @test result[3] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
     x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    result = op_probvec(/, x, y; numericvalues = [-largevalue, -1, 0, 1, largevalue])
+    result = op_probvec(/, x, y; numericvalues = [-args.maxint, -1, 0, 1, args.maxint])
     @test sum(result) == 1.0
     @test result[1] == 1.0
 end
