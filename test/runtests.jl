@@ -48,6 +48,7 @@ using BenchmarkTools
 instr_pushval!(val::StackValueType, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged
 # instr_pushval!(val::Int, state::VMState) = instr_pushval!(StackValueType(val), state)
 #TODO StackValueType substitute? Or split into discrete and not
+
 function init_random_state(
     stackdepth::Int,
     programlen::Int,
@@ -867,12 +868,8 @@ end
 @testset "StackValue" begin
     test_stackvaluetype(args)
 end
-@testset "Fife.jl" begin
-    test_push_vmstate(args)
-    test_pushtooutput(args)
-    test_popfrominput(args)
-    test_pop_vmstate(args)
-    test_div_probvec(args)
+
+@testset "Discrete Instructions" begin
     test_instr_halt(args)
     test_instr_pushval(args)
     test_instr_pop(args)
@@ -893,12 +890,20 @@ end
     test_instr_load(args)
     test_instr_read(args)
     test_instr_write(args)
-    test_convert_discrete_to_continuous(args)
-    test_convert_continuous_to_discrete(args)
+end
+
+@testset "Fife.jl" begin
+    test_push_vmstate(args)
+    test_pushtooutput(args)
+    test_popfrominput(args)
+    test_pop_vmstate(args)
+    test_div_probvec(args)
+    # test_convert_discrete_to_continuous(args)
+    # test_convert_continuous_to_discrete(args)
     test_all_single_instr(args)
-    test_super_step(args)
-    test_super_run_program(args)
-    test_all_gradient_single_instr(args)
-    test_train(args)
-    test_gradient_op_probvec(args)
+    # test_super_step(args)
+    # test_super_run_program(args)
+    # test_all_gradient_single_instr(args)
+    # test_train(args)
+    # test_gradient_op_probvec(args)
 end

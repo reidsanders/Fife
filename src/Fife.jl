@@ -135,9 +135,6 @@ begin
         accuracy,
         test,
         trainloop,
-        trainloopsingle,
-        trainbatch!,
-        forward,
         Args
 end
 
@@ -219,58 +216,40 @@ function convert_continuous_to_discrete(
     input = circshift(input, 1 - inputpointer) 
     output = circshift(output, 1 - outputpointer) 
     # Dealing with blanks is tricky. It's not clear what is correct semantically
-    newstack = CircularBuffer{StackValueType}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    newstack = CircularBuffer{StackValue}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
         if x == "blank"
             push!(newstack, StackValue())
-            # break
-            #TODO BUG
-            # discrete can't have blank values on stack, but removing them 
-            # is confusing and may mess up behavior if the superinterpreter is 
-            # depending on there being a blank there
-            # TODO either break or 
-            # allow "blank" values on discrete stack? 
-            # That would complicate the discrete operations a lot.
-            # Use Union{Int, nothing}  ? Where nothing represents blank?
-            # Or use magic int
-            # Or use special type for blank, and have a union. Then dispatch based on that. Requires redefining *,+, etc
-            # Or define composite type with bool? for isblank ismax ismin. Which still requires defining math ops
-            # should the buffers be "prefilled" or not?
         else
             # TODO convert to int ?
             push!(newstack, x)
         end
     end
 
-    newinput = CircularBuffer{StackValueType}(size(contstate.input)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    newinput = CircularBuffer{StackValue}(size(contstate.input)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in input
         if x == "blank"
-            break
+            push!(newinput, StackValue())
         else
             push!(newinput, x)
         end
     end
 
-    newoutput = CircularBuffer{StackValueType}(size(contstate.output)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
+    newoutput = CircularBuffer{StackValue}(size(contstate.output)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in output
         if x == "blank"
-            break
+            push!(newoutput, StackValue())
         else
             push!(newoutput, x)
         end
     end
 
-    newvariables = DefaultDict{StackValueType,StackValueType}(0)
+    #TODO Wrong type. Also push! is wrong! Need to add test that actually tests this (random init input, output, etc)
+    newvariables = DefaultDict{StackValue,StackValue}(StackValue())
     # default blank? blank isn't technically in it
     # Use missing instead of blank?
-    for x in variables
-        if x == "blank"
-            continue
-        else
-            # TODO convert to int ?
-            newvariables[]
-            push!(newstack, x)
-        end
+    for (i,x) in enumerate(variables)
+        newvariables[allvalues[i]] = x
     end
     DiscreteVMState(instrpointer = instrpointer, input = newinput, output = newoutput, stack = newstack, ishalted = ishalted)
 end

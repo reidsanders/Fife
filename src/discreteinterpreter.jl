@@ -2,6 +2,18 @@ import Base: +, -, *, length, convert, ==
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 include("types.jl")
+
+"""
+    popfirstreplace!(x::CircularBuffer{StackValue})
+
+Popfirst with blank value replacement at end.
+"""
+function popfirstreplace!(x::CircularBuffer{StackValue})
+    item = popfirst!(x)
+    push!(x, StackValue())
+    return item
+end
+
 """
     DiscreteVMState()
 
@@ -71,129 +83,81 @@ instr_pushval!(val::Int, state::DiscreteVMState) = instr_pushval!(StackValue(val
 
 function instr_pop!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    popfirst!(state.stack)
+    popfirstreplace!(state.stack)
 end
 
 function instr_dup!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    x = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
     pushfirst!(state.stack, x)
     pushfirst!(state.stack, x)
 end
 
 function instr_swap!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     pushfirst!(state.stack, x)
     pushfirst!(state.stack, y)
 end
 
 function instr_add!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     pushfirst!(state.stack, x + y)
 end
 
 function instr_sub!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     pushfirst!(state.stack, x - y)
 end
 
 function instr_mult!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     pushfirst!(state.stack, x * y)
 end
 
 function instr_div!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     # Floor or Round?
     pushfirst!(state.stack, x / y)
 end
 
 function instr_not!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    end
     # 0 is false, anything else is true.
     # but if true still set to 1
-    x = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
     notx = 1 * (x == 0)
     pushfirst!(state.stack, notx)
 end
 
 function instr_and!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     res = 1 * (x != 0 && y != 0)
     pushfirst!(state.stack, res)
 end
 
 function instr_or!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     res = 1 * (x != 0 || y != 0)
     pushfirst!(state.stack, res)
 end
 
 function instr_goto!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    end
-    x = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
     # Verification of non zero, positive integer?
     if x > 0
         state.instrpointer = x
@@ -202,14 +166,8 @@ end
 
 function instr_gotoif!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     if x != 0 && y > 0
         # TODO clamp to valid length
         state.instrpointer = y
@@ -218,14 +176,8 @@ end
 
 function instr_iseq!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     if x == y
         pushfirst!(state.stack, 1)
     else
@@ -235,14 +187,8 @@ end
 
 function instr_isgt!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     if x > y
         pushfirst!(state.stack, 1)
     else
@@ -252,14 +198,8 @@ end
 
 function instr_isge!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     if x >= y
         pushfirst!(state.stack, 1)
     else
@@ -269,14 +209,8 @@ end
 
 function instr_store!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    elseif length(state.stack) < 2
-        x = popfirst!(state.stack)
-        return
-    end
-    x = popfirst!(state.stack)
-    y = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
+    y = popfirstreplace!(state.stack)
     state.variables[y] = x
 end
 
@@ -286,27 +220,21 @@ function instr_load!(state::DiscreteVMState)
         return
     end
     # TODO should this remove the address element on the stack or not
-    if last(state.stack) in keys(state.variables)
-        x = popfirst!(state.stack)
+    if first(state.stack) in keys(state.variables)
+        x = popfirstreplace!(state.stack)
         pushfirst!(state.stack, state.variables[x])
     end
 end
 
 function instr_read!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.input) < 1
-        return
-    end
-    x = popfirst!(state.input)
+    x = popfirstreplace!(state.input)
     pushfirst!(state.stack, x)
 end
 
 function instr_write!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
-    if length(state.stack) < 1
-        return
-    end
-    x = popfirst!(state.stack)
+    x = popfirstreplace!(state.stack)
     # setinstrpointer!(state, state.instrpointer + 1)
     pushfirst!(state.output, x)
 end
