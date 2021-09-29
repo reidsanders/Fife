@@ -15,7 +15,6 @@ using Fife:
     applyfullmask,
     allvalues,
     device,
-    StackValueType,
     StackValue,
     StackFloatType,
     largevalue,
@@ -45,9 +44,7 @@ CUDA.allowscalar(false)
 using Parameters: @with_kw
 using Profile
 using BenchmarkTools
-instr_pushval!(val::StackValueType, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged
-# instr_pushval!(val::Int, state::VMState) = instr_pushval!(StackValueType(val), state)
-#TODO StackValueType substitute? Or split into discrete and not
+instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged
 
 function init_random_state(
     stackdepth::Int,

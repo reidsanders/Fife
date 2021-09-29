@@ -35,9 +35,6 @@ include("utils.jl")
     trainsetsize::Int = 10
     usegpu::Bool = false
     StackFloatType::Type = Float32
-    StackValueType::Type = Int
-
-    ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
 end
 args = Args()
 
@@ -49,23 +46,15 @@ function create_dependent_values(args)
         device = cpu
         @info "Training on CPU"
     end
-    largevalue = floor(args.StackValueType, sqrt(typemax(args.StackValueType)))
-    coercetostackvaluepart = partial(
-        coercetostackvalue,
-        args.StackValueType,
-        -args.maxint,
-        args.maxint,
-        largevalue,
-    )
     numericvalues = [[-largevalue]; [i for i = -args.maxint:args.maxint]; [largevalue]]
-    nonnumericvalues = ["blank"]
+    nonnumericvalues = [StackValue]
     allvalues = [nonnumericvalues; numericvalues]
     ishaltedvalues = [false, true]
-    blanks = fill("blank", args.stackdepth)
+    blanks = fill(StackValue(), args.stackdepth)
     blankstack = onehotbatch(blanks, allvalues)
-    inputblanks = fill("blank", args.inputlen)
+    inputblanks = fill(StackValue(), args.inputlen)
     blankinput = onehotbatch(inputblanks, allvalues)
-    outputblanks = fill("blank", args.outputlen)
+    outputblanks = fill(StackValue(), args.outputlen)
     blankoutput = onehotbatch(outputblanks, allvalues)
 
     (

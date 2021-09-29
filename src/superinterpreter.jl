@@ -12,7 +12,6 @@ using CUDA
 import Base: +, -, *, length
 using ProgressMeter
 using Parameters: @with_kw
-StackValueType = Int
 StackFloatType = Float32
 
 struct VMState
@@ -594,14 +593,14 @@ end
 
 
 """
-    instr_pushval!(val::StackValueType, state::VMState, allvalues::Array)::VMState
+    instr_pushval!(val::StackValue, state::VMState, allvalues::Array)::VMState
 
 Push current val to stack. Returns new state.
 
 """
 # global valhotvec = zeros(44) * 1.0f0
 # valhotvec[20] = 1.0f0
-function instr_pushval!(val::StackValueType, state::VMState, allvalues::Array)::VMState
+function instr_pushval!(val::StackValue, state::VMState, allvalues::Array)::VMState
     # Verify that the mutation is coming from here
     # TODO either define a manual adjoint
     # TODO only use with partial, or try using BangBang? 
@@ -694,6 +693,7 @@ ab + a - ab + b - ab =>
 a + b - ab
 
 """
+#TODO with StackValue this complicated nonnumeric isn't necessary
 function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
     optableindexes = optablepair(op, numericvalues = numericvalues)
     xnumerics = x[end+1-length(numericvalues):end]
@@ -833,9 +833,9 @@ end
 Populates onehot input stack from array. Returns the input stack.
 
 """
-function fillinput(input::Array{StackValueType}, inputlen::Int)::Array{StackFloatType}
+function fillinput(input::Array{StackValue}, inputlen::Int)::Array{StackFloat}
     sinput = Array{Any,1}(undef, inputlen)
-    fill!(sinput, "blank")
+    fill!(sinput, StackValue())
     for (i, x) in enumerate(input)
         sinput[i] = x
     end

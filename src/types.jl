@@ -3,7 +3,7 @@ using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 
 ####################
-# StackValueType   #
+# StackValue  #
 ####################
 DiscreteStackFloat = Float32
 @with_kw struct StackValue
@@ -203,22 +203,6 @@ function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
     end
     y
 end
-
-# function convert(::Type{CircularDeque{T}}, x::CircularDeque{StackValue}) where {T}
-#     y = CircularDeque{StackValue}(length(x))
-#     for el in x
-#         push!(y, el)
-#     end
-#     y
-# end
-
-# function convert(::Type{CircularBuffer{T}}, x::CircularBuffer{StackValue}) where {T}
-#     y = CircularBuffer{T}(length(x))
-#     for el in x
-#         push!(y, el)
-#     end
-#     y
-# end
 
 function convert(::Type{CircularBuffer{StackValue}}, x::CircularBuffer{T}) where T <: Number
     y = CircularBuffer{StackValue}(length(x))
