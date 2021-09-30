@@ -414,7 +414,7 @@ end
 
 function test_add_probvec(args)
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
-    result = op_probvec(+, x, y; numericvalues = [-args.maxint, 0, 1, args.maxint])
+    result = op_probvec(+, x, y; numericvalues = StackValue.([-args.maxint, 0, 1, args.maxint]))
     @test sum(result) == 1.0
     @test result == [0.0, 0.0, 0.1 * 0.7, 0.1 * 0.3 + 0.7 * 0.9, 0.3 * 0.9]
 
@@ -890,6 +890,7 @@ end
     test_pushtooutput(args)
     test_popfrominput(args)
     test_pop_vmstate(args)
+    test_add_probvec(args)
     test_div_probvec(args)
     # test_convert_discrete_to_continuous(args)
     # test_convert_continuous_to_discrete(args)

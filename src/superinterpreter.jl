@@ -710,7 +710,7 @@ function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Ar
     scaledreturnstack = state.stack .* permutedims(state.stackpointer)
     valvec = dropdims(sum(scaledreturnstack, dims = 2), dims = 2)
     scaledremainingstack = state.stack .* (1 .- permutedims(state.stackpointer))
-    scaledblankstack = blankstack .* permitedims(state.stackpointer)
+    scaledblankstack = blankstack .* permutedims(state.stackpointer)
     newstack = scaledremainingstack .+ scaledblankstack
     newstackpointer = circshift(state.stackpointer, 1)
     newstate = VMState(
