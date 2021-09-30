@@ -117,7 +117,7 @@ function super_step(state::VMState, program, instructions)
         supervariables,
         ishalteds,
     )
-    currentprogram = program .* state.instrpointer'
+    currentprogram = program .* permutedims(state.instrpointer)
     summedprogram = sum(currentprogram, dims = 2)
     summedprogram = reshape(summedprogram, (1, 1, :))
     scaledstates = summedprogram * states
@@ -184,8 +184,8 @@ Get top of stack, then push it to stack. Return new state.
 """
 function instr_dup!(state::VMState)::VMState
     newstackpointer = circshift(state.stackpointer, -1)
-    oldcomponent = state.stack .* (1 .- newstackpointer)'
-    newcomponent = circshift(state.stack .* state.stackpointer', (0, -1))
+    oldcomponent = state.stack .* permutedims((1 .- newstackpointer))
+    newcomponent = circshift(state.stack .* permutedims(state.stackpointer), (0, -1))
     newstack = oldcomponent .+ newcomponent
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
@@ -629,7 +629,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 
 """
 function optablepair(op; numericvalues = numericvalues)
-    optable = op.(numericvalues, numericvalues')
+    optable = op.(numericvalues, permutedims(numericvalues))
     optable = replacenans.(optable, 0)
     [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
@@ -687,7 +687,7 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     optableindexes = optablepair(op, numericvalues = numericvalues)
     xnumerics = x[end+1-length(numericvalues):end]
     ynumerics = y[end+1-length(numericvalues):end]
-    probs = xnumerics .* ynumerics'
+    probs = xnumerics .* permutedims(ynumerics)
 
     numericprobs = [sum(probs[indexes]) for indexes in optableindexes]
     a = x[1:end-length(numericvalues)]
@@ -707,10 +707,10 @@ Removes prob vector from stack. Returns the new state and top of stack.
 
 """
 function popfromstack(state::VMState; blankstack = blankstack)::Tuple{VMState,Array}
-    scaledreturnstack = state.stack .* state.stackpointer'
+    scaledreturnstack = state.stack .* permutedims(state.stackpointer)
     valvec = dropdims(sum(scaledreturnstack, dims = 2), dims = 2)
-    scaledremainingstack = state.stack .* (1 .- state.stackpointer')
-    scaledblankstack = blankstack .* state.stackpointer'
+    scaledremainingstack = state.stack .* (1 .- permutedims(state.stackpointer))
+    scaledblankstack = blankstack .* permitedims(state.stackpointer)
     newstack = scaledremainingstack .+ scaledblankstack
     newstackpointer = circshift(state.stackpointer, 1)
     newstate = VMState(
@@ -735,10 +735,10 @@ Removes prob vector from stack. Returns the new state and top of stack.
 
 """
 function popfrominput(state::VMState; blankinput = blankinput)::Tuple{VMState,Array}
-    scaledreturninput = state.input .* state.inputpointer'
+    scaledreturninput = state.input .* permutedims(state.inputpointer)
     valvec = dropdims(sum(scaledreturninput, dims = 2), dims = 2)
-    scaledremaininginput = state.input .* (1 .- state.inputpointer')
-    scaledblankinput = blankinput .* state.inputpointer'
+    scaledremaininginput = state.input .* (1 .- permutedims(state.inputpointer))
+    scaledblankinput = blankinput .* permutedims(state.inputpointer)
     newinput = scaledremaininginput .+ scaledblankinput
     newinputpointer = circshift(state.inputpointer, 1)
     newstate = VMState(
@@ -769,8 +769,8 @@ Note reversed arg ordering of instr in order to match regular push!
 function pushtostack(state::VMState, valvec::Array)::VMState
     @assert isapprox(sum(valvec), 1.0) "Value vector doesn't sum to 1: $(sum(valvec))"
     newstackpointer = circshift(state.stackpointer, -1)
-    topscaled = valvec * newstackpointer'
-    stackscaled = state.stack .* (1 .- newstackpointer')
+    topscaled = valvec * permutedims(newstackpointer)
+    stackscaled = state.stack .* (1 .- permutedims(newstackpointer))
     newstack = stackscaled .+ topscaled
     newstate = VMState(
         state.instrpointer,
@@ -798,8 +798,8 @@ Note reversed arg ordering of instr in order to match regular push!
 function pushtooutput(state::VMState, valvec::Array)::VMState
     @assert isapprox(sum(valvec), 1.0) "Value vector doesn't sum to 1: $(sum(valvec))"
     newoutputpointer = circshift(state.outputpointer, -1)
-    topscaled = valvec * newoutputpointer'
-    outputscaled = state.output .* (1 .- newoutputpointer')
+    topscaled = valvec * permutedims(newoutputpointer)
+    outputscaled = state.output .* (1 .- permutedims(newoutputpointer))
     newoutput = outputscaled .+ topscaled
     newstate = VMState(
         state.instrpointer,
