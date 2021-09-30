@@ -653,7 +653,7 @@ Apply numeric op to probability vector of mixed numeric and nonnumeric values. R
 Requires numericvalues at end of allvalues.
 
 """
-function op_probvec(op, x::Array, values::Array)
+function op_probvec(op, x::Array; values::Array = allvalues)
     optableindexes = optablesingle(op, values)
     probs = [sum(x[indexes]) for indexes in optableindexes]
     @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
@@ -674,7 +674,7 @@ ab + a - ab + b - ab =>
 a + b - ab
 
 """
-function op_probvec(op, x::Array, y::Array, values::Array)::Array
+function op_probvec(op, x::Array, y::Array; values::Array = allvalues)::Array
     optableindexes = optablepair(op, values)
     opprobs = x .* permutedims(y)
     probs = [sum(opprobs[indexes]) for indexes in optableindexes]

@@ -16,13 +16,14 @@ end
 # StackValue(x) = StackValue(val = x)
 
 # isnan(x::StackValue) = x.blank
+MAXINT::Int = 256
 """
     Assignment
 """
 function StackValue(x)
-    if x >= args.maxint
+    if x >= MAXINT
         return StackValue(val=0,blank=false,max=true,min=false)
-    elseif x <= -args.maxint
+    elseif x <= -MAXINT
         return StackValue(val=0,blank=false,max=false,min=true)
     else
         return StackValue(val=x,blank=false,max=false,min=false)
