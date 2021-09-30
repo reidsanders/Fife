@@ -566,7 +566,7 @@ function test_program_conversion(args, program)
         [1, 3, 2, 3, 4],
         [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3],
     ]
-        #@show vals
+        println("Test program conversion vals: $(vals)")
         contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
         discretestate = DiscreteVMState(args)
         for val in vals
@@ -890,7 +890,7 @@ end
     test_pushtooutput(args)
     test_popfrominput(args)
     test_pop_vmstate(args)
-    # test_div_probvec(args)
+    test_div_probvec(args)
     # test_convert_discrete_to_continuous(args)
     # test_convert_continuous_to_discrete(args)
     test_all_single_instr(args)
