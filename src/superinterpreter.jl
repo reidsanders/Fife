@@ -693,7 +693,7 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     nonnumericprobs = a + b - a .* b
 
     @assert sum(xnumerics) * sum(ynumerics) ≈ sum(numericprobs) "Numeric probabilities not conserved $(sum(xnumerics) * sum(ynumerics)) != $(sum(numericprobs))"
-    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities don't sum to one"
+    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities don't sum to one: numeric: $(sum(numericprobs)) + nonnumeric: $(sum(nonnumericprobs))"
 
     [nonnumericprobs; numericprobs]
 end
