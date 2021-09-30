@@ -628,9 +628,9 @@ Create table of all combinations of applying op to numericvalues.
 Find optable indexes that correspond to given value in numericvalues. Return this mapping.
 
 """
-function optablepair(op; numericvalues = numericvalues)
-    optable = op.(numericvalues, permutedims(numericvalues))
-    [findall(x -> x == numericval, optable) for numericval in numericvalues]
+function optablepair(op, values)
+    optable = op.(values, permutedims(values))
+    [findall(x -> x == val, optable) for val in values]
 end
 
 """
@@ -640,9 +640,9 @@ Create table of all combinations of applying op to numericvalues.
 Find optable indexes that correspond to given value in numericvalues. Return this mapping.
 
 """
-function optablesingle(op; numericvalues = numericvalues)
-    optable = op.(numericvalues)
-    [findall(x -> x == numericval, optable) for numericval in numericvalues]
+function optablesingle(op, values)
+    optable = op.(values)
+    [findall(x -> x == val, optable) for val in values]
 end
 
 """
@@ -653,17 +653,11 @@ Apply numeric op to probability vector of mixed numeric and nonnumeric values. R
 Requires numericvalues at end of allvalues.
 
 """
-function op_probvec(op, x::Array; numericvalues::Array = numericvalues)
-    optableindexes = optablesingle(op, numericvalues = numericvalues)
-    xnumerics = x[end+1-length(numericvalues):end]
-
-    numericprobs = [sum(xnumerics[indexes]) for indexes in optableindexes]
-    nonnumericprobs = x[1:end-length(numericvalues)]
-
-    @assert sum(xnumerics) ≈ sum(numericprobs) "Numeric probabilities not conserved $(sum(xnumerics)) != $(sum(numericprobs))"
-    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities don't sum to one"
-
-    [nonnumericprobs; numericprobs]
+function op_probvec(op, x::Array, values::Array)
+    optableindexes = optablesingle(op, values)
+    probs = [sum(x[indexes]) for indexes in optableindexes]
+    @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
+    probs
 end
 
 """
@@ -680,22 +674,12 @@ ab + a - ab + b - ab =>
 a + b - ab
 
 """
-#TODO with StackValue this complicated nonnumeric isn't necessary
-function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues)::Array
-    optableindexes = optablepair(op, numericvalues = numericvalues)
-    xnumerics = x[end+1-length(numericvalues):end]
-    ynumerics = y[end+1-length(numericvalues):end]
-    probs = xnumerics .* permutedims(ynumerics)
-
-    numericprobs = [sum(probs[indexes]) for indexes in optableindexes]
-    a = x[1:end-length(numericvalues)]
-    b = y[1:end-length(numericvalues)]
-    nonnumericprobs = a + b - a .* b
-
-    @assert sum(xnumerics) * sum(ynumerics) ≈ sum(numericprobs) "Numeric probabilities not conserved $(sum(xnumerics) * sum(ynumerics)) != $(sum(numericprobs))"
-    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities don't sum to one: numeric: $(sum(numericprobs)) + nonnumeric: $(sum(nonnumericprobs))"
-
-    [nonnumericprobs; numericprobs]
+function op_probvec(op, x::Array, y::Array, values::Array)::Array
+    optableindexes = optablepair(op, values)
+    opprobs = x .* permutedims(y)
+    probs = [sum(opprobs[indexes]) for indexes in optableindexes]
+    @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
+    probs
 end
 
 """
