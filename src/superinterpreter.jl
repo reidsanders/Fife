@@ -630,7 +630,6 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 """
 function optablepair(op; numericvalues = numericvalues)
     optable = op.(numericvalues, permutedims(numericvalues))
-    optable = replacenans.(optable, 0)
     [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
 
@@ -643,7 +642,6 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 """
 function optablesingle(op; numericvalues = numericvalues)
     optable = op.(numericvalues)
-    optable = replacenans.(optable, 0)
     [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
 

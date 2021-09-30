@@ -15,6 +15,7 @@ DiscreteStackFloat = Float32
 end
 # StackValue(x) = StackValue(val = x)
 
+# isnan(x::StackValue) = x.blank
 """
     Assignment
 """
