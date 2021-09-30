@@ -383,18 +383,8 @@ Swap top two values of stack. Returns new state.
 function instr_swap!(state::VMState)::VMState
     state, x = popfromstack(state)
     state, y = popfromstack(state)
-
-    xb = x[1]
-    yb = y[1]
-    x1 = xb + yb - xb * yb
-    y1 = xb + yb - xb * yb
-    xend = x[2:end] * ((1 - xb) * (1 - yb)) / (1 - xb + eps(xb))
-    yend = y[2:end] * ((1 - xb) * (1 - yb)) / (1 - yb + eps(xb))
-    xcomb = [x1; xend]
-    ycomb = [y1; yend]
-
-    state = pushtostack(state, xcomb)
-    state = pushtostack(state, ycomb)
+    state = pushtostack(state, x)
+    state = pushtostack(state, y)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
@@ -640,6 +630,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 """
 function optablepair(op; numericvalues = numericvalues)
     optable = op.(numericvalues, numericvalues')
+    optable = replacenans.(optable, 0)
     [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
 
@@ -652,6 +643,7 @@ Find optable indexes that correspond to given value in numericvalues. Return thi
 """
 function optablesingle(op; numericvalues = numericvalues)
     optable = op.(numericvalues)
+    optable = replacenans.(optable, 0)
     [findall(x -> x == numericval, optable) for numericval in numericvalues]
 end
 
@@ -670,8 +662,8 @@ function op_probvec(op, x::Array; numericvalues::Array = numericvalues)
     numericprobs = [sum(xnumerics[indexes]) for indexes in optableindexes]
     nonnumericprobs = x[1:end-length(numericvalues)]
 
-    @assert sum(xnumerics) ≈ sum(numericprobs) "Numeric probabilities are conserved"
-    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
+    @assert sum(xnumerics) ≈ sum(numericprobs) "Numeric probabilities not conserved"
+    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities don't sum to one"
 
     [nonnumericprobs; numericprobs]
 end
@@ -702,8 +694,8 @@ function op_probvec(op, x::Array, y::Array; numericvalues::Array = numericvalues
     b = y[1:end-length(numericvalues)]
     nonnumericprobs = a + b - a .* b
 
-    @assert sum(xnumerics) * sum(ynumerics) ≈ sum(numericprobs) "Numeric probabilities are conserved"
-    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities sum to one"
+    @assert sum(xnumerics) * sum(ynumerics) ≈ sum(numericprobs) "Numeric probabilities not conserved"
+    @assert sum(numericprobs) + sum(nonnumericprobs) ≈ 1 "Probabilities don't sum to one"
 
     [nonnumericprobs; numericprobs]
 end
