@@ -26,3 +26,9 @@ function roundnoninf(x::Number)
     end
     round(Int, x)
 end
+
+function printall(x::AbstractArray)
+    for row in eachrow(x)
+        println(row)
+    end
+end
