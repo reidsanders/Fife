@@ -16,7 +16,7 @@ end
 # StackValue(x) = StackValue(val = x)
 
 # isnan(x::StackValue) = x.blank
-MAXINT::Int = 256
+MAXINT = 256
 """
     Assignment
 """
@@ -183,8 +183,11 @@ x::StackValue < y::Number = x < StackValue(y)
 function ==(x::StackValue, y::StackValue)
     if y.blank && x.blank || y.max && x.max || y.min && x.min
         return true
+    elseif y.blank || x.blank || y.max || x.max || y.min || x.min
+        return false
+    else
+        return x.val == y.val
     end
-    x.val == y.val
 end
 
 x::StackValue == y::Number = x == StackValue(y)

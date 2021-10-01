@@ -81,6 +81,7 @@ blankstack,
 blankinput,
 blankoutput = create_dependent_values(args)
 
+## Set maxint for StackValue 
 MAXINT = args.maxint
 
 include("superinterpreter.jl")

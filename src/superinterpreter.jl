@@ -656,7 +656,7 @@ Requires numericvalues at end of allvalues.
 function op_probvec(op, x::Array; values::Array = allvalues)
     optableindexes = optablesingle(op, values)
     probs = [sum(x[indexes]) for indexes in optableindexes]
-    @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
+    # @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
     probs
 end
 
@@ -678,7 +678,7 @@ function op_probvec(op, x::Array, y::Array; values::Array = allvalues)::Array
     optableindexes = optablepair(op, values)
     opprobs = x .* permutedims(y)
     probs = [sum(opprobs[indexes]) for indexes in optableindexes]
-    @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
+    # @assert sum(probs) ≈ 1 "Probabilities don't sum to one: $(sum(probs)) != 1"
     probs
 end
 

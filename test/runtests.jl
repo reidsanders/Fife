@@ -423,16 +423,14 @@ function test_add_probvec(args)
     @test sum(result) == 1.0
     @test result == [.3, .7]
 
-    MAXINT = 2
     x = [0.1, 0.0, 0.1, 0.8, 0.0]
     y = [0.3, 0.0, 0.4, 0.3, 0.0]
     result = op_probvec(+, x, y; values = StackValue.([StackValue(), -args.maxint, 0, 1, args.maxint]))
     @test result == [
-        0.1 * 0.3 + 0.1 * (1 - 0.3) + (1 - 0.1) * 0.3,
+        1 - (1 - x[1]) + (1 - y[1]),
         0.0,
         0.1 * 0.4,
         0.1 * 0.3 + 0.4 * 0.8,
-        0.3 * 0.8,
         0.0,
     ]
     @test sum(result) == 1.0
