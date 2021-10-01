@@ -143,17 +143,17 @@ end
 function /(x::StackValue, y::Number)
     if x.blank
         return StackValue()
-    elseif x.max & y ≥ 0 
+    elseif x.max && y ≥ 0 
         return StackValue(blank=false, max=true)
-    elseif x.min & y ≥ 0 
+    elseif x.min && y ≥ 0 
         return StackValue(blank=false, min=true)
-    elseif x.max & y ≤ 0 
+    elseif x.max && y ≤ 0 
         return StackValue(blank=false, min=true)
-    elseif x.min & y ≤ 0 
+    elseif x.min && y ≤ 0 
         return StackValue(blank=false, max=true)
-    elseif x.val > 0 & y == 0
+    elseif x.val > 0 && y == 0
         return StackValue(blank=false, max=true)
-    elseif x.val < 0 & y == 0
+    elseif x.val < 0 && y == 0
         return StackValue(blank=false, min=true)
     end
 
