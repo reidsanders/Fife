@@ -113,13 +113,13 @@ function /(x::StackValue, y::StackValue)
         return StackValue(blank=false, max=true)
     elseif (x.min || x.val < 0) && y == 0
         return StackValue(blank=false, min=true)
-    elseif x.val == 0
-        return StackValue(0)
     elseif x.min
         return StackValue(blank=false, min=true)
     elseif x.max
         return StackValue(blank=false, max=true)
     elseif y.min || y.max
+        return StackValue(0)
+    elseif x.val == 0
         return StackValue(0)
     end
 

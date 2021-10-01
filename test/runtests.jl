@@ -451,8 +451,27 @@ function test_div_probvec(args)
     @test result[end] == 0
     @test result[1] == 0
     # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
-    @test result[1] == (x[1] * y[2]) + (x[1] * y[3]) + (x[5] * y[3]) + (x[2] * y[3])
+    # @test result[1] == (x[1] * y[2]) + (x[1] * y[3]) + (x[5] * y[3]) + (x[2] * y[3])
 
+    x = [0.0, 0.0, 0.15, 0.15, 0.7, 0.0]
+    y = [0.0, 0.0, 0.16, 0.0, 0.56, 0.28]
+    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    @test sum(result) == 1
+    @test result[end] == 0
+    @test result[1] == 0
+    @test result[2] == 0
+    # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
+    # @test result[2] == (x[1] * y[2]) + (x[1] * y[3]) + (x[5] * y[3]) + (x[2] * y[3])
+
+    x = [0.0, 0.2, 0.15, 0.15, 0.4, 0.1]
+    y = [0.0, 0.06, 0.16, 0.14, 0.36, 0.28]
+    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    @test sum(result) == 1
+    @test result[1] == 0
+    # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
+    @test result[2] == (x[2] * y[4]) + (x[2] * y[5]) + (x[6] * y[3]) + (x[3] * y[4])
+
+    ####
     x = [0.0, 0.05, 0.1, 0.15, 0.2, 0.5]
     y = [0.0, 0.03, 0.13, 0.23, 0.33, 0.28]
     result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
@@ -862,6 +881,11 @@ function test_stackvaluetype(args)
     @test anew / cnew == round(a / c)
     @test cnew / anew == round(c / a)
     @test cnew / bnew == round(c / b)
+    @test amin / anew == amin
+    @test amax / anew == amax
+    @test amax / cnew == amin
+    @test amin / cnew == amax
+    @test amax / anew == amax
     @test cnew < 0
     @test amax > a
     @test amin < a
