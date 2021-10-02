@@ -47,7 +47,8 @@ function create_dependent_values(args)
         device = cpu
         @info "Training on CPU"
     end
-    numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
+    # numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
+    numericvalues = [i for i = -args.maxint:args.maxint]
     nonnumericvalues = [StackValue()]
     allvalues = StackValue.([nonnumericvalues; numericvalues])
     ishaltedvalues = [false, true] #TODO StackValue?

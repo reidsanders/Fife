@@ -15,15 +15,13 @@ DiscreteStackFloat = Float32
 end
 # StackValue(x) = StackValue(val = x)
 
-# isnan(x::StackValue) = x.blank
-MAXINT = 256
 """
     Assignment
 """
 function StackValue(x)
-    if x >= MAXINT
+    if x >= args.maxint
         return StackValue(val=0,blank=false,max=true,min=false)
-    elseif x <= -MAXINT
+    elseif x <= -args.maxint
         return StackValue(val=0,blank=false,max=false,min=true)
     else
         return StackValue(val=x,blank=false,max=false,min=false)

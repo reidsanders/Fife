@@ -95,9 +95,7 @@ a::VMSuperStates * b::Union{Array,CuArray} = b * a
 # end
 
 function op_not(x::StackValue)::StackValue
-    if x.blank 
-        return StackValue()
-    elseif x.max || x.min
+    if x.blank || x.max || x.min
         return 0
     end
     x.val == 0
