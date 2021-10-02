@@ -594,8 +594,11 @@ function test_program_conversion(args, program)
         [1, 3, 2, 4],
         [1, 3, 2, 3, 4],
         [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3],
+        [-3],
+        [-1, -3, -2, -3, -4],
+        [1, 3, 2, -4, 0, 1, -3, 3, 4, 0, -3],
     ]
-        @info "Test program conversion vals" vals
+        # @info "Test program conversion vals" vals
         contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
         discretestate = DiscreteVMState(args)
         for val in vals
