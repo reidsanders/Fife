@@ -90,13 +90,15 @@ a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(
 
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
 
-function op_not(x::Number)::StackFloatType
-    x == 0
-end
+# function op_not(x::Number)::StackFloat
+#     x == 0
+# end
 
-function op_not(x::StackValue)::StackFloatType
-    if x.blank || x.max || x.min
-        return true
+function op_not(x::StackValue)::StackValue
+    if x.blank 
+        return StackValue()
+    elseif x.max || x.min
+        return 0
     end
     x.val == 0
 end
