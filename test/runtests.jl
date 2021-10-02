@@ -484,7 +484,7 @@ function test_div_probvec(args)
     ### Test with nonnumeric values
     x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
     y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), [-args.maxint, -1, 0, 1, args.maxint]))
+    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
     @test sum(result) == 1.0
     ### nonumeric prob
     @test result[1] == 0.1 + 0.05 - (0.1 * 0.05)
@@ -493,8 +493,8 @@ function test_div_probvec(args)
     ### Prob of -1: sum -1/1 1/-1, -args.maxint / args.maxint, args.maxint/ -args.maxint
     @test result[3] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
     x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]jhhhh
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), [-args.maxint, -1, 0, 1, args.maxint]))
+    y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
     @test sum(result) == 1.0
     @test result[1] == 1.0
 end

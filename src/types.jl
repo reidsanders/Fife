@@ -134,7 +134,7 @@ function /(x::StackValue, y::StackValue)
     elseif x.val == 0 #TODO Why isn't this branch being hit when both x and y == 0?
         return StackValue(0)
     end
-    @info "/ values" x, y 
+    # @info "/ values" x, y 
     StackValue(round(x.val / y.val))
 end
 
