@@ -109,20 +109,32 @@ function /(x::StackValue, y::StackValue)
         return StackValue(-1)
     elseif (x.max && y.max) || (x.min && y.min)
         return StackValue(1)
-    elseif (x.max || x.val > 0) && y == 0
-        return StackValue(blank=false, max=true)
-    elseif (x.min || x.val < 0) && y == 0
-        return StackValue(blank=false, min=true)
-    elseif x.min
-        return StackValue(blank=false, min=true)
-    elseif x.max
-        return StackValue(blank=false, max=true)
     elseif y.min || y.max
         return StackValue(0)
-    elseif x.val == 0
+    elseif y == 0
+        if x > 0
+            return StackValue(blank=false, max=true)
+        elseif x < 0
+            return StackValue(blank=false, min=true)
+        elseif x.val == 0
+            return StackValue(0)
+        end
+    elseif y > 0
+        if x.min
+            return StackValue(blank=false, min=true)
+        elseif x.max
+            return StackValue(blank=false, max=true)
+        end
+    elseif y < 0
+        if x.min
+            return StackValue(blank=false, max=true)
+        elseif x.max
+            return StackValue(blank=false, min=true)
+        end
+    elseif x.val == 0 #TODO Why isn't this branch being hit when both x and y == 0?
         return StackValue(0)
     end
-
+    @info "/ values" x, y 
     StackValue(round(x.val / y.val))
 end
 

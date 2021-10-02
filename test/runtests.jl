@@ -484,7 +484,7 @@ function test_div_probvec(args)
     ### Test with nonnumeric values
     x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
     y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
-    result = op_probvec(/, x, y; values = [-args.maxint, -1, 0, 1, args.maxint])
+    result = op_probvec(/, x, y; values = StackValue.([StackValue(), [-args.maxint, -1, 0, 1, args.maxint]))
     @test sum(result) == 1.0
     ### nonumeric prob
     @test result[1] == 0.1 + 0.05 - (0.1 * 0.05)
@@ -494,7 +494,7 @@ function test_div_probvec(args)
     @test result[3] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
     x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]jhhhh
-    result = op_probvec(/, x, y; values = [-args.maxint, -1, 0, 1, args.maxint])
+    result = op_probvec(/, x, y; values = StackValue.([StackValue(), [-args.maxint, -1, 0, 1, args.maxint]))
     @test sum(result) == 1.0
     @test result[1] == 1.0
 end
@@ -857,6 +857,7 @@ function test_stackvaluetype(args)
     cnew = StackValue(c) 
     amax = StackValue(args.maxint + 1)
     amin = StackValue(-args.maxint - 1)
+    azero = StackValue(0)
     ablank = StackValue()
     @test a == anew
     @test a * b == anew * bnew
@@ -886,6 +887,7 @@ function test_stackvaluetype(args)
     @test amax / cnew == amin
     @test amin / cnew == amax
     @test amax / anew == amax
+    @test azero / azero == azero
     @test cnew < 0
     @test amax > a
     @test amin < a
