@@ -49,8 +49,8 @@ function create_dependent_values(args)
     end
     numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
     nonnumericvalues = [StackValue()]
-    allvalues = [nonnumericvalues; numericvalues]
-    ishaltedvalues = [false, true]
+    allvalues = StackValue.([nonnumericvalues; numericvalues])
+    ishaltedvalues = [false, true] #TODO StackValue?
     blanks = fill(StackValue(), args.stackdepth)
     blankstack = onehotbatch(blanks, allvalues)
     inputblanks = fill(StackValue(), args.inputlen)

@@ -94,6 +94,14 @@ function op_not(x::Number)::StackFloatType
     x == 0
 end
 
+function op_not(x::StackValue)::StackFloatType
+    if x.blank || x.max || x.min
+        return true
+    end
+    x.val == 0
+end
+
+
 function super_step(state::VMState, program, instructions)
     newstates = [instruction(state) for instruction in instructions]
     instrpointers = cat([x.instrpointer for x in newstates]..., dims = 3)
