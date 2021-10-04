@@ -135,7 +135,7 @@ function instr_not!(state::DiscreteVMState)
     # 0 is false, anything else is true.
     # but if true still set to 1
     x = popfirstreplace!(state.stack)
-    notx = 1 * (x == 0)
+    notx = 1 * (x == 0) # Replace with isnot
     pushfirst!(state.stack, notx)
 end
 

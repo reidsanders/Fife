@@ -188,8 +188,6 @@ end
 x::Number < y::StackValue = StackValue(x) < y
 x::StackValue < y::Number = x < StackValue(y)
 
-
-
 function ==(x::StackValue, y::StackValue)
     if y.blank && x.blank || y.max && x.max || y.min && x.min
         return true
@@ -199,10 +197,12 @@ function ==(x::StackValue, y::StackValue)
         return x.val == y.val
     end
 end
-
 x::StackValue == y::Number = x == StackValue(y)
 x::Number == y::StackValue = StackValue(x) == y
 
+"""
+Conversion
+"""
 function convert(::Type{StackValue}, x::Number)
     StackValue(x)
 end

@@ -364,7 +364,7 @@ function instr_and!(state::VMState)::VMState
     state, x = popfromstack(state)
     state, y = popfromstack(state)
 
-    resultvec = op_probvec((a, b) -> float(a != 0 && a != 0), x, y)
+    resultvec = op_probvec((a, b) -> float(a != 0 && b != 0), x, y)
     newstate = pushtostack(state, resultvec)
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
