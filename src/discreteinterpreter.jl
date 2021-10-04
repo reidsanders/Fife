@@ -168,9 +168,9 @@ function instr_gotoif!(state::DiscreteVMState)
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
-    if x != 0 && y > 0
+    if x != 0
         # TODO clamp to valid length
-        state.instrpointer = y
+        state.instrpointer = clamp(y, 1, state.programlen)
     end
 end
 

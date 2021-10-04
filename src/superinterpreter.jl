@@ -440,11 +440,13 @@ function instr_gotoif!(
 
     @assert sum(x) ≈ 1
     @assert sum(y) ≈ 1
+    @info "Instr_gotoif conditional" onecold(conditional, allvalues)
+    @info "Instr_gotoif destination" onecold(destination, allvalues)
 
     ### Calc important indexes ###
-    maxint = round(Int, (length(numericvalues) - 3) / 2)
-    zeroindex = length(allvalues) - maxint - 1
-    neginfindex = zeroindex - maxint - 1
+    maxint = round(Int, (length(numericvalues) - 1) / 2) #TODO ignore numericvalues
+    zeroindex = length(allvalues) - maxint #TODO maxint == max? or as separate value?
+    neginfindex = zeroindex - maxint
     maxinstrindex = zeroindex + length(state.instrpointer)
 
     ### Accumulate prob mass from goto off either end ###
@@ -459,15 +461,15 @@ function instr_gotoif!(
     jumpvalprobs = destination[zeroindex+2:maxinstrindex-1]
     newinstrpointer = [[p_gotobegin]; jumpvalprobs; [p_gotoend]]
 
-    # @assert p_ofgoto <= 1
-    # @assert p_gotobegin <= 1
-    # @assert p_gotoend <= 1
-    # @assert sum(jumpvalprobs) <= 1
-    # @show p_ofgoto
-    # @show p_gotobegin
-    # @show p_gotopastend
-    # @show p_gotoend
-    # @show jumpvalprobs
+    @assert p_ofgoto <= 1
+    @assert p_gotobegin <= 1
+    @assert p_gotoend <= 1
+    @assert sum(jumpvalprobs) <= 1
+    @info p_ofgoto
+    @info p_gotobegin
+    @info p_gotopastend
+    @info p_gotoend
+    @info jumpvalprobs
     ### calculate both nothing goto and just stepping forward
     currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
     newinstrpointer =
