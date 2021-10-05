@@ -434,7 +434,7 @@ function instr_swap!(state::VMState)::VMState
 end
 
 """
-    instr_gotoif!(state::VMState; [zerovec::Array = valhot(0, allvalues), nonnumericvalues=nonnumericvalues])::VMState
+    instr_gotoif!(state::VMState; [allvalues=allvalues, numericvalues=numericvalues])::VMState
 
 Pops top two elements of stack. If top is not zero, goto second element (or end, if greater than program len). Returns new state.
 
@@ -452,24 +452,17 @@ function instr_gotoif!(
     conditional = [
         [xb + yb - xb * yb]
         x[2:end] * ((1 - xb) * (1 - yb) + eps(xb)) / (1 - xb + eps(xb))
-    ] # Is it the eps making some things 1?
+    ]
     destination = [
         [xb + yb - xb * yb]
         y[2:end] * ((1 - xb) * (1 - yb) + eps(yb)) / (1 - yb + eps(yb))
-    ] # Is it the eps making some things 1?
-    # x[2:end] = x[2:end] * ((1 - xb) * (1 - yb) + eps(xb)) / (1 - xb + eps(xb)) # Is it the eps making some things 1?
-    # x[1] = xb + yb - xb * yb
-    # y[2:end] = y[2:end] * ((1 - xb) * (1 - yb) + eps(xb)) / (1 - yb + eps(xb))
-    # y[1] = xb + yb - xb * yb
-
+    ] 
     @assert sum(x) ≈ 1
     @assert sum(y) ≈ 1
-    # @info "Instr_gotoif conditional" onecold(conditional, allvalues)
-    # @info "Instr_gotoif destination" onecold(destination, allvalues)
 
     ### Calc important indexes ###
-    maxint = round(Int, (length(numericvalues) - 1) / 2) #TODO ignore numericvalues
-    zeroindex = length(allvalues) - maxint #TODO maxint == max? or as separate value?
+    maxint = round(Int, (length(numericvalues) - 1) / 2)
+    zeroindex = length(allvalues) - maxint
     neginfindex = zeroindex - maxint
     maxinstrindex = zeroindex + length(state.instrpointer)
 
@@ -489,11 +482,58 @@ function instr_gotoif!(
     @assert p_gotobegin <= 1
     @assert p_gotoend <= 1
     @assert sum(jumpvalprobs) <= 1
-    # @info p_ofgoto
-    # @info p_gotobegin
-    # @info p_gotopastend
-    # @info p_gotoend
-    # @info jumpvalprobs
+    ### calculate both nothing goto and just stepping forward
+    currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
+    newinstrpointer =
+        (1 - p_ofgoto) * currentinstructionforward .+ p_ofgoto * newinstrpointer
+
+    p_nothalted, p_halted = state.ishalted
+    p_halted = 1 - p_nothalted * (1 - p_gotopastend)
+    newishalted = [1 - p_halted, p_halted]
+    newinstrpointer = normit(newinstrpointer) # TODO may be covering up a bug
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.01) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(newishalted), 1, atol = 0.01)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
+        state.variables,
+        newishalted,
+    )
+end
+
+"""
+    instr_goto!(state::VMState; [numericvalues=numericvalues])::VMState
+
+Pops top two elements of stack. If top is not zero, goto second element (or end, if greater than program len). Returns new state.
+
+"""
+function instr_goto!(
+    state::VMState;
+    allvalues = allvalues,
+    numericvalues = numericvalues,
+)::VMState
+    state, x = popfromstack(state)
+    destination = x
+
+    ### Calc important indexes ###
+    maxint = round(Int, (length(numericvalues) - 1) / 2)
+    zeroindex = length(allvalues) - maxint
+    neginfindex = zeroindex - maxint
+    maxinstrindex = zeroindex + length(state.instrpointer)
+
+    ### Accumulate prob mass from goto off either end ###
+    p_ofgoto = 1 - x[1]
+    p_gotobegin = sum(destination[neginfindex:zeroindex+1])
+    p_gotopastend = sum(destination[maxinstrindex+1:end])
+    p_gotoend = destination[maxinstrindex] + p_gotopastend
+    jumpvalprobs = destination[zeroindex+2:maxinstrindex-1]
+    newinstrpointer = [[p_gotobegin]; jumpvalprobs; [p_gotoend]]
+
     ### calculate both nothing goto and just stepping forward
     currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
     newinstrpointer =
