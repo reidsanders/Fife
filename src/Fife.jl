@@ -142,7 +142,7 @@ function convert_discrete_to_continuous(
     outputlen = discrete.outputlen
 
     contstate = VMState(stackdepth, programlen, allvalues, inputlen, outputlen)
-    cont_instrpointer = onehot(discrete.instrpointer, [i for i = 1:programlen]) * 1.0f0
+    cont_instrpointer = onehot(discrete.instrpointer, StackValue.([i for i = 1:programlen])) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
     fill!(discretestack, StackValue())
