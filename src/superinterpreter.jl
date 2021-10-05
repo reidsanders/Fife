@@ -190,6 +190,30 @@ end
 Get top of stack, then push it to stack. Return new state.
 
 """
+function instr_pop!(state::VMState)::VMState
+    state, x = popfromstack(state)
+    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(ishalted), 1, atol = 0.001)
+    VMState(
+        newinstrpointer,
+        state.stackpointer,
+        state.inputpointer,
+        state.outputpointer,
+        state.input,
+        state.output,
+        state.stack,
+        state.variables,
+        ishalted,
+    )
+end
+
+"""
+    instr_dup!(state::VMState)::VMState
+
+Get top of stack, then push it to stack. Return new state.
+
+"""
 function instr_dup!(state::VMState)::VMState
     newstackpointer = circshift(state.stackpointer, -1)
     oldcomponent = state.stack .* permutedims((1 .- newstackpointer))
