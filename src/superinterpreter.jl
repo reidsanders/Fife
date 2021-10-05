@@ -465,7 +465,6 @@ function instr_gotoif!(
     @assert p_gotobegin <= 1
     @assert p_gotoend <= 1
     @assert sum(jumpvalprobs) <= 1
-    @assert sum(p_ofgoto + p_gotobegin + p_gotopastend + p_gotoend) ≈ 1
     # @info p_ofgoto
     # @info p_gotobegin
     # @info p_gotopastend
