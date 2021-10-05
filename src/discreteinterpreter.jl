@@ -167,7 +167,7 @@ end
 function instr_gotoif!(state::DiscreteVMState)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
-    if x == 0 || x.blank
+    if x == 0 || x.blank || y.blank
         setinstrpointer!(state, state.instrpointer + 1)
     else
         setinstrpointer!(state, y)
