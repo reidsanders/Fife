@@ -156,21 +156,21 @@ function instr_or!(state::DiscreteVMState)
 end
 
 function instr_goto!(state::DiscreteVMState)
-    setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
-    # Verification of non zero, positive integer?
     if x > 0
-        state.instrpointer = x
+        setinstrpointer!(state, x)
+    else
+        setinstrpointer!(state, state.instrpointer + 1)
     end
 end
 
 function instr_gotoif!(state::DiscreteVMState)
-    setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
-    if x != 0
-        # TODO clamp to valid length
-        state.instrpointer = clamp(y, 1, state.programlen)
+    if x == 0
+        setinstrpointer!(state, state.instrpointer + 1)
+    else
+        setinstrpointer!(state, y)
     end
 end
 
