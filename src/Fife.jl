@@ -124,6 +124,7 @@ begin
         accuracy,
         test,
         trainloop,
+        forward,
         Args
 end
 

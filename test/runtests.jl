@@ -752,11 +752,7 @@ function test_train(args)
     ######################################
     first_loss = test(hiddenprogram, target_program, startstate, instructions, args.programlen, trainmaskfull)
     first_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
-    try
-        grads = gradient(forward, startstate, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
-    catch e
-        println("Exception uncaught by test: \n {e}")
-    end
+    grads = gradient(forward, startstate, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
     # trainloopsingle(hiddenprogram, startstate, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
     opt = Descent(.000001)
     @showprogress for i = 1:10
@@ -788,13 +784,13 @@ end
 function test_gradient_single_instr(args, instr)
     blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     blank_state_random2 = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    # grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
-    try
-        grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
-    catch e
-        println("$instr test_gradient_single_instr. Exception: \n $e")
-    end
-    @test true
+    grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+    # try
+    #     grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+    # catch e
+    #     println("$instr test_gradient_single_instr. Exception: \n $e")
+    # end
+    @test sum(grad_instr) > 0
 end
 
 function test_gradient_op_probvec(args)
@@ -900,7 +896,6 @@ end
 @testset "StackValue" begin
     test_stackvaluetype(args)
 end
-
 @testset "Discrete Instructions" begin
     test_instr_halt(args)
     test_instr_pushval(args)
@@ -923,20 +918,27 @@ end
     test_instr_read(args)
     test_instr_write(args)
 end
-
-@testset "Fife.jl" begin
+@testset "Fife Utilities" begin
     test_push_vmstate(args)
     test_pushtooutput(args)
     test_popfrominput(args)
     test_pop_vmstate(args)
     test_add_probvec(args)
     test_div_probvec(args)
+end
+@testset "Convert VMs" begin
     test_convert_discrete_to_continuous(args)
     test_convert_continuous_to_discrete(args)
+end
+@testset "Instructions" begin
     test_all_single_instr(args)
-    # test_super_step(args)
-    # test_super_run_program(args)
-    # test_all_gradient_single_instr(args)
-    # test_train(args)
-    # test_gradient_op_probvec(args)
+end
+@testset "Superposition Interpreter steps" begin
+    test_super_step(args)
+    test_super_run_program(args)
+end
+@testset "Train and Gradient" begin
+    test_all_gradient_single_instr(args)
+    test_train(args)
+    test_gradient_op_probvec(args)
 end

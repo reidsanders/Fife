@@ -440,8 +440,8 @@ function instr_gotoif!(
 
     @assert sum(x) ≈ 1
     @assert sum(y) ≈ 1
-    @info "Instr_gotoif conditional" onecold(conditional, allvalues)
-    @info "Instr_gotoif destination" onecold(destination, allvalues)
+    # @info "Instr_gotoif conditional" onecold(conditional, allvalues)
+    # @info "Instr_gotoif destination" onecold(destination, allvalues)
 
     ### Calc important indexes ###
     maxint = round(Int, (length(numericvalues) - 1) / 2) #TODO ignore numericvalues
@@ -465,11 +465,12 @@ function instr_gotoif!(
     @assert p_gotobegin <= 1
     @assert p_gotoend <= 1
     @assert sum(jumpvalprobs) <= 1
-    @info p_ofgoto
-    @info p_gotobegin
-    @info p_gotopastend
-    @info p_gotoend
-    @info jumpvalprobs
+    @assert sum(p_ofgoto + p_gotobegin + p_gotopastend + p_gotoend) ≈ 1
+    # @info p_ofgoto
+    # @info p_gotobegin
+    # @info p_gotopastend
+    # @info p_gotoend
+    # @info jumpvalprobs
     ### calculate both nothing goto and just stepping forward
     currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
     newinstrpointer =
