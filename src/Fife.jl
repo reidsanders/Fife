@@ -241,7 +241,7 @@ function convert_continuous_to_discrete(
     for (i,x) in enumerate(variables)
         newvariables[allvalues[i]] = x
     end
-    DiscreteVMState(instrpointer = instrpointer, input = newinput, output = newoutput, stack = newstack, ishalted = ishalted)
+    DiscreteVMState(instrpointer = instrpointer, input = newinput, output = newoutput, stack = newstack, variables = newvariables, ishalted = ishalted)
 end
 
 function ==(x::CircularDeque, y::CircularDeque)
