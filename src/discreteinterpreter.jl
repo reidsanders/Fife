@@ -25,7 +25,7 @@ Create state for discrete stack based vm
     output::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.outputlen), StackValue())
     stack::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.stackdepth), StackValue())
     variables::DefaultDict{StackValue,StackValue} =
-        DefaultDict{StackValue,StackValue}(0) # StackValue instead of Int?
+        DefaultDict{StackValue,StackValue}(StackValue()) # StackValue instead of Int?
     ishalted::Bool = false
     programlen::Int = args.programlen
     inputlen::Int = args.inputlen

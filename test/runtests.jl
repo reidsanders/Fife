@@ -558,7 +558,12 @@ function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
     @test x.input == y.input
     @test x.output == y.output
     @test x.stack == y.stack
-    @test x.variables == y.variables
+    for (k, v) in x.variables
+        @test v == y.variables[k]
+    end
+    for (k, v) in y.variables
+        @test v == x.variables[k]
+    end
     @test x.ishalted == y.ishalted
 end
 
