@@ -155,7 +155,7 @@ function convert_discrete_to_continuous(
     discreteinput = Array{Any,1}(undef, inputlen)
     fill!(discreteinput, StackValue())
     for (i, x) in enumerate(discrete.input)
-        discretestack[i] = x
+        discreteinput[i] = x
     end
     continput = onehotbatch(discreteinput, allvalues) * 1.0f0
 
