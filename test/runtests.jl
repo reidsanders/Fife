@@ -753,7 +753,7 @@ function test_train(args)
     grads = gradient(forward, startstate, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
     # trainloopsingle(hiddenprogram, startstate, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
     opt = Descent(.000001)
-    @showprogress for i = 1:10
+    @showprogress for i = 1:3
         grads = gradient(
             forward,
             startstate,
@@ -764,7 +764,6 @@ function test_train(args)
             trainmaskfull,
         )[end-1] # end-1 for hidden?
         grads = grads .* trainmaskfull
-        # @info grads
         Optimise.update!(opt, hiddenprogram, grads)
     end
 
@@ -938,6 +937,6 @@ end
 end
 @testset "Train and Gradient" begin
     test_all_gradient_single_instr(args)
-    test_train(args)
     test_gradient_op_probvec(args)
+    test_train(args)
 end
