@@ -45,6 +45,19 @@ instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, all
 instr_pushval!(val::Int, state::VMState, allvalues::Array) = instr_pushval!(StackValue(val), state, allvalues)
 instr_pushval!(val::Int, state::VMState) = instr_pushval!(val, state, allvalues)
 
+function init_random_discretestate(args, allvalues::Array = allvalues)
+    state = DiscreteVMState(args)
+    state.instrpointer = rand(1:state.programlen)
+    rand!(state.input, allvalues)
+    rand!(state.output, allvalues)
+    rand!(state.stack, allvalues)
+    #TODO randomize ishalted or not?
+    for key in allvalues
+        state.variables[key] = rand(allvalues)
+    end
+    state
+end
+
 function init_random_state(
     stackdepth::Int,
     programlen::Int,
@@ -579,11 +592,11 @@ end
 function test_all_single_instr(args)
     for instr in instructions
         println("Test Single Instruction: $(instr)")
-        test_program_conversion(args, [instr])
+        test_interpreter_equivalence(args, [instr])
     end
 end
 
-function test_program_conversion(args, program)
+function test_interpreter_equivalence(args, program)
     ### Basic well behaved program ###
     for vals in [
         [],
@@ -597,6 +610,39 @@ function test_program_conversion(args, program)
         [1, 3, 2, -4, 0, 1, -3, 3, 4, 0, -3],
     ]
         @info "Test program conversion vals" vals
+        contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+        discretestate = DiscreteVMState(args)
+        for val in vals
+            contstate = instr_pushval!(val, contstate)
+            instr_pushval!(val, discretestate)
+        end
+        for instr in program
+            contstate = instr(contstate)
+            instr(discretestate)
+        end
+        contstate = normalize_stackpointer(contstate)
+        contstate = normalize_iopointers(contstate)
+        newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+        newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
+        run_equality_test(newcontstate, contstate)
+        run_equality_test(newdiscretestate, discretestate)
+    end
+end
+
+function test_interpreter_equivalence_random_inputs(args, program)
+    for vals in [
+        [],
+        [0],
+        [3],
+        [1, 3, 2, 4],
+        [1, 3, 2, 3, 4],
+        [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3],
+        [-3],
+        [-1, -3, -2, -3, -4],
+        [1, 3, 2, -4, 0, 1, -3, 3, 4, 0, -3],
+    ]
+        @info "Test program conversion vals" vals
+        discretestate = 
         contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
         discretestate = DiscreteVMState(args)
         for val in vals
