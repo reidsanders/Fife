@@ -25,7 +25,7 @@ include("discreteinterpreter.jl")
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2
-    lr::Float32 = 2e-4
+    lr::Float64 = 2e-4
     epochs::Int = 2
     stackdepth::Int = 11
     programlen::Int = 13
@@ -35,7 +35,7 @@ include("discreteinterpreter.jl")
     maxint::Int = 20
     trainsetsize::Int = 10
     usegpu::Bool = false
-    StackFloatType::Type = Float32
+    StackFloatType::Type = Float64
 end
 args = Args()
 

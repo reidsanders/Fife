@@ -12,7 +12,7 @@ using CUDA
 import Base: +, -, *, length
 using ProgressMeter
 using Parameters: @with_kw
-StackFloatType = Float32
+StackFloatType = Float64
 
 struct VMState
     instrpointer::Array

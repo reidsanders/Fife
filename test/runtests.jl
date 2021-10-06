@@ -620,7 +620,7 @@ end
 function test_super_step(args)
     ### TODO test super_step / run.
     discrete_program = create_random_discrete_program(args.programlen, instructions)
-    program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+    program = convert(Array{Float64}, onehotbatch(discrete_program, instructions))
     rand!(program)
     program = normit(program)
     state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
@@ -671,7 +671,7 @@ function test_super_run_program(args)
     ]
 
     target_program =
-        convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+        convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
     trainmask = create_trainable_mask(args.programlen, args.inputlen)
     hiddenprogram = deepcopy(target_program)
     hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
@@ -764,6 +764,7 @@ function test_train(args)
             trainmaskfull,
         )[end-1] # end-1 for hidden?
         grads = grads .* trainmaskfull
+        # @info grads
         Optimise.update!(opt, hiddenprogram, grads)
     end
 

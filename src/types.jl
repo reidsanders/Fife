@@ -5,7 +5,7 @@ using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 ####################
 # StackValue  #
 ####################
-DiscreteStackFloat = Float32
+DiscreteStackFloat = Float64
 @with_kw struct StackValue
     val::Int = 0
     blank::Bool = true
