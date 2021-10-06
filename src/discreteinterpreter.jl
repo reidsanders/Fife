@@ -39,7 +39,7 @@ function DiscreteVMState(params)
         fill!(CircularBuffer{StackValue}(params.inputlen), StackValue()),
         fill!(CircularBuffer{StackValue}(params.outputlen), StackValue()),
         fill!(CircularBuffer{StackValue}(params.stackdepth), StackValue()),
-        DefaultDict{StackValue,StackValue}(0),
+        DefaultDict{StackValue,StackValue}(StackValue()),
         false,
         params.programlen,
         params.inputlen,
