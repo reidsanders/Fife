@@ -972,7 +972,7 @@ function VMState(
     stack = zeros(StackFloatType, length(allvalues), stackdepth)
     input = zeros(StackFloatType, length(allvalues), inputlen)
     output = zeros(StackFloatType, length(allvalues), outputlen)
-    variables = zeros(StackFloatType, length(allvalues), stackdepth)
+    variables = zeros(StackFloatType, length(allvalues), length(allvalues))
     instrpointer[1] = 1.0
     stackpointer[1] = 1.0
     inputpointer[1] = 1.0

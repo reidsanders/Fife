@@ -166,10 +166,10 @@ function convert_discrete_to_continuous(
     end
     contoutput = onehotbatch(discreteoutput, allvalues) * 1.0f0
 
-    discretevariables = Array{Any,1}(undef, stackdepth)
+    discretevariables = Array{Any,1}(undef, length(allvalues))
     fill!(discretevariables, StackValue())
     for (k, v) in discrete.variables
-        discretevariables[k] = v
+        discretevariables[findfirst(x->x==k, allvalues)] = v
     end
     contvariables = onehotbatch(discretevariables, allvalues) * 1.0f0
 

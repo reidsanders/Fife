@@ -73,7 +73,7 @@ function init_random_state(
     input = rand(StackFloatType, length(allvalues), inputlen)
     output = rand(StackFloatType, length(allvalues), outputlen)
     stack = rand(StackFloatType, length(allvalues), stackdepth)
-    variables = rand(StackFloatType, length(allvalues), stackdepth)
+    variables = rand(StackFloatType, length(allvalues), length(allvalues))
     input = normit(input)
     output = normit(output)
     stack = normit(stack)
@@ -591,9 +591,15 @@ end
 
 function test_all_single_instr(args)
     for instr in instructions
-        println("Test Single Instruction: $(instr)")
         test_interpreter_equivalence(args, [instr])
+        test_interpreter_equivalence_random_inputs(args, [instr])
     end
+end
+
+function test_random_programs(args)
+    program = create_random_discrete_program(rand(2:10), instructions)
+    test_interpreter_equivalence(args, program)
+    test_interpreter_equivalence_random_inputs(args, program)
 end
 
 function test_interpreter_equivalence(args, program)
@@ -630,25 +636,12 @@ function test_interpreter_equivalence(args, program)
 end
 
 function test_interpreter_equivalence_random_inputs(args, program)
-    for vals in [
-        [],
-        [0],
-        [3],
-        [1, 3, 2, 4],
-        [1, 3, 2, 3, 4],
-        [1, 3, 2, 4, 0, 1, 3, 3, 4, 2, 1, 2, 3],
-        [-3],
-        [-1, -3, -2, -3, -4],
-        [1, 3, 2, -4, 0, 1, -3, 3, 4, 0, -3],
-    ]
-        @info "Test program conversion vals" vals
-        discretestate = 
-        contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-        discretestate = DiscreteVMState(args)
-        for val in vals
-            contstate = instr_pushval!(val, contstate)
-            instr_pushval!(val, discretestate)
-        end
+    Random.seed!(123)
+    for x in 1:5
+        discretestate = init_random_discretestate(args)
+        contstate = convert_discrete_to_continuous(discretestate)
+        newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+        run_equality_test(newdiscretestate, discretestate)
         for instr in program
             contstate = instr(contstate)
             instr(discretestate)
@@ -976,6 +969,7 @@ end
 end
 @testset "Instructions" begin
     test_all_single_instr(args)
+    test_random_programs(args)
 end
 @testset "Superposition Interpreter steps" begin
     test_super_step(args)
