@@ -7,6 +7,7 @@ using Fife:
     popfromstack,
     op_probvec,
     normalize_stackpointer,
+    normalize_iopointers,
     create_random_discrete_program,
     create_trainable_mask,
     super_step,
@@ -14,100 +15,22 @@ using Fife:
     applyfullmask,
     allvalues,
     device,
-    StackValueType,
-    largevalue,
-    coercetostackvaluepart,
     numericvalues,
     nonnumericvalues,
     allvalues,
     ishaltedvalues,
     blanks,
-    blankstack,
-    args
-import Fife: instr_pushval!
+    blankstack
+import Fife: instr_pushval!, args
 
 using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
-######################################
-# Global initialization
-######################################
+args = Args(inputlen = 0)
 
-# @with_kw mutable struct TrainArgs
-#     batchsize::Int = 8
-#     lr::Float32 = 2e-4
-#     epochs::Int = 50
-#     stackdepth::Int = 100
-#     programlen::Int = 50
-#     inputlen::Int = 20 # frozen part, assumed at front for now
-#     max_ticks::Int = 40
-#     maxint::Int = 50
-#     trainsetsize::Int = 32
-#     usegpu::Bool = false
-# end
-# args = TrainArgs()
-
-# @with_kw mutable struct Args
-#     batchsize::Int = 2
-#     lr::Float32 = 2e-4
-#     epochs::Int = 2
-#     stackdepth::Int = 10
-#     programlen::Int = 10
-#     inputlen::Int = 2 # frozen part, assumed at front for now
-#     max_ticks::Int = 5
-#     maxint::Int = 20
-#     trainsetsize::Int = 10
-#     usegpu::Bool = false
-#     StackFloatType::Type = Float32
-#     StackValueType::Type = Int
-
-#     ## TODO initialization function inside Args / or inside Fife module (then export inside args?)
-# end
-# args = Args()
-
-# device,
-# largevalue,
-# coercetostackvaluepart,
-# numericvalues,
-# nonnumericvalues,
-# allvalues,
-# ishaltedvalues,
-# blanks,
-# blankstack = create_dependent_values(args)
-
-
-
-
-instr_pushval!(val::args.StackValueType, state::VMState) =
-    instr_pushval!(val, state, allvalues)
+instr_pushval!(val::args.StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
-
-#instructions = [[instr_gotoif!, instr_dup!]; val_instructions]
-#instructions = [[instr_pass!, instr_dup!]; val_instructions]
-#instructions = [[instr_pass!]; val_instructions]
-
-# instructions = [
-#     instr_pass!,
-#     # instr_halt!,
-#     # # instr_pushval!,
-#     # # instr_pop!,
-#     # instr_dup!,
-#     # instr_swap!,
-#     # instr_add!,
-#     # instr_sub!,
-#     # instr_mult!,
-#     # instr_div!,
-#     # instr_not!,
-#     # instr_and!,
-#     # instr_goto!,
-#     # instr_gotoif!,
-#     # instr_iseq!,
-#     # instr_isgt!,
-#     # instr_isge!,
-#     # instr_store!,
-#     # instr_load!
-# ]
 
 instructions = [
     [
@@ -138,15 +61,8 @@ instructions = [
 num_instructions = length(instructions)
 
 discrete_program = create_random_discrete_program(args.programlen, instructions)
-
-discrete_programs = [
-    [
-        create_random_discrete_program(args.inputlen, instructions)
-        discrete_program[end-args.inputlen:end]
-    ] for x = 1:args.trainsetsize
-]
-
-target_program = convert(Array{Float32}, onehotbatch(discrete_program, instructions))
+#TODO add a write! at end? or scattered throughout
+target_program = convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, args.inputlen)
 hiddenprogram = deepcopy(target_program)
 hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
@@ -166,13 +82,15 @@ hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
 
 
-#global valhotvec = onehot(3, allvalues) * Float32(1) # TEMP
+#global valhotvec = onehot(3, allvalues) * StackFloatType(1) # TEMP
 # global valhotvec = zeros(44) * 1.0f0
 # valhotvec[20] = 1.0f0
 
 
-blank_state = VMState(args.stackdepth, args.programlen, allvalues)
-blank_state2 = VMState(args.stackdepth, args.programlen, allvalues)
+blank_state =
+    VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+blank_state2 =
+    VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 check_state_asserts(blank_state)
 

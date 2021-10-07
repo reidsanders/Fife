@@ -1,5 +1,5 @@
 using Fife
-using Fife: 
+using Fife:
     valhot,
     pushtostack,
     pushtooutput,
@@ -26,13 +26,7 @@ using Fife:
 import Fife: instr_pushval!
 using Test
 using Random
-using Flux:
-    onehot,
-    onehotbatch,
-    glorot_uniform,
-    gradient,
-    Descent,
-    Optimise
+using Flux: onehot, onehotbatch, glorot_uniform, gradient, Descent, Optimise
 
 using ProgressMeter
 using CUDA
@@ -42,7 +36,8 @@ using Parameters: @with_kw
 using Profile
 using BenchmarkTools
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged?
-instr_pushval!(val::Int, state::VMState, allvalues::Array) = instr_pushval!(StackValue(val), state, allvalues)
+instr_pushval!(val::Int, state::VMState, allvalues::Array) =
+    instr_pushval!(StackValue(val), state, allvalues)
 instr_pushval!(val::Int, state::VMState) = instr_pushval!(val, state, allvalues)
 
 function init_random_discretestate(args, allvalues::Array = allvalues)
@@ -396,7 +391,8 @@ end
 
 
 function test_convert_discrete_to_continuous(args)
-    contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    contstate =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     state = DiscreteVMState(args)
     #instr_pushval!(6,state)
     newcontstate = convert_discrete_to_continuous(state, allvalues)
@@ -409,7 +405,8 @@ end
 
 function test_convert_continuous_to_discrete(args)
     # test true
-    contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    contstate =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     discretestate = DiscreteVMState(args)
     #instr_pushval!(6,state)
     newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
@@ -432,32 +429,37 @@ function test_add_probvec(args)
     y = [1.0, 0.0]
     result = op_probvec(+, x, y; values = StackValue.([0, 1]))
     @test sum(result) == 1.0
-    @test result == [.3, .7]
+    @test result == [0.3, 0.7]
 
     x = [0.1, 0.0, 0.1, 0.8, 0.0]
     y = [0.3, 0.0, 0.4, 0.3, 0.0]
-    result = op_probvec(+, x, y; values = StackValue.([StackValue(), -args.maxint, 0, 1, args.maxint]))
-    target = [
-        1 - ((1 - x[1]) * (1 - y[1])),
-        0.0,
-        0.1 * 0.4,
-        0.1 * 0.3 + 0.4 * 0.8,
-        0.0,
-    ]
-    @test sum(target) + (.8 * .3) ≈ 1
+    result = op_probvec(
+        +,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, 0, 1, args.maxint]),
+    )
+    target = [1 - ((1 - x[1]) * (1 - y[1])), 0.0, 0.1 * 0.4, 0.1 * 0.3 + 0.4 * 0.8, 0.0]
+    @test sum(target) + (0.8 * 0.3) ≈ 1
     @test result == target
 end
 
 function test_div_probvec(args)
     x = [0.0, 0.0, 0.1, 0.9, 0.0]
     y = [0.0, 0.0, 0.7, 0.3, 0.0]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, 0, 1, args.maxint]))
+    result = op_probvec(
+        /,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, 0, 1, args.maxint]),
+    )
     @test sum(result) == 1
     @test result == [0.0, 0.0, 0.1 * 0.7 + 0.1 * 0.3, 0.9 * 0.3, 0.9 * 0.7]
 
     x = [0.0, 0.15, 0.15, 0.7, 0.0]
     y = [0.0, 0.16, 0.0, 0.56, 0.28]
-    result = op_probvec(/, x, y; values = StackValue.([-args.maxint, -1, 0, 1, args.maxint]))
+    result =
+        op_probvec(/, x, y; values = StackValue.([-args.maxint, -1, 0, 1, args.maxint]))
     @test sum(result) == 1
     @test result[end] == 0
     @test result[1] == 0
@@ -466,7 +468,12 @@ function test_div_probvec(args)
 
     x = [0.0, 0.0, 0.15, 0.15, 0.7, 0.0]
     y = [0.0, 0.0, 0.16, 0.0, 0.56, 0.28]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    result = op_probvec(
+        /,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]),
+    )
     @test sum(result) == 1
     @test result[end] == 0
     @test result[1] == 0
@@ -476,7 +483,12 @@ function test_div_probvec(args)
 
     x = [0.0, 0.2, 0.15, 0.15, 0.4, 0.1]
     y = [0.0, 0.06, 0.16, 0.14, 0.36, 0.28]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    result = op_probvec(
+        /,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]),
+    )
     @test sum(result) == 1
     @test result[1] == 0
     # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
@@ -485,7 +497,12 @@ function test_div_probvec(args)
     ####
     x = [0.0, 0.05, 0.1, 0.15, 0.2, 0.5]
     y = [0.0, 0.03, 0.13, 0.23, 0.33, 0.28]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    result = op_probvec(
+        /,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]),
+    )
     @test sum(result) == 1.0
     # prob of -args.maxint: sum -args.maxint/0 -args.maxint/1 args.maxint/-1 -1/0
     @test result[2] == (0.05 * 0.23) + (0.05 * 0.33) + (0.5 * 0.13) + (0.1 * 0.23)
@@ -495,7 +512,12 @@ function test_div_probvec(args)
     ### Test with nonnumeric values
     x = [0.1, 0.05, 0.1, 0.05, 0.2, 0.5]
     y = [0.05, 0.03, 0.13, 0.18, 0.33, 0.28]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    result = op_probvec(
+        /,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]),
+    )
     @test sum(result) == 1.0
     ### nonumeric prob
     @test result[1] == 0.1 + 0.05 - (0.1 * 0.05)
@@ -505,13 +527,19 @@ function test_div_probvec(args)
     @test result[3] == (0.1 * 0.33) + (0.2 * 0.13) + (0.05 * 0.28) + (0.5 * 0.03)
     x = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     y = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    result = op_probvec(/, x, y; values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]))
+    result = op_probvec(
+        /,
+        x,
+        y;
+        values = StackValue.([StackValue(), -args.maxint, -1, 0, 1, args.maxint]),
+    )
     @test sum(result) == 1.0
     @test result[1] == 1.0
 end
 
 function test_pop_vmstate(args)
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     newval = valhot(2, allvalues)
     newstate = pushtostack(state, newval)
     newstate, popval = popfromstack(newstate)
@@ -520,8 +548,9 @@ function test_pop_vmstate(args)
 end
 
 function test_popfrominput(args)
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    newinput = fillinput([2,5,3], args.inputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    newinput = fillinput([2, 5, 3], args.inputlen)
     state = VMState(
         state.instrpointer,
         state.stackpointer,
@@ -540,14 +569,16 @@ function test_popfrominput(args)
 end
 
 function test_push_vmstate(args)
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     newval = valhot(2, allvalues)
     state = pushtostack(state, newval)
     @test state.stack[:, end] == newval
 end
 
 function test_pushtooutput(args)
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     newval = valhot(2, allvalues)
     state = pushtooutput(state, newval)
     @test state.output[:, end] == newval
@@ -621,7 +652,13 @@ function test_interpreter_equivalence(args, program)
         [1, 3, 2, -4, 0, 1, -3, 3, 4, 0, -3],
     ]
         # @info "Test program conversion vals" vals
-        contstate = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+        contstate = VMState(
+            args.stackdepth,
+            args.programlen,
+            allvalues,
+            args.inputlen,
+            args.outputlen,
+        )
         discretestate = DiscreteVMState(args)
         for val in vals
             contstate = instr_pushval!(val, contstate)
@@ -642,7 +679,7 @@ end
 
 function test_interpreter_equivalence_random_inputs(args, program)
     Random.seed!(123)
-    for x in 1:5
+    for x = 1:5
         discretestate = init_random_discretestate(args)
         contstate = convert_discrete_to_continuous(discretestate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
@@ -667,7 +704,8 @@ function test_super_step(args)
     program = convert(Array{Float64}, onehotbatch(discrete_program, instructions))
     rand!(program)
     program = normit(program)
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     state = super_step(state, program, instructions)
     check_state_asserts(state)
 end
@@ -703,16 +741,32 @@ function test_super_run_program(args)
     ]
 
 
-    num_instructions = length(instructions)
 
     discrete_program = create_random_discrete_program(args.programlen, instructions)
+    target_program =
+        convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
+    trainmask = create_trainable_mask(args.programlen, args.inputlen)
+    hiddenprogram = deepcopy(target_program)
+    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
-    discrete_programs = [
-        [
-            create_random_discrete_program(args.inputlen, instructions)
-            discrete_program[end-args.inputlen:end]
-        ] for x = 1:args.trainsetsize
-    ]
+    # Initialize
+
+    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+
+    hiddenprogram = hiddenprogram |> device
+    program = softmaxmask(hiddenprogram, trainmaskfull) |> device
+    target_program = target_program |> device
+    hiddenprogram = hiddenprogram |> device
+    trainmask = trainmask |> device
+
+    blank_state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    check_state_asserts(blank_state)
+    target = runprogram(blank_state, target_program, instructions, 1000)
+end
+
+function test_train(args)
+    discrete_program = create_random_discrete_program(args.programlen, instructions)
 
     target_program =
         convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
@@ -720,66 +774,22 @@ function test_super_run_program(args)
     hiddenprogram = deepcopy(target_program)
     hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
-
     # Initialize
-
     trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
-    applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-    applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
-
     hiddenprogram = hiddenprogram |> device
-    program = softmaxmask(hiddenprogram, trainmaskfull) |> device
-    target_program = target_program |> device
-    hiddenprogram = hiddenprogram |> device
-    trainmask = trainmask |> device
-
-    blank_state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    check_state_asserts(blank_state)
-    target = runprogram(blank_state, target_program, instructions, 1000)
-end
-
-function test_train(args)
-    num_instructions = length(instructions)
-
-    discrete_program = create_random_discrete_program(args.programlen, instructions)
-    # inputvalues = [rand(val_instructions) for i in 1:args.inputlen]
-    # discreteinputprogram = create_random_discrete_program(args.inputlen, val_instructions)
-    # discretetrainableprogram = create_random_discrete_program(args.programlen - args.inputlen, instructions)
-    # inputvalues = [rand(val_instructions) for i in 1:args.inputlen]
-
-    # discrete_programs = [
-    #     [
-    #         create_random_discrete_program(args.inputlen, instructions)
-    #         discrete_program[end-args.inputlen:end]
-    #     ] for x = 1:args.trainsetsize
-    # ]
-
-    target_program = convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
-    trainmask = create_trainable_mask(args.programlen, args.inputlen)
-    hiddenprogram = deepcopy(target_program)
-    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
-
-
-    # Initialize
-
-    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
-    applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-    applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
-
-    hiddenprogram = hiddenprogram |> device
-    program = softmaxmask(hiddenprogram, trainmaskfull) |> device
     target_program = target_program |> device
     hiddenprogram = hiddenprogram |> device
     trainmask = trainmask |> device
 
     # Initialize start state with input
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     startstate = VMState(
         state.instrpointer,
         state.stackpointer,
         state.inputpointer,
         state.outputpointer,
-        fillinput([2,5,3], args.inputlen),
+        fillinput([2, 5, 3], args.inputlen),
         state.output,
         state.stack,
         state.variables,
@@ -790,13 +800,26 @@ function test_train(args)
 
 
     ######################################
-    # runprogram program train
+    # run program train
     ######################################
-    first_loss = test(hiddenprogram, target_program, startstate, instructions, args.programlen, trainmaskfull)
-    first_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
-    grads = gradient(forward, startstate, target, instructions, args.programlen, hiddenprogram, trainmaskfull)
-    # trainloopsingle(hiddenprogram, startstate, target, instructions, args.programlen, trainmaskfull, numexamples = 10, opt = Descent(.000001))
-    opt = Descent(.000001)
+    first_loss = test(
+        hiddenprogram,
+        target_program,
+        startstate,
+        instructions,
+        args.programlen,
+        trainmaskfull,
+    )
+    grads = gradient(
+        forward,
+        startstate,
+        target,
+        instructions,
+        args.programlen,
+        hiddenprogram,
+        trainmaskfull,
+    )
+    opt = Descent(0.000001)
     @showprogress for i = 1:3
         grads = gradient(
             forward,
@@ -806,14 +829,20 @@ function test_train(args)
             args.programlen,
             hiddenprogram,
             trainmaskfull,
-        )[end-1] # end-1 for hidden?
+        )[end-1]
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
     end
 
-    second_loss = test(hiddenprogram, target_program, startstate, instructions, args.programlen, trainmaskfull)
-    second_accuracy = accuracy(hiddenprogram |> device, target_program |> device, trainmask |> device)
-    @show second_loss - first_loss
+    second_loss = test(
+        hiddenprogram,
+        target_program,
+        startstate,
+        instructions,
+        args.programlen,
+        trainmaskfull,
+    )
+    @info "test train loss improvement" second_loss - first_loss
     @test second_loss < first_loss
 end
 
@@ -824,9 +853,22 @@ function test_all_gradient_single_instr(args)
 end
 
 function test_gradient_single_instr(args, instr)
-    blank_state_random = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    blank_state_random2 = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
+    blank_state_random = init_random_state(
+        args.stackdepth,
+        args.programlen,
+        allvalues,
+        args.inputlen,
+        args.outputlen,
+    )
+    blank_state_random2 = init_random_state(
+        args.stackdepth,
+        args.programlen,
+        allvalues,
+        args.inputlen,
+        args.outputlen,
+    )
+    grad_instr =
+        gradient((x, y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
     # try
     #     grad_instr = gradient((x,y) -> loss(instr(x), y), blank_state_random, blank_state_random2)
     # catch e
@@ -873,7 +915,13 @@ function test_gradient_op_probvec(args)
         sum(xnew)
     end
 
-    startstate = init_random_state(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    startstate = init_random_state(
+        args.stackdepth,
+        args.programlen,
+        allvalues,
+        args.inputlen,
+        args.outputlen,
+    )
     state, x = popfromstack(startstate)
     # grad_instr = gradient(op_prob_sum, op, x)
     grad_instr = gradient(op_prob_sum2, op, x)
@@ -893,9 +941,9 @@ function test_stackvaluetype(args)
     a = 3
     b = 5
     c = -5
-    anew = StackValue(a) 
-    bnew = StackValue(b) 
-    cnew = StackValue(c) 
+    anew = StackValue(a)
+    bnew = StackValue(b)
+    cnew = StackValue(c)
     amax = StackValue(args.maxint + 1)
     amin = StackValue(-args.maxint - 1)
     azero = StackValue(0)
