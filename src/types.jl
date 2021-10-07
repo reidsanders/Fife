@@ -20,11 +20,11 @@ end
 """
 function StackValue(x)
     if x >= args.maxint
-        return StackValue(val=0,blank=false,max=true,min=false)
+        return StackValue(val = 0, blank = false, max = true, min = false)
     elseif x <= -args.maxint
-        return StackValue(val=0,blank=false,max=false,min=true)
+        return StackValue(val = 0, blank = false, max = false, min = true)
     else
-        return StackValue(val=x,blank=false,max=false,min=false)
+        return StackValue(val = x, blank = false, max = false, min = false)
     end
 end
 
@@ -36,19 +36,19 @@ function +(x::StackValue, y::StackValue)
     if x.blank || y.blank
         return StackValue()
     elseif x.max
-        if y.min 
+        if y.min
             return StackValue(0)
         else
-            return StackValue(blank=false, max=true)
+            return StackValue(blank = false, max = true)
         end
     elseif y.max
-        if x.min 
+        if x.min
             return StackValue(0)
         else
-            return StackValue(blank=false, max=true)
+            return StackValue(blank = false, max = true)
         end
     elseif y.min || x.min
-        return StackValue(blank=false, min=true)
+        return StackValue(blank = false, min = true)
     end
 
     StackValue(x.val + y.val)
@@ -65,13 +65,13 @@ function *(x::StackValue, y::StackValue)
     if x.blank || y.blank
         return StackValue()
     elseif (x.max && y.min) || (x.min && y.max)
-        return StackValue(blank=false, min=true)
+        return StackValue(blank = false, min = true)
     elseif (x.max && y.max) || (x.min && y.min)
-        return StackValue(blank=false, max=true)
+        return StackValue(blank = false, max = true)
     elseif x.max || y.max
-        return StackValue(blank=false, max=true)
+        return StackValue(blank = false, max = true)
     elseif x.min || y.min
-        return StackValue(blank=false, min=true)
+        return StackValue(blank = false, min = true)
     end
 
     StackValue(x.val * y.val)
@@ -81,9 +81,9 @@ function *(x::Number, y::StackValue)
     if y.blank
         return StackValue()
     elseif (y.max && x > 0) || (y.min && x < 0)
-        return StackValue(blank=false, max=true)
+        return StackValue(blank = false, max = true)
     elseif (y.max && x < 0) || (y.min && x > 0)
-        return StackValue(blank=false, min=true)
+        return StackValue(blank = false, min = true)
     end
 
     StackValue(x * y.val)
@@ -111,23 +111,23 @@ function /(x::StackValue, y::StackValue)
         return StackValue(0)
     elseif y == 0
         if x > 0
-            return StackValue(blank=false, max=true)
+            return StackValue(blank = false, max = true)
         elseif x < 0
-            return StackValue(blank=false, min=true)
+            return StackValue(blank = false, min = true)
         elseif x.val == 0
             return StackValue(0)
         end
     elseif y > 0
         if x.min
-            return StackValue(blank=false, min=true)
+            return StackValue(blank = false, min = true)
         elseif x.max
-            return StackValue(blank=false, max=true)
+            return StackValue(blank = false, max = true)
         end
     elseif y < 0
         if x.min
-            return StackValue(blank=false, max=true)
+            return StackValue(blank = false, max = true)
         elseif x.max
-            return StackValue(blank=false, min=true)
+            return StackValue(blank = false, min = true)
         end
     elseif x.val == 0 #TODO Why isn't this branch being hit when both x and y == 0?
         return StackValue(0)
@@ -140,9 +140,9 @@ function /(x::Number, y::StackValue)
     if y.blank
         return StackValue()
     elseif x > 0 && y == 0
-        return StackValue(blank=false, max=true)
+        return StackValue(blank = false, max = true)
     elseif x < 0 && y == 0
-        return StackValue(blank=false, min=true)
+        return StackValue(blank = false, min = true)
     elseif x == 0 || y.max || y.min
         return StackValue(0)
     end
@@ -153,18 +153,18 @@ end
 function /(x::StackValue, y::Number)
     if x.blank
         return StackValue()
-    elseif x.max && y ≥ 0 
-        return StackValue(blank=false, max=true)
-    elseif x.min && y ≥ 0 
-        return StackValue(blank=false, min=true)
-    elseif x.max && y ≤ 0 
-        return StackValue(blank=false, min=true)
-    elseif x.min && y ≤ 0 
-        return StackValue(blank=false, max=true)
+    elseif x.max && y ≥ 0
+        return StackValue(blank = false, max = true)
+    elseif x.min && y ≥ 0
+        return StackValue(blank = false, min = true)
+    elseif x.max && y ≤ 0
+        return StackValue(blank = false, min = true)
+    elseif x.min && y ≤ 0
+        return StackValue(blank = false, max = true)
     elseif x.val > 0 && y == 0
-        return StackValue(blank=false, max=true)
+        return StackValue(blank = false, max = true)
     elseif x.val < 0 && y == 0
-        return StackValue(blank=false, min=true)
+        return StackValue(blank = false, min = true)
     end
 
     StackValue(round(x.val / y))
@@ -207,7 +207,7 @@ function convert(::Type{StackValue}, x::Number)
     StackValue(x)
 end
 
-function convert(::Type{T}, x::StackValue) where T <: Number
+function convert(::Type{T}, x::StackValue) where {T<:Number}
     T(x.val)
 end
 
@@ -219,7 +219,7 @@ function convert(::Type{CircularDeque{T}}, x::Array{T,1}) where {T}
     y
 end
 
-function convert(::Type{CircularBuffer{StackValue}}, x::CircularBuffer{T}) where T <: Number
+function convert(::Type{CircularBuffer{StackValue}}, x::CircularBuffer{T}) where {T<:Number}
     y = CircularBuffer{StackValue}(length(x))
     for el in x
         push!(y, el)

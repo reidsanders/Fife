@@ -21,9 +21,12 @@ Create state for discrete stack based vm
 """
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
-    input::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.inputlen), StackValue())
-    output::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.outputlen), StackValue())
-    stack::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.stackdepth), StackValue())
+    input::CircularBuffer{StackValue} =
+        fill!(CircularBuffer{StackValue}(args.inputlen), StackValue())
+    output::CircularBuffer{StackValue} =
+        fill!(CircularBuffer{StackValue}(args.outputlen), StackValue())
+    stack::CircularBuffer{StackValue} =
+        fill!(CircularBuffer{StackValue}(args.stackdepth), StackValue())
     variables::DefaultDict{StackValue,StackValue} =
         DefaultDict{StackValue,StackValue}(StackValue()) # StackValue instead of Int?
     ishalted::Bool = false

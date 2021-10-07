@@ -78,7 +78,7 @@ nonnumericvalues,
 allvalues,
 ishaltedvalues,
 blanks,
-blankstack, 
+blankstack,
 blankinput,
 blankoutput = create_dependent_values(args)
 
@@ -143,7 +143,8 @@ function convert_discrete_to_continuous(
     outputlen = discrete.outputlen
 
     contstate = VMState(stackdepth, programlen, allvalues, inputlen, outputlen)
-    cont_instrpointer = onehot(discrete.instrpointer, StackValue.([i for i = 1:programlen])) * 1.0f0
+    cont_instrpointer =
+        onehot(discrete.instrpointer, StackValue.([i for i = 1:programlen])) * 1.0f0
 
     discretestack = Array{Any,1}(undef, stackdepth)
     fill!(discretestack, StackValue())
@@ -169,7 +170,7 @@ function convert_discrete_to_continuous(
     discretevariables = Array{Any,1}(undef, length(allvalues))
     fill!(discretevariables, StackValue())
     for (k, v) in discrete.variables
-        discretevariables[findfirst(x->x==k, allvalues)] = v
+        discretevariables[findfirst(x -> x == k, allvalues)] = v
     end
     contvariables = onehotbatch(discretevariables, allvalues) * 1.0f0
 
@@ -203,8 +204,8 @@ function convert_continuous_to_discrete(
     #variables = onecold(contstate.stack)
 
     stack = circshift(stack, 1 - stackpointer) # Check if this actually makes sense with circshift
-    input = circshift(input, 1 - inputpointer) 
-    output = circshift(output, 1 - outputpointer) 
+    input = circshift(input, 1 - inputpointer)
+    output = circshift(output, 1 - outputpointer)
     # Dealing with blanks is tricky. It's not clear what is correct semantically
     newstack = CircularBuffer{StackValue}(size(contstate.stack)[2]) # Ugly. shouldn't be necessary, but convert doesn't recognize Int64 as Any
     for x in stack
@@ -238,10 +239,17 @@ function convert_continuous_to_discrete(
     newvariables = DefaultDict{StackValue,StackValue}(StackValue())
     # default blank? blank isn't technically in it
     # Use missing instead of blank?
-    for (i,x) in enumerate(variables)
+    for (i, x) in enumerate(variables)
         newvariables[allvalues[i]] = x
     end
-    DiscreteVMState(instrpointer = instrpointer, input = newinput, output = newoutput, stack = newstack, variables = newvariables, ishalted = ishalted)
+    DiscreteVMState(
+        instrpointer = instrpointer,
+        input = newinput,
+        output = newoutput,
+        stack = newstack,
+        variables = newvariables,
+        ishalted = ishalted,
+    )
 end
 
 function ==(x::CircularDeque, y::CircularDeque)

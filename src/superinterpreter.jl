@@ -456,7 +456,7 @@ function instr_gotoif!(
     destination = [
         [xb + yb - xb * yb]
         y[2:end] * ((1 - xb) * (1 - yb) + eps(yb)) / (1 - yb + eps(yb))
-    ] 
+    ]
     @assert sum(x) ≈ 1
     @assert sum(y) ≈ 1
 
