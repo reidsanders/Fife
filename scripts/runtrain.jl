@@ -21,15 +21,19 @@ using Fife:
     ishaltedvalues,
     blanks,
     blankstack
+
+using FifeTypes
+
 import Fife: instr_pushval!, args
 
 using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
-args = Args(inputlen = 0)
+#set inputlen
+args.inputlen = 0
 
-instr_pushval!(val::args.StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
+instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
 instructions = [
@@ -69,23 +73,13 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
 
 # Initialize
-
 trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
-# applyfullmaskprog = partial(applyfullmask, trainmaskfull)
-# applyfullmasktohidden = partial((mask, prog) -> mask .* prog, trainmaskfull)
-
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxmask(hiddenprogram, trainmaskfull) |> device
 target_program = target_program |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
-
-
-#global valhotvec = onehot(3, allvalues) * StackFloatType(1) # TEMP
-# global valhotvec = zeros(44) * 1.0f0
-# valhotvec[20] = 1.0f0
-
 
 blank_state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
@@ -96,17 +90,16 @@ check_state_asserts(blank_state)
 
 # TODO need to generate dataset of input, target
 target = runprogram(blank_state, target_program, instructions, args.max_ticks)
-# target = runprogram(blank_state, target_program, instructions, args.programlen)
 
-gradprogpart = partial(
-    gradient,
-    forward,
-    blank_state,
-    target,
-    instructions,
-    args.programlen,
-    trainmaskfull,
-) # Partial?
+# gradprogpart = partial(
+#     gradient,
+#     forward,
+#     blank_state,
+#     target,
+#     instructions,
+#     args.programlen,
+#     trainmaskfull,
+# )
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 

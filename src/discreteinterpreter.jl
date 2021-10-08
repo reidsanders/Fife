@@ -2,6 +2,12 @@ import Base: +, -, *, length, convert, ==
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 include("types.jl")
+using .FifeTypes
+import .FifeTypes: StackValue
+# Set type based on arguments
+function StackValue(x)
+    StackValue(x, args.maxint, -args.maxint)
+end
 
 """
     popfirstreplace!(x::CircularBuffer{StackValue})
@@ -21,12 +27,9 @@ Create state for discrete stack based vm
 """
 @with_kw mutable struct DiscreteVMState
     instrpointer::Int = 1
-    input::CircularBuffer{StackValue} =
-        fill!(CircularBuffer{StackValue}(args.inputlen), StackValue())
-    output::CircularBuffer{StackValue} =
-        fill!(CircularBuffer{StackValue}(args.outputlen), StackValue())
-    stack::CircularBuffer{StackValue} =
-        fill!(CircularBuffer{StackValue}(args.stackdepth), StackValue())
+    input::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.inputlen), StackValue())
+    output::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.outputlen), StackValue())
+    stack::CircularBuffer{StackValue} = fill!(CircularBuffer{StackValue}(args.stackdepth), StackValue())
     variables::DefaultDict{StackValue,StackValue} =
         DefaultDict{StackValue,StackValue}(StackValue()) # StackValue instead of Int?
     ishalted::Bool = false

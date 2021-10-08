@@ -22,6 +22,7 @@ using Parameters: @with_kw
 include("utils.jl")
 include("discreteinterpreter.jl")
 # include("types.jl")
+# using .FifeTypes
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2

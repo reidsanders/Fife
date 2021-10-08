@@ -1,6 +1,13 @@
+module FifeTypes
+
 import Base: +, -, *, /, length, convert, ==, <, >
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
+
+begin
+    export StackValue,
+    +,-,*,/,length,convert,==,<,>
+end
 
 ####################
 # StackValue  #
@@ -18,10 +25,10 @@ end
 """
     Assignment
 """
-function StackValue(x)
-    if x >= args.maxint
+function StackValue(x, maxvalue::Number, minvalue::Number)
+    if x >= maxvalue
         return StackValue(val = 0, blank = false, max = true, min = false)
-    elseif x <= -args.maxint
+    elseif x <= minvalue
         return StackValue(val = 0, blank = false, max = false, min = true)
     else
         return StackValue(val = x, blank = false, max = false, min = false)
@@ -225,4 +232,5 @@ function convert(::Type{CircularBuffer{StackValue}}, x::CircularBuffer{T}) where
         push!(y, el)
     end
     y
+end
 end
