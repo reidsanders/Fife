@@ -49,7 +49,7 @@ function create_dependent_values(args)
         @info "Training on CPU"
     end
     # numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
-    numericvalues = [i for i = -args.maxint:args.maxint]
+    numericvalues = StackValue.([i for i = -args.maxint:args.maxint])
     nonnumericvalues = [StackValue()]
     allvalues = StackValue.([nonnumericvalues; numericvalues])
     ishaltedvalues = [false, true] #TODO StackValue?
@@ -126,7 +126,8 @@ begin
         test,
         trainloop,
         forward,
-        Args
+        Args,
+        StackValue
 end
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
