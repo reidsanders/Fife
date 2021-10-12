@@ -32,49 +32,78 @@ using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
+args.programlen = 5
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
 
+# instructions = [
+#     [
+#         instr_pass!,
+#         instr_halt!,
+#         # instr_pushval!,
+#         # instr_pop!,
+#         instr_dup!,
+#         instr_swap!,
+#         instr_add!,
+#         instr_read!,
+#         instr_write!,
+#         # instr_sub!,
+#         # instr_mult!,
+#         # instr_div!,
+#         # instr_not!,
+#         # instr_and!,
+#         # instr_goto!,
+#         # instr_gotoif!,
+#         # instr_iseq!,
+#         # instr_isgt!,
+#         # instr_isge!,
+#         # instr_store!,
+#         # instr_load!
+#     ]
+#     val_instructions
+# ]
+
 instructions = [
-    [
-        instr_pass!,
-        instr_halt!,
-        # instr_pushval!,
-        # instr_pop!,
-        instr_dup!,
-        instr_swap!,
-        instr_add!,
-        instr_read!,
-        instr_write!,
-        # instr_sub!,
-        # instr_mult!,
-        # instr_div!,
-        # instr_not!,
-        # instr_and!,
-        # instr_goto!,
-        # instr_gotoif!,
-        # instr_iseq!,
-        # instr_isgt!,
-        # instr_isge!,
-        # instr_store!,
-        # instr_load!
-    ]
-    val_instructions
+    instr_pass!,
+    instr_halt!,
+    # instr_pushval!,
+    # instr_pop!,
+    instr_dup!,
+    instr_swap!,
+    instr_add!,
+    instr_read!,
+    instr_write!,
+    # instr_sub!,
+    # instr_mult!,
+    # instr_div!,
+    # instr_not!,
+    # instr_and!,
+    # instr_goto!,
+    # instr_gotoif!,
+    # instr_iseq!,
+    # instr_isgt!,
+    # instr_isge!,
+    # instr_store!,
+    # instr_load!
 ]
+
 
 
 num_instructions = length(instructions)
 
-discrete_program = create_random_discrete_program(args.programlen, instructions)
-discrete_program[end] = instr_write!
-discrete_program[1] = instr_read!
-#TODO add a write! at end? or scattered throughout
+# discrete_program = create_random_discrete_program(args.programlen, instructions)
+# discrete_program[end] = instr_write!
+# discrete_program[1] = instr_read!
+
+discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
 target_program = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(target_program)
 hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
+#TODO run multiple inputs
+#TODO define some basic programs to try instead of randomly
 
 # Initialize
 trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
@@ -138,7 +167,7 @@ first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask
     instructions,
     args.programlen,
     trainmaskfull,
-    numexamples = 1000,
+    numexamples = 30,
     opt = Descent(args.lr)
 )
 
