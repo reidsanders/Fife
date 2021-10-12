@@ -368,14 +368,14 @@ end
 function test(
     hiddenprogram,
     targetprogram,
-    blank_state,
+    startstate,
     instructions,
     programlen,
     trainmaskfull,
 )
     program = softmaxmask(hiddenprogram, trainmaskfull)
-    target = runprogram(blank_state, targetprogram, instructions, programlen)
-    prediction = runprogram(blank_state, program, instructions, programlen)
+    target = runprogram(startstate, targetprogram, instructions, programlen)
+    prediction = runprogram(startstate, program, instructions, programlen)
     loss(prediction, target)
 end
 

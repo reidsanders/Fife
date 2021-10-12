@@ -112,7 +112,7 @@ trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> devic
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxmask(hiddenprogram, trainmaskfull) |> device
-target_program = target_program |> device
+targetprogram = target_program |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
 state =
@@ -133,7 +133,7 @@ startstate = VMState(
 check_state_asserts(startstate)
 
 # TODO need to generate dataset of input, target
-target = runprogram(startstate, target_program, instructions, args.max_ticks)
+target = runprogram(startstate, targetprogram, instructions, args.max_ticks)
 
 # gradprogpart = partial(
 #     gradient,
@@ -154,13 +154,13 @@ first_program = deepcopy(program)
 ######################################
 first_loss = test(
     hiddenprogram,
-    target_program,
+    targetprogram,
     startstate,
     instructions,
     args.programlen,
     trainmaskfull,
 )
-first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
+first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 
 @time trainloopsingle(
     hiddenprogram,
@@ -169,19 +169,19 @@ first_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask
     instructions,
     args.programlen,
     trainmaskfull,
-    numexamples = 30,
+    numexamples = 1000,
     opt = Descent(args.lr)
 )
 
 second_loss = test(
     hiddenprogram,
-    target_program,
+    targetprogram,
     startstate,
     instructions,
     args.programlen,
     trainmaskfull,
 )
-second_accuracy = accuracy(hiddenprogram |> cpu, target_program |> cpu, trainmask |> cpu)
+second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
