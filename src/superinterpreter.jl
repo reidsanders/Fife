@@ -908,6 +908,19 @@ function check_state_asserts(state::VMState)
     for col in eachcol(state.variables)
         @assert sum(col) ≈ 1.0
     end
+    for col in eachcol(state.input)
+        @assert sum(col) ≈ 1.0
+    end
+    for col in eachcol(state.output)
+        @assert sum(col) ≈ 1.0
+    end
+    @assert all(x -> x >= 0, state.stack)
+    @assert all(x -> x >= 0, state.stackpointer)
+    @assert all(x -> x >= 0, state.instrpointer)
+    @assert all(x -> x >= 0, state.variables)
+    @assert all(x -> x >= 0, state.input)
+    @assert all(x -> x >= 0, state.output)
+    @assert all(x -> x >= 0, state.ishalted)
 end
 
 function assert_no_nans(state::VMState)
@@ -944,7 +957,7 @@ end
 
 function main()
     state = init_state(stackdepth, programlen)
-    state = runprogram(state, program, instructions, max_ticks)
+    state = runprogram(state, program, instructions, maxticks)
     collapsed_program = onecold(program)
 end
 

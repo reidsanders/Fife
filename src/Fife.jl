@@ -32,7 +32,7 @@ include("discreteinterpreter.jl")
     programlen::Int = 13
     inputlen::Int = 7
     outputlen::Int = 8
-    max_ticks::Int = 5
+    maxticks::Int = 5
     maxint::Int = 20
     trainsetsize::Int = 10
     usegpu::Bool = false
@@ -370,12 +370,12 @@ function test(
     targetprogram,
     startstate,
     instructions,
-    programlen,
+    maxticks,
     trainmaskfull,
 )
     program = softmaxmask(hiddenprogram, trainmaskfull)
-    target = runprogram(startstate, targetprogram, instructions, programlen)
-    prediction = runprogram(startstate, program, instructions, programlen)
+    target = runprogram(startstate, targetprogram, instructions, maxticks)
+    prediction = runprogram(startstate, program, instructions, maxticks)
     loss(prediction, target)
 end
 

@@ -33,7 +33,7 @@ using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
 args.programlen = 5
-args.max_ticks = 10
+args.maxticks = 10
 args.lr = 1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
@@ -133,7 +133,7 @@ startstate = VMState(
 check_state_asserts(startstate)
 
 # TODO need to generate dataset of input, target
-target = runprogram(startstate, targetprogram, instructions, args.max_ticks)
+target = runprogram(startstate, targetprogram, instructions, args.maxticks)
 
 # gradprogpart = partial(
 #     gradient,
@@ -178,7 +178,7 @@ second_loss = test(
     targetprogram,
     startstate,
     instructions,
-    args.programlen,
+    args.maxticks,
     trainmaskfull,
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
