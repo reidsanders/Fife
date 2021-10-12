@@ -26,7 +26,7 @@ include("discreteinterpreter.jl")
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2
-    lr::Float64 = 1e3
+    lr::Float64 = 1e-3
     epochs::Int = 2
     stackdepth::Int = 11
     programlen::Int = 13

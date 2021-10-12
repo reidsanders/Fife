@@ -1031,5 +1031,6 @@ end
 @testset "Train and Gradient" begin
     test_all_gradient_single_instr(args)
     test_gradient_op_probvec(args)
+    # args.programlen = 5
     test_train(args)
 end
