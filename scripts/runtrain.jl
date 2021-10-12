@@ -34,6 +34,7 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
 args.programlen = 5
 args.max_ticks = 10
+args.lr = 1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
