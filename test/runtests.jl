@@ -1032,5 +1032,8 @@ end
     test_all_gradient_single_instr(args)
     test_gradient_op_probvec(args)
     # args.programlen = 5
+    # args.programlen = 5
+    # args.maxticks = 10
+    # args.lr = .1
     test_train(args)
 end

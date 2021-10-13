@@ -405,7 +405,6 @@ function trainloopsingle(
             hiddenprogram,
             trainmaskfull,
         )[end-1] # end-1 for hidden?
-        # grads = grad(forward, startstate, target, instructions, programlen, hiddenprogram, trainmaskfull)
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
     end
