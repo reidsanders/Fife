@@ -373,14 +373,14 @@ function test(
     maxticks,
     trainmaskfull,
 )
-    program = softmaxmask(hiddenprogram, trainmaskfull)
+    program = softmaxmask(trainmaskfull, hiddenprogram)
     target = runprogram(startstate, targetprogram, instructions, maxticks)
     prediction = runprogram(startstate, program, instructions, maxticks)
     loss(prediction, target)
 end
 
 function forward(state, target, instructions, programlen, hiddenprogram, trainmaskfull)
-    program = softmaxmask(hiddenprogram, trainmaskfull)
+    program = softmaxmask(trainmaskfull, hiddenprogram)
     pred = runprogram(state, program, instructions, programlen)
     loss(pred, target)
 end

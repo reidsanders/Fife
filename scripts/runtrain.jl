@@ -111,7 +111,7 @@ hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
 
 hiddenprogram = hiddenprogram |> device
-program = softmaxmask(hiddenprogram, trainmaskfull) |> device
+program = softmaxmask(trainmaskfull, hiddenprogram) |> device
 targetprogram = target_program |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device

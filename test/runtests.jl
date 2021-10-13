@@ -754,7 +754,7 @@ function test_super_run_program(args)
     trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
 
     hiddenprogram = hiddenprogram |> device
-    program = softmaxmask(hiddenprogram, trainmaskfull) |> device
+    program = softmaxmask(trainmaskfull, hiddenprogram) |> device
     target_program = target_program |> device
     hiddenprogram = hiddenprogram |> device
     trainmask = trainmask |> device
