@@ -103,20 +103,13 @@ startstate = VMState(
     state.ishalted,
 )
 
+inputstates = createinputstates(startstate, num = 20)
+
+
 check_state_asserts(startstate)
 
 # TODO need to generate dataset of input, target
 target = runprogram(startstate, targetprogram, instructions, args.maxticks)
-
-# gradprogpart = partial(
-#     gradient,
-#     forward,
-#     startstate,
-#     target,
-#     instructions,
-#     args.programlen,
-#     trainmaskfull,
-# )
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
@@ -135,16 +128,27 @@ first_loss = test(
 )
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 
-@time trainloopsingle(
+@time trainbatch(
     hiddenprogram,
-    startstate,
     target,
     instructions,
     args.programlen,
+    inputstates,
     trainmaskfull,
     numexamples = 10000,
     opt = Descent(args.lr)
 )
+
+# @time trainloopsingle(
+#     hiddenprogram,
+#     startstate,
+#     target,
+#     instructions,
+#     args.programlen,
+#     trainmaskfull,
+#     numexamples = 10000,
+#     opt = Descent(args.lr)
+# )
 
 second_loss = test(
     hiddenprogram,

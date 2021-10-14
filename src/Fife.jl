@@ -392,7 +392,7 @@ function forward(state, target, instructions, programlen, hiddenprogram, trainma
     loss(pred, target)
 end
 
-function trainloopsingle(
+function trainsingle(
     hiddenprogram,
     startstate,
     target,
@@ -414,6 +414,54 @@ function trainloopsingle(
         )[end-1] # end-1 for hidden?
         grads = grads .* trainmaskfull
         Optimise.update!(opt, hiddenprogram, grads)
+    end
+end
+
+function createinputstates(state; num = 10)
+    rand(length(state.inputpointer), 1)
+    inputstates = []
+    for input in inputs
+        state = VMState(
+            state.instrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            fillinput(input, length(state.inputpointer)),
+            state.output,
+            state.stack,
+            state.variables,
+            state.ishalted,
+        )
+        push!(inputstates, state)
+    end
+    inputstates
+end
+
+function trainbatch(
+    hiddenprogram,
+    target,
+    instructions,
+    programlen,
+    inputstates,
+    trainmaskfull;
+    numexamples = 4,
+    batchsize = 4,
+    opt = Descent(0.1),
+)
+    for startstate in inputstates
+        @showprogress for i = 1:numexamples
+            grads = gradient(
+                forward,
+                startstate,
+                target,
+                instructions,
+                programlen,
+                hiddenprogram,
+                trainmaskfull,
+            )[end-1]
+            grads = grads .* trainmaskfull
+            Optimise.update!(opt, hiddenprogram, grads)
+        end
     end
 end
 end
