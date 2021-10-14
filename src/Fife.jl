@@ -418,8 +418,9 @@ function trainsingle(
 end
 
 function createinputstates(state; num = 10)
-    rand(length(state.inputpointer), 1)
+    inputs = [rand(length(state.inputpointer), 1) for i = 1:num]
     inputstates = []
+
     for input in inputs
         state = VMState(
             state.instrpointer,

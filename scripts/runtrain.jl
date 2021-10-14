@@ -21,7 +21,9 @@ using Fife:
     ishaltedvalues,
     blanks,
     blankstack,
-    trainloopsingle
+    trainsingle,
+    trainbatch,
+    createinputstates
 
 # include("../src/types.jl")
 # using .FifeTypes
@@ -34,7 +36,7 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
 args.programlen = 5
 args.maxticks = 10
-args.lr = 20
+args.lr = 10
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -103,7 +105,7 @@ startstate = VMState(
     state.ishalted,
 )
 
-inputstates = createinputstates(startstate, num = 20)
+# inputstates = createinputstates(startstate, num = 20)
 
 
 check_state_asserts(startstate)
@@ -128,27 +130,52 @@ first_loss = test(
 )
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 
-@time trainbatch(
-    hiddenprogram,
-    target,
-    instructions,
-    args.programlen,
-    inputstates,
-    trainmaskfull,
-    numexamples = 10000,
-    opt = Descent(args.lr)
-)
-
-# @time trainloopsingle(
+# @time trainbatch(
 #     hiddenprogram,
-#     startstate,
 #     target,
 #     instructions,
 #     args.programlen,
+#     inputstates,
 #     trainmaskfull,
-#     numexamples = 10000,
+#     numexamples = 10,
 #     opt = Descent(args.lr)
 # )
+
+@time trainsingle(
+    hiddenprogram,
+    startstate,
+    target,
+    instructions,
+    args.programlen,
+    trainmaskfull,
+    numexamples = 2e5,
+    opt = Descent(args.lr)
+)
+
+second_loss = test(
+    hiddenprogram,
+    targetprogram,
+    startstate,
+    instructions,
+    args.maxticks,
+    trainmaskfull,
+)
+second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
+@show second_loss - first_loss
+@show first_accuracy
+@show second_accuracy
+
+# Run again
+@time trainsingle(
+    hiddenprogram,
+    startstate,
+    target,
+    instructions,
+    args.programlen,
+    trainmaskfull,
+    numexamples = 2e5,
+    opt = Descent(1)
+)
 
 second_loss = test(
     hiddenprogram,
