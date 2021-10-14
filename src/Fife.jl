@@ -293,10 +293,6 @@ function create_random_discrete_program(len, instructions)
     program = [rand(instructions) for i = 1:len]
 end
 
-function create_random_inputs(len, instructions)
-    program = [rand(instructions) for i = 1:len]
-end
-
 function create_trainable_mask(programlen, inputlen)
     mask = falses(programlen)
     mask[inputlen+1:end] .= true
@@ -353,9 +349,6 @@ end
 # end
 
 function loss(ŷ::VMState, y::VMState)
-    # TODO top of stack super position actual stack. add tiny amount of instrpointer just because
-    # Technically current instruction doesn't really matter
-    # zygote doesn't like variables not being used in loss
     crossentropy(ŷ.output, y.output)
 end
 
@@ -366,6 +359,20 @@ function accuracy(hidden, target, trainmask)
 end
 
 function test(
+    hiddenprogram,
+    targetprogram,
+    startstate,
+    instructions,
+    maxticks,
+    trainmaskfull,
+)
+    program = softmaxmask(trainmaskfull, hiddenprogram)
+    target = runprogram(startstate, targetprogram, instructions, maxticks)
+    prediction = runprogram(startstate, program, instructions, maxticks)
+    loss(prediction, target)
+end
+
+function testoninputs(
     hiddenprogram,
     targetprogram,
     startstate,

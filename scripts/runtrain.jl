@@ -34,37 +34,10 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
 args.programlen = 5
 args.maxticks = 10
-args.lr = 1
+args.lr = 20
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
-
-# instructions = [
-#     [
-#         instr_pass!,
-#         instr_halt!,
-#         # instr_pushval!,
-#         # instr_pop!,
-#         instr_dup!,
-#         instr_swap!,
-#         instr_add!,
-#         instr_read!,
-#         instr_write!,
-#         # instr_sub!,
-#         # instr_mult!,
-#         # instr_div!,
-#         # instr_not!,
-#         # instr_and!,
-#         # instr_goto!,
-#         # instr_gotoif!,
-#         # instr_iseq!,
-#         # instr_isgt!,
-#         # instr_isge!,
-#         # instr_store!,
-#         # instr_load!
-#     ]
-#     val_instructions
-# ]
 
 instructions = [
     instr_pass!,
@@ -94,11 +67,11 @@ instructions = [
 
 num_instructions = length(instructions)
 
-discrete_program = create_random_discrete_program(args.programlen, instructions)
-discrete_program[end] = instr_write!
-discrete_program[1] = instr_read!
+# discrete_program = create_random_discrete_program(args.programlen, instructions)
+# discrete_program[end] = instr_write!
+# discrete_program[1] = instr_read!
 
-# discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
 target_program = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(target_program)
@@ -169,7 +142,7 @@ first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask 
     instructions,
     args.programlen,
     trainmaskfull,
-    numexamples = 1000,
+    numexamples = 10000,
     opt = Descent(args.lr)
 )
 
