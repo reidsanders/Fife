@@ -127,7 +127,9 @@ begin
         trainloop,
         forward,
         Args,
-        StackValue
+        StackValue,
+        createinputstates,
+        trainbatch
 end
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -418,7 +420,7 @@ function trainsingle(
 end
 
 function createinputstates(state; num = 10)
-    inputs = [rand(length(state.inputpointer), 1) for i = 1:num]
+    inputs = [rand(1:size(state.stack)[1], length(state.inputpointer)) for i = 1:num]
     inputstates = []
 
     for input in inputs
@@ -445,23 +447,26 @@ function trainbatch(
     programlen,
     inputstates,
     trainmaskfull;
-    numexamples = 4,
     batchsize = 4,
+    trainsize = 1000,
     opt = Descent(0.1),
 )
-    for startstate in inputstates
-        @showprogress for i = 1:numexamples
-            grads = gradient(
-                forward,
-                startstate,
-                target,
-                instructions,
-                programlen,
-                hiddenprogram,
-                trainmaskfull,
-            )[end-1]
-            grads = grads .* trainmaskfull
+    grads = similar(hiddenprogram)
+    grads .= 0
+    @showprogress for (i, startstate) in enumerate(inputstates)
+        grads = grads .+ gradient(
+            forward,
+            startstate,
+            target,
+            instructions,
+            programlen,
+            hiddenprogram,
+            trainmaskfull,
+        )[end-1]
+        grads = grads .* trainmaskfull
+        if i % batchsize == 0 && i != 0
             Optimise.update!(opt, hiddenprogram, grads)
+            grads .= 0
         end
     end
 end

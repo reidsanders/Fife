@@ -104,8 +104,9 @@ startstate = VMState(
     state.variables,
     state.ishalted,
 )
+discrete_startstate = convert_continuous_to_discrete(startstate)
 
-# inputstates = createinputstates(startstate, num = 20)
+inputstates = createinputstates(startstate, num = 1000)
 
 
 check_state_asserts(startstate)
@@ -130,52 +131,27 @@ first_loss = test(
 )
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 
-# @time trainbatch(
-#     hiddenprogram,
-#     target,
-#     instructions,
-#     args.programlen,
-#     inputstates,
-#     trainmaskfull,
-#     numexamples = 10,
-#     opt = Descent(args.lr)
-# )
-
-@time trainsingle(
+@time trainbatch(
     hiddenprogram,
-    startstate,
     target,
     instructions,
     args.programlen,
+    inputstates,
     trainmaskfull,
-    numexamples = 2e5,
+    batchsize = 10,
     opt = Descent(args.lr)
 )
 
-second_loss = test(
-    hiddenprogram,
-    targetprogram,
-    startstate,
-    instructions,
-    args.maxticks,
-    trainmaskfull,
-)
-second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
-@show second_loss - first_loss
-@show first_accuracy
-@show second_accuracy
-
-# Run again
-@time trainsingle(
-    hiddenprogram,
-    startstate,
-    target,
-    instructions,
-    args.programlen,
-    trainmaskfull,
-    numexamples = 2e5,
-    opt = Descent(1)
-)
+# @time trainsingle(
+#     hiddenprogram,
+#     startstate,
+#     target,
+#     instructions,
+#     args.programlen,
+#     trainmaskfull,
+#     numexamples = 100,
+#     opt = Descent(args.lr)
+# )
 
 second_loss = test(
     hiddenprogram,
