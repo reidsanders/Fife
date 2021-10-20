@@ -354,6 +354,10 @@ function loss(ŷ::VMState, y::VMState)
     crossentropy(ŷ.output, y.output)
 end
 
+function accuracy(hidden, target, trainmask)
+    samemax = onecold(hidden) .== onecold(target)
+    result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
+end
 
 function accuracy(hidden, target, trainmask)
     samemax = onecold(hidden) .== onecold(target)

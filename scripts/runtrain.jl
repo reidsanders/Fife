@@ -106,7 +106,7 @@ startstate = VMState(
 )
 discrete_startstate = convert_continuous_to_discrete(startstate)
 
-inputstates = createinputstates(startstate, num = 1000)
+inputstates = createinputstates(startstate, num = 100)
 
 
 check_state_asserts(startstate)
