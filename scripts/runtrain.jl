@@ -104,15 +104,16 @@ startstate = VMState(
     state.variables,
     state.ishalted,
 )
-discrete_startstate = convert_continuous_to_discrete(startstate)
+discretestartstate = convert_continuous_to_discrete(startstate)
 
-inputstates = createinputstates(startstate, num = 100)
-
+inputstates = createinputstates(startstate, num = 10000)
+discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
 check_state_asserts(startstate)
 
 # TODO need to generate dataset of input, target
 target = runprogram(startstate, targetprogram, instructions, args.maxticks)
+discretetarget = runprogram(discretestartstate, discrete_program, args.maxticks)
 
 first_program = deepcopy(program)
 # opt = ADAM(0.002) 
@@ -130,6 +131,7 @@ first_loss = test(
     trainmaskfull,
 )
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
+first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
 
 @time trainbatch(
     hiddenprogram,
@@ -162,6 +164,9 @@ second_loss = test(
     trainmaskfull,
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
+second_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
+@show first_exampleaccuracy
+@show second_exampleaccuracy

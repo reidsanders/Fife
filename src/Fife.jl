@@ -32,7 +32,7 @@ include("discreteinterpreter.jl")
     programlen::Int = 13
     inputlen::Int = 7
     outputlen::Int = 8
-    maxticks::Int = 5
+    maxticks::Int = 100
     maxint::Int = 20
     trainsetsize::Int = 10
     usegpu::Bool = false
@@ -129,6 +129,7 @@ begin
         Args,
         StackValue,
         createinputstates,
+        accuracyonexamples,
         trainbatch
 end
 
@@ -331,24 +332,27 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples = 16)
     variablemaskeds
 end
 
-function runprogram(state, program, instructions, ticks)
-    for i = 1:ticks
+function runprogram(state::VMState, program::Array, instructions::Vector{Function}, maxticks::Int)
+    for i = 1:maxticks
         state = super_step(state, program, instructions)
-        # assert_no_nans(state)
     end
     state
 end
 
-# function loss(ŷ, y)
-#     # TODO top of stack super position actual stack. add tiny amount of instrpointer just because
-#     # Technically current instruction doesn't really matter
-#     # zygote doesn't like variables not being used in loss
-#     crossentropy(ŷ.stackpointer, y.stackpointer) +
-#     crossentropy(ŷ.instrpointer, y.instrpointer) +
-#     crossentropy(ŷ.stack, y.stack) +
-#     crossentropy(ŷ.variables, y.variables) +
-#     crossentropy(ŷ.ishalted, y.ishalted)
-# end
+function runprogram(state::DiscreteVMState, program::Array{Function}, maxticks::Int)
+    for i in 1:maxticks
+        runnextinstr(state, program)
+        if state.ishalted
+            break
+        end
+    end
+    state
+end
+
+function runnextinstr(state::DiscreteVMState, program)
+    instr = program[state.instrpointer]
+    instr(state)
+end
 
 function loss(ŷ::VMState, y::VMState)
     crossentropy(ŷ.output, y.output)
@@ -359,9 +363,18 @@ function accuracy(hidden, target, trainmask)
     result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
-function accuracy(hidden, target, trainmask)
-    samemax = onecold(hidden) .== onecold(target)
-    result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
+function accuracyonexamples(hidden, target, instructions, examples, maxticks)
+    predprogram = instructions[onecold(hidden)]
+    targetprogram = instructions[onecold(target)]
+    correctexamples = []
+    for example in examples
+        targetexample = deepcopy(example)
+        predexample = deepcopy(example)
+        runprogram(targetexample, targetprogram, maxticks)
+        runprogram(predexample, predprogram, maxticks)
+        push!(correctexamples, predexample.output == targetexample)
+    end
+    sum(correctexamples) / length(examples)
 end
 
 function test(
@@ -378,19 +391,19 @@ function test(
     loss(prediction, target)
 end
 
-function testoninputs(
-    hiddenprogram,
-    targetprogram,
-    startstate,
-    instructions,
-    maxticks,
-    trainmaskfull,
-)
-    program = softmaxmask(trainmaskfull, hiddenprogram)
-    target = runprogram(startstate, targetprogram, instructions, maxticks)
-    prediction = runprogram(startstate, program, instructions, maxticks)
-    loss(prediction, target)
-end
+# function testoninputs(
+#     hiddenprogram,
+#     targetprogram,
+#     startstate,
+#     instructions,
+#     maxticks,
+#     trainmaskfull,
+# )
+#     program = softmaxmask(trainmaskfull, hiddenprogram)
+#     target = runprogram(startstate, targetprogram, instructions, maxticks)
+#     prediction = runprogram(startstate, program, instructions, maxticks)
+#     loss(prediction, target)
+# end
 
 function forward(state, target, instructions, programlen, hiddenprogram, trainmaskfull)
     program = softmaxmask(trainmaskfull, hiddenprogram)
