@@ -364,6 +364,7 @@ function accuracy(hidden, target, trainmask)
 end
 
 function accuracyonexamples(hidden, target, instructions, examples, maxticks)
+    # TODO does this need softmaxmask?
     predprogram = instructions[onecold(hidden)]
     targetprogram = instructions[onecold(target)]
     correctexamples = []
@@ -391,23 +392,57 @@ function test(
     loss(prediction, target)
 end
 
-# function testoninputs(
-#     hiddenprogram,
-#     targetprogram,
-#     startstate,
-#     instructions,
-#     maxticks,
-#     trainmaskfull,
-# )
-#     program = softmaxmask(trainmaskfull, hiddenprogram)
-#     target = runprogram(startstate, targetprogram, instructions, maxticks)
-#     prediction = runprogram(startstate, program, instructions, maxticks)
-#     loss(prediction, target)
-# end
+function testoninputs(
+    hiddenprogram,
+    inputstates,
+    targetstates,
+    instructions,
+    maxticks,
+    trainmaskfull,
+)
+    @showprogress for (i, startstate) in enumerate(inputstates)
+        forward(
+            forward,
+            startstate,
+            targetstates[i], #TODO awkward
+            instructions,
+            programlen,
+            hiddenprogram,
+            trainmaskfull,
+        )
+        grads = grads .+ gradient(
+            forward,
+            startstate,
+            targetstates[i], #TODO awkward
+            instructions,
+            programlen,
+            hiddenprogram,
+            trainmaskfull,
+        )[end-1]
+        grads = grads .* trainmaskfull
+        if i % batchsize == 0 && i != 0
+            Optimise.update!(opt, hiddenprogram, grads)
+            grads .= 0
+        end
+    end
+    # TODO get return loss from forward and log
+    #TODO pass test / val sets as well?
+    loss = test(
+        hiddenprogram,
+        targetprogram,
+        inputstates[1],
+        instructions,
+        maxticks,
+        trainmaskfull,
+    )
+    target = runprogram(startstate, targetprogram, instructions, maxticks)
+    prediction = runprogram(startstate, program, instructions, maxticks)
+    loss(prediction, target)
+end
 
-function forward(state, target, instructions, programlen, hiddenprogram, trainmaskfull)
+function forward(state, target, instructions, maxticks, hiddenprogram, trainmaskfull)
     program = softmaxmask(trainmaskfull, hiddenprogram)
-    pred = runprogram(state, program, instructions, programlen)
+    pred = runprogram(state, program, instructions, maxticks)
     loss(pred, target)
 end
 
@@ -459,32 +494,45 @@ end
 
 function trainbatch(
     hiddenprogram,
-    target,
     instructions,
-    programlen,
+    maxticks,
     inputstates,
+    targetstates,
     trainmaskfull;
     batchsize = 4,
-    trainsize = 1000,
+    epochs = 5,
     opt = Descent(0.1),
 )
     grads = similar(hiddenprogram)
     grads .= 0
-    @showprogress for (i, startstate) in enumerate(inputstates)
-        grads = grads .+ gradient(
-            forward,
-            startstate,
-            target,
-            instructions,
-            programlen,
-            hiddenprogram,
-            trainmaskfull,
-        )[end-1]
-        grads = grads .* trainmaskfull
-        if i % batchsize == 0 && i != 0
-            Optimise.update!(opt, hiddenprogram, grads)
-            grads .= 0
+    @showprogress for epoch in 1:epochs
+        @showprogress for (i, startstate) in enumerate(inputstates)
+            grads = grads .+ gradient(
+                forward,
+                startstate,
+                targetstates[i], #TODO awkward
+                instructions,
+                maxticks,
+                hiddenprogram,
+                trainmaskfull,
+            )[end-1]
+            grads = grads .* trainmaskfull
+            if i % batchsize == 0 && i != 0
+                Optimise.update!(opt, hiddenprogram, grads)
+                grads .= 0
+            end
         end
+        # TODO get return loss from forward and log
+        #TODO pass test / val sets as well?
+        loss = test(
+            hiddenprogram,
+            targetprogram,
+            inputstates[1],
+            instructions,
+            maxticks,
+            trainmaskfull,
+        )
+        @info "epoch: $(epoch) loss: $(loss)"
     end
 end
 end

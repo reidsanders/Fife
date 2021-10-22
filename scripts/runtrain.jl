@@ -36,7 +36,7 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient
 
 args.programlen = 5
 args.maxticks = 10
-args.lr = 10
+args.lr = .1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -74,9 +74,9 @@ num_instructions = length(instructions)
 # discrete_program[1] = instr_read!
 
 discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
-target_program = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
+targetprogram = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
-hiddenprogram = deepcopy(target_program)
+hiddenprogram = deepcopy(targetprogram)
 hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
 #TODO run multiple inputs
@@ -87,7 +87,7 @@ trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> devic
 
 hiddenprogram = hiddenprogram |> device
 program = softmaxmask(trainmaskfull, hiddenprogram) |> device
-targetprogram = target_program |> device
+targetprogram = targetprogram |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
 state =
@@ -106,18 +106,14 @@ startstate = VMState(
 )
 discretestartstate = convert_continuous_to_discrete(startstate)
 
-inputstates = createinputstates(startstate, num = 10000)
+inputstates = createinputstates(startstate, num = 100)
+targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
+# datastates = [(inputstate, targetstate) for (i,)]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
 check_state_asserts(startstate)
 
-# TODO need to generate dataset of input, target
-target = runprogram(startstate, targetprogram, instructions, args.maxticks)
-discretetarget = runprogram(discretestartstate, discrete_program, args.maxticks)
-
 first_program = deepcopy(program)
-# opt = ADAM(0.002) 
-# opt = Descent(0.001)
 
 ######################################
 # runprogram program train
@@ -135,25 +131,16 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
 
 @time trainbatch(
     hiddenprogram,
-    target,
     instructions,
     args.programlen,
+    args.maxticks,
     inputstates,
+    targetstates,
     trainmaskfull,
     batchsize = 10,
-    opt = Descent(args.lr)
+    epochs = 10,
+    opt = ADAM(args.lr)
 )
-
-# @time trainsingle(
-#     hiddenprogram,
-#     startstate,
-#     target,
-#     instructions,
-#     args.programlen,
-#     trainmaskfull,
-#     numexamples = 100,
-#     opt = Descent(args.lr)
-# )
 
 second_loss = test(
     hiddenprogram,
