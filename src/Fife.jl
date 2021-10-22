@@ -482,7 +482,7 @@ function trainbatch(
     grads = similar(hiddenprogram)
     grads .= 0
     for epoch in 1:epochs
-        # @showprogress for (i, startstate) in enumerate(inputstates)
+        progressbar = Progress(length(inputstates))
         Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
             grads = grads .+ gradient(
                 forward,
@@ -498,6 +498,7 @@ function trainbatch(
                 Optimise.update!(opt, hiddenprogram, grads)
                 grads .= 0
             end
+            next!(progressbar)
         end
         loss = testoninputs(
             hiddenprogram,
