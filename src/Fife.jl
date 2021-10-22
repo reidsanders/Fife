@@ -482,8 +482,8 @@ function trainbatch(
     grads = similar(hiddenprogram)
     grads .= 0
     for epoch in 1:epochs
-        @showprogress for (i, startstate) in enumerate(inputstates)
-            # Threads.@threads 
+        # @showprogress for (i, startstate) in enumerate(inputstates)
+        Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
             grads = grads .+ gradient(
                 forward,
                 startstate,
