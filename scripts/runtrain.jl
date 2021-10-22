@@ -106,7 +106,7 @@ startstate = VMState(
 )
 discretestartstate = convert_continuous_to_discrete(startstate)
 
-inputstates = createinputstates(startstate, num = 100)
+inputstates = createinputstates(startstate, num = 500)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 # datastates = [(inputstate, targetstate) for (i,)]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
@@ -118,12 +118,12 @@ first_program = deepcopy(program)
 ######################################
 # runprogram program train
 ######################################
-first_loss = test(
+first_loss = testoninputs(
     hiddenprogram,
-    targetprogram,
-    startstate,
+    inputstates,
+    targetstates,
     instructions,
-    args.programlen,
+    maxticks,
     trainmaskfull,
 )
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
@@ -137,16 +137,16 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     targetstates,
     trainmaskfull,
     batchsize = 10,
-    epochs = 3,
+    epochs = 10,
     opt = ADAM(args.lr)
 )
 
-second_loss = test(
+second_loss = testoninputs(
     hiddenprogram,
-    targetprogram,
-    startstate,
+    inputstates,
+    targetstates,
     instructions,
-    args.maxticks,
+    maxticks,
     trainmaskfull,
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)

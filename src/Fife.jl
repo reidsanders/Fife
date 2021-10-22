@@ -496,12 +496,10 @@ function trainbatch(
                 grads .= 0
             end
         end
-        # TODO get return loss from forward and log
-        #TODO pass test / val sets as well?
         loss = testoninputs(
             hiddenprogram,
-            inputstates,
-            targetstates,
+            inputstates[1:100],
+            targetstates[1:100],
             instructions,
             maxticks,
             trainmaskfull,
