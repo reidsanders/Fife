@@ -478,10 +478,12 @@ function trainbatch(
     epochs = 5,
     opt = Descent(0.1),
 )
+    testlength = min(length(inputstates), 100)
     grads = similar(hiddenprogram)
     grads .= 0
     for epoch in 1:epochs
         @showprogress for (i, startstate) in enumerate(inputstates)
+            # Threads.@threads 
             grads = grads .+ gradient(
                 forward,
                 startstate,
@@ -499,8 +501,8 @@ function trainbatch(
         end
         loss = testoninputs(
             hiddenprogram,
-            inputstates[1:100],
-            targetstates[1:100],
+            inputstates[1:testlength],
+            targetstates[1:testlength],
             instructions,
             maxticks,
             trainmaskfull,
