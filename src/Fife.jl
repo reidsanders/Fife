@@ -124,6 +124,7 @@ begin
         loss,
         accuracy,
         test,
+        testoninputs,
         trainloop,
         forward,
         Args,

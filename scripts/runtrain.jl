@@ -123,7 +123,7 @@ first_loss = testoninputs(
     inputstates,
     targetstates,
     instructions,
-    maxticks,
+    args.maxticks,
     trainmaskfull,
 )
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
@@ -146,7 +146,7 @@ second_loss = testoninputs(
     inputstates,
     targetstates,
     instructions,
-    maxticks,
+    args.maxticks,
     trainmaskfull,
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
