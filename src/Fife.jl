@@ -400,44 +400,18 @@ function testoninputs(
     maxticks,
     trainmaskfull,
 )
-    @showprogress for (i, startstate) in enumerate(inputstates)
-        forward(
-            forward,
+    loss = 0
+    for (i, startstate) in enumerate(inputstates)
+        loss += forward(
             startstate,
             targetstates[i], #TODO awkward
             instructions,
-            programlen,
+            maxticks,
             hiddenprogram,
             trainmaskfull,
         )
-        grads = grads .+ gradient(
-            forward,
-            startstate,
-            targetstates[i], #TODO awkward
-            instructions,
-            programlen,
-            hiddenprogram,
-            trainmaskfull,
-        )[end-1]
-        grads = grads .* trainmaskfull
-        if i % batchsize == 0 && i != 0
-            Optimise.update!(opt, hiddenprogram, grads)
-            grads .= 0
-        end
     end
-    # TODO get return loss from forward and log
-    #TODO pass test / val sets as well?
-    loss = test(
-        hiddenprogram,
-        targetprogram,
-        inputstates[1],
-        instructions,
-        maxticks,
-        trainmaskfull,
-    )
-    target = runprogram(startstate, targetprogram, instructions, maxticks)
-    prediction = runprogram(startstate, program, instructions, maxticks)
-    loss(prediction, target)
+    return loss / length(inputstates)
 end
 
 function forward(state, target, instructions, maxticks, hiddenprogram, trainmaskfull)
@@ -505,7 +479,7 @@ function trainbatch(
 )
     grads = similar(hiddenprogram)
     grads .= 0
-    @showprogress for epoch in 1:epochs
+    for epoch in 1:epochs
         @showprogress for (i, startstate) in enumerate(inputstates)
             grads = grads .+ gradient(
                 forward,
@@ -524,15 +498,15 @@ function trainbatch(
         end
         # TODO get return loss from forward and log
         #TODO pass test / val sets as well?
-        loss = test(
+        loss = testoninputs(
             hiddenprogram,
-            targetprogram,
-            inputstates[1],
+            inputstates,
+            targetstates,
             instructions,
             maxticks,
             trainmaskfull,
         )
-        @info "epoch: $(epoch) loss: $(loss)"
+        @info "epoch: $(epoch)/$(epochs) loss: $(loss)"
     end
 end
 end

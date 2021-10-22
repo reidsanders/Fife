@@ -132,13 +132,12 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
 @time trainbatch(
     hiddenprogram,
     instructions,
-    args.programlen,
     args.maxticks,
     inputstates,
     targetstates,
     trainmaskfull,
     batchsize = 10,
-    epochs = 10,
+    epochs = 3,
     opt = ADAM(args.lr)
 )
 
