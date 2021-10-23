@@ -33,10 +33,12 @@ import Fife: instr_pushval!, args
 using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient
+using Random
+Random.seed!(123);
 
 args.programlen = 5
 args.maxticks = 10
-args.lr = 1
+args.lr = .1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -106,7 +108,7 @@ startstate = VMState(
 )
 discretestartstate = convert_continuous_to_discrete(startstate)
 
-inputstates = createinputstates(startstate, num = 100)
+inputstates = createinputstates(startstate, num = 1000)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 # datastates = [(inputstate, targetstate) for (i,)]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
@@ -136,8 +138,8 @@ trainbatch(
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 100,
-    epochs = 5,
+    batchsize = 50,
+    epochs = 10,
     opt = ADAM(args.lr)
 )
 
