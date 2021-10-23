@@ -36,8 +36,8 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient
 using Random
 Random.seed!(123);
 
-args.programlen = 5
-args.maxticks = 10
+args.programlen = 12
+args.maxticks = 20
 args.lr = .1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
@@ -47,19 +47,19 @@ instructions = [
     instr_pass!,
     instr_halt!,
     # instr_pushval!,
-    # instr_pop!,
+    instr_pop!,
     instr_dup!,
     instr_swap!,
     instr_add!,
     instr_read!,
     instr_write!,
-    # instr_sub!,
-    # instr_mult!,
-    # instr_div!,
-    # instr_not!,
-    # instr_and!,
-    # instr_goto!,
-    # instr_gotoif!,
+    instr_sub!,
+    instr_mult!,
+    instr_div!,
+    instr_not!,
+    instr_and!,
+    instr_goto!,
+    instr_gotoif!,
     # instr_iseq!,
     # instr_isgt!,
     # instr_isge!,
@@ -68,14 +68,14 @@ instructions = [
 ]
 
 
-
+@info "Setting up instructions and training data"
 num_instructions = length(instructions)
 
-# discrete_program = create_random_discrete_program(args.programlen, instructions)
-# discrete_program[end] = instr_write!
-# discrete_program[1] = instr_read!
+discrete_program = create_random_discrete_program(args.programlen, instructions)
+discrete_program[1:3] .= instr_read!
+discrete_program[end-2:end] .= instr_write!
 
-discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+# discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
 targetprogram = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(targetprogram)
@@ -95,25 +95,9 @@ trainmask = trainmask |> device
 state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
-startstate = VMState(
-    state.instrpointer,
-    state.stackpointer,
-    state.inputpointer,
-    state.outputpointer,
-    fillinput([2, 5, 3], args.inputlen),
-    state.output,
-    state.stack,
-    state.variables,
-    state.ishalted,
-)
-discretestartstate = convert_continuous_to_discrete(startstate)
-
-inputstates = createinputstates(startstate, num = 1000)
+inputstates = createinputstates(state, num = 100)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
-# datastates = [(inputstate, targetstate) for (i,)]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
-
-check_state_asserts(startstate)
 
 first_program = deepcopy(program)
 
@@ -131,7 +115,7 @@ first_loss = testoninputs(
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
 
-trainbatch(
+@time trainbatch(
     hiddenprogram,
     instructions,
     args.maxticks,
@@ -139,7 +123,7 @@ trainbatch(
     targetstates,
     trainmaskfull,
     batchsize = 50,
-    epochs = 10,
+    epochs = 2,
     opt = ADAM(args.lr)
 )
 
