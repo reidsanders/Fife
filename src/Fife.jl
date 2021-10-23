@@ -374,7 +374,7 @@ function accuracyonexamples(hidden, target, instructions, examples, maxticks)
         predexample = deepcopy(example)
         runprogram(targetexample, targetprogram, maxticks)
         runprogram(predexample, predprogram, maxticks)
-        push!(correctexamples, predexample.output == targetexample)
+        push!(correctexamples, predexample.output == targetexample.output)
     end
     sum(correctexamples) / length(examples)
 end
@@ -478,7 +478,7 @@ function trainbatch(
     epochs = 5,
     opt = Descent(0.1),
 )
-    testlength = min(length(inputstates), 100)
+    testlength = min(length(inputstates), 50)
     grads = similar(hiddenprogram)
     grads .= 0
     for epoch in 1:epochs
