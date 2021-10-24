@@ -366,7 +366,7 @@ function accuracy(hidden, target, trainmask)
     result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
-function accuracyonexamples(hidden::Matrix{Number}, target::Matrix{Number}, instructions, examples, maxticks)
+function accuracyonexamples(hidden::Matrix{T}, target::Matrix{T}, instructions, examples, maxticks) where T <: Number
     # TODO does this need softmaxmask?
     predprogram = instructions[onecold(hidden)]
     targetprogram = instructions[onecold(target)]
