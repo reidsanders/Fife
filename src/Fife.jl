@@ -241,7 +241,7 @@ function convert_continuous_to_discrete(
         end
     end
 
-    #TODO Wrong type. Also push! is wrong! Need to add test that actually tests this (random init input, output, etc)
+    #TODO Also push! is wrong! Need to add test that actually tests this (random init input, output, etc)
     newvariables = DefaultDict{StackValue,StackValue}(StackValue())
     # default blank? blank isn't technically in it
     # Use missing instead of blank?
@@ -356,7 +356,9 @@ function runnextinstr(state::DiscreteVMState, program)
 end
 
 function loss(ŷ::VMState, y::VMState)
-    crossentropy(ŷ.output, y.output)
+    ŷoutput = ŷ.output .* permutedims(ŷ.outputpointer)
+    youtput = y.output .* permutedims(y.outputpointer)
+    crossentropy(ŷoutput, youtput)
 end
 
 function accuracy(hidden, target, trainmask)
@@ -390,7 +392,7 @@ function approxoutputaccuracy(hidden::Matrix{Number}, target::Matrix{Number}, in
         runprogram(predexample, discretepredprogram, maxticks)
         push!(correctexamples, sum(predexample.output .== targetexample.output))
         #TODO plot histogram? Show best example?
-        @info "Approx Output Accuracy ---- target: $(targetexample.output) pred: $(predexample.output)"
+        @info "Approx Output Accuracy ---- input: $(example.input) target: $(targetexample.output) pred: $(predexample.output)"
     end
     sum(correctexamples) / length(examples)
 end

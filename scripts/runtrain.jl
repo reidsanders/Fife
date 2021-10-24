@@ -126,7 +126,7 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     targetstates,
     trainmaskfull,
     batchsize = 20,
-    epochs = 20,
+    epochs = 5,
     opt = ADAM(args.lr)
 )
 
@@ -140,6 +140,7 @@ second_loss = testoninputs(
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 second_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
+approx_accuracy = approxoutputaccuracy(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy
