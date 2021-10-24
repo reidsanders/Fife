@@ -364,7 +364,7 @@ function accuracy(hidden, target, trainmask)
     result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
-function accuracyonexamples(hidden, target, instructions, examples, maxticks)
+function accuracyonexamples(hidden::Matrix{Number}, target::Matrix{Number}, instructions, examples, maxticks)
     # TODO does this need softmaxmask?
     predprogram = instructions[onecold(hidden)]
     targetprogram = instructions[onecold(target)]
@@ -375,6 +375,22 @@ function accuracyonexamples(hidden, target, instructions, examples, maxticks)
         runprogram(targetexample, targetprogram, maxticks)
         runprogram(predexample, predprogram, maxticks)
         push!(correctexamples, predexample.output == targetexample.output)
+    end
+    sum(correctexamples) / length(examples)
+end
+
+function approxoutputaccuracy(hidden::Matrix{Number}, target::Matrix{Number}, instructions::Vector{Function}, examples, maxticks)
+    discretepredprogram = instructions[onecold(hidden)]
+    discretetargetprogram = instructions[onecold(target)]
+    correctexamples = []
+    for example in examples
+        targetexample = deepcopy(example)
+        predexample = deepcopy(example)
+        runprogram(targetexample, discretetargetprogram, maxticks)
+        runprogram(predexample, discretepredprogram, maxticks)
+        push!(correctexamples, sum(predexample.output .== targetexample.output))
+        #TODO plot histogram? Show best example?
+        @info "Approx Output Accuracy ---- target: $(targetexample.output) pred: $(predexample.output)"
     end
     sum(correctexamples) / length(examples)
 end

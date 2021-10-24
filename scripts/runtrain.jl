@@ -36,8 +36,8 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient
 using Random
 Random.seed!(123);
 
-args.programlen = 12
-args.maxticks = 20
+args.programlen = 8
+args.maxticks = 12
 args.lr = .1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
@@ -72,8 +72,8 @@ instructions = [
 num_instructions = length(instructions)
 
 discrete_program = create_random_discrete_program(args.programlen, instructions)
-discrete_program[1:3] .= instr_read!
-discrete_program[end-2:end] .= instr_write!
+discrete_program[1:2] .= instr_read!
+discrete_program[end-1:end] .= instr_write!
 
 # discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
 targetprogram = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
@@ -95,7 +95,8 @@ trainmask = trainmask |> device
 state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
-inputstates = createinputstates(state, num = 100)
+@info "Create inputstates"
+inputstates = createinputstates(state, num = 200)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
@@ -104,6 +105,7 @@ first_program = deepcopy(program)
 ######################################
 # runprogram program train
 ######################################
+@info "Get first loss and accuracy"
 first_loss = testoninputs(
     hiddenprogram,
     inputstates,
@@ -112,6 +114,7 @@ first_loss = testoninputs(
     args.maxticks,
     trainmaskfull,
 )
+@info "first loss: $(first_loss)"
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
 
@@ -122,8 +125,8 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 50,
-    epochs = 2,
+    batchsize = 20,
+    epochs = 20,
     opt = ADAM(args.lr)
 )
 

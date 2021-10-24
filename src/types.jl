@@ -1,6 +1,6 @@
 module FifeTypes
 
-import Base: +, -, *, /, length, convert, ==, <, >
+import Base: +, -, *, /, length, convert, ==, <, >, show
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 
@@ -21,6 +21,21 @@ DiscreteStackFloat = Float64
     # OrderedPair(x1,x2,x3,x4) = x > y ? error("out of order") : new(x,y)
 end
 # StackValue(x) = StackValue(val = x)
+
+"""
+Show
+"""
+function show(io::IO, x::StackValue)
+    if x.blank
+        print(io, "∅")
+    elseif x.max
+        print(io, "^")
+    elseif x.min
+        print(io, "v")
+    else
+        print(io, x.val)
+    end
+end
 
 """
     Assignment
