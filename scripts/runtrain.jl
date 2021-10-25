@@ -100,7 +100,7 @@ state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 @info "Create inputstates"
-inputstates = createinputstates(state, num = 300)
+inputstates = createinputstates(state, num = 20)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
@@ -129,8 +129,8 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 20,
-    epochs = 10,
+    batchsize = 10,
+    epochs = 2,
     opt = ADAM(args.lr)
 )
 

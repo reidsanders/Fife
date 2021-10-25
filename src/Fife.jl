@@ -357,8 +357,9 @@ function runnextinstr(state::DiscreteVMState, program)
     instr(state)
 end
 
-function applyprobpointer(x::Matrix, pointer::Vector)
+function applyprobpointer(x::Matrix, pointer::Array)
     # circular shift for each possibility, mult by prob pointer, then sum
+    #TODO very unhelpful types -- why doesn't Vector work?
     #TODO test this!
     allx = [circshift(x, -i) for i in 1:length(pointer)] .* pointer
     allx = cat(allx..., dims=3)
