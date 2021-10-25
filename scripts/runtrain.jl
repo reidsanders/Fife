@@ -25,11 +25,11 @@ using Fife:
     trainbatch,
     createinputstates
 
-# include("../src/types.jl")
-# using .FifeTypes
+using ParameterSchedulers
+using ParameterSchedulers: Scheduler
+
 
 import Fife: instr_pushval!, args, show
-
 using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient, onecold, hidden
@@ -38,7 +38,8 @@ Random.seed!(123);
 
 args.programlen = 5
 args.maxticks = 10
-args.lr = .1
+args.lr = .05
+opt = Scheduler(Cos(λ0 = args.lr, λ1 = args.lr * 1e2, period = 10), Momentum())
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -100,7 +101,7 @@ state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 @info "Create inputstates"
-inputstates = createinputstates(state, num = 20)
+inputstates = createinputstates(state, num = 100)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
@@ -121,7 +122,6 @@ first_loss = testoninputs(
 @info "first loss: $(first_loss)"
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
-
 @time trainbatch(
     hiddenprogram,
     instructions,
@@ -129,9 +129,9 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 10,
-    epochs = 2,
-    opt = ADAM(args.lr)
+    batchsize = 50,
+    epochs = 8,
+    opt = opt
 )
 
 second_loss = testoninputs(
@@ -144,7 +144,7 @@ second_loss = testoninputs(
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 second_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
-approx_accuracy = approxoutputaccuracy(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
+approx_accuracy = approxoutputaccuracy(hiddenprogram, targetprogram, instructions, discreteinputstates[1:10], args.maxticks)
 predprogram = instructions[onecold(hiddenprogram)]
 @show second_loss - first_loss
 @show first_accuracy

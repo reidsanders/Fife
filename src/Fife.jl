@@ -129,7 +129,6 @@ begin
         forward,
         Args,
         StackValue,
-        show,
         createinputstates,
         accuracyonexamples,
         approxoutputaccuracy,
