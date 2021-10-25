@@ -6,7 +6,8 @@ using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 
 begin
     export StackValue,
-    +,-,*,/,length,convert,==,<,>
+    +,-,*,/,length,convert,==,<,>,
+    show
 end
 
 ####################

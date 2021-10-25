@@ -28,16 +28,16 @@ using Fife:
 # include("../src/types.jl")
 # using .FifeTypes
 
-import Fife: instr_pushval!, args
+import Fife: instr_pushval!, args, show
 
 using Parameters: @with_kw
 using Flux
-using Flux: onehot, onehotbatch, glorot_uniform, gradient
+using Flux: onehot, onehotbatch, glorot_uniform, gradient, onecold, hidden
 using Random
 Random.seed!(123);
 
-args.programlen = 8
-args.maxticks = 12
+args.programlen = 5
+args.maxticks = 10
 args.lr = .1
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
@@ -71,11 +71,15 @@ instructions = [
 @info "Setting up instructions and training data"
 num_instructions = length(instructions)
 
-discrete_program = create_random_discrete_program(args.programlen, instructions)
-discrete_program[1:2] .= instr_read!
-discrete_program[end-1:end] .= instr_write!
 
-# discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+##### define program to learn
+# discrete_program = create_random_discrete_program(args.programlen, instructions)
+# discrete_program[1:2] .= instr_read!
+# discrete_program[end-1:end] .= instr_write!
+
+discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+#####
+
 targetprogram = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(targetprogram)
@@ -96,7 +100,7 @@ state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 @info "Create inputstates"
-inputstates = createinputstates(state, num = 200)
+inputstates = createinputstates(state, num = 300)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
@@ -126,7 +130,7 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     targetstates,
     trainmaskfull,
     batchsize = 20,
-    epochs = 5,
+    epochs = 10,
     opt = ADAM(args.lr)
 )
 
@@ -141,6 +145,7 @@ second_loss = testoninputs(
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 second_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
 approx_accuracy = approxoutputaccuracy(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
+predprogram = instructions[onecold(hiddenprogram)]
 @show second_loss - first_loss
 @show first_accuracy
 @show second_accuracy

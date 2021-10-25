@@ -17,12 +17,12 @@ using Flux:
     gradient
 
 using Memoize
-import Base: +, -, *, length, ==
+import Base: +, -, *, length, ==, show
 using Parameters: @with_kw
 include("utils.jl")
 include("discreteinterpreter.jl")
 # include("types.jl")
-# using .FifeTypes
+# using .FifeTypes: show
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2
@@ -129,8 +129,10 @@ begin
         forward,
         Args,
         StackValue,
+        show,
         createinputstates,
         accuracyonexamples,
+        approxoutputaccuracy,
         trainbatch
 end
 
@@ -355,9 +357,17 @@ function runnextinstr(state::DiscreteVMState, program)
     instr(state)
 end
 
+function applyprobpointer(x::Matrix, pointer:Vector)
+    # circular shift for each possibility, mult by prob pointer, then sum
+    #TODO test this!
+    allx = [circshift(x, -i) for i in 1:length(pointer)] .* pointer
+    allx = cat(allx..., dims=3)
+    sum(allx, dims = 3)[:,:,1]
+end
+
 function loss(ŷ::VMState, y::VMState)
-    ŷoutput = ŷ.output .* permutedims(ŷ.outputpointer)
-    youtput = y.output .* permutedims(y.outputpointer)
+    ŷoutput = applyprobpointer(ŷ.output, ŷ.outputpointer)
+    youtput = applyprobpointer(y.output, y.outputpointer)
     crossentropy(ŷoutput, youtput)
 end
 
@@ -381,7 +391,7 @@ function accuracyonexamples(hidden::Matrix{T}, target::Matrix{T}, instructions, 
     sum(correctexamples) / length(examples)
 end
 
-function approxoutputaccuracy(hidden::Matrix{Number}, target::Matrix{Number}, instructions::Vector{Function}, examples, maxticks)
+function approxoutputaccuracy(hidden::Matrix{T}, target::Matrix{T}, instructions::Vector{Function}, examples, maxticks) where T <: Number
     discretepredprogram = instructions[onecold(hidden)]
     discretetargetprogram = instructions[onecold(target)]
     correctexamples = []

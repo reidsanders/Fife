@@ -1,4 +1,4 @@
-import Base: +, -, *, length, convert, ==
+import Base: +, -, *, length, convert, ==, show
 using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 include("types.jl")
