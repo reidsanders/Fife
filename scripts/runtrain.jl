@@ -22,7 +22,7 @@ using Fife:
     blanks,
     blankstack,
     trainsingle,
-    trainbatch,
+    trainbatch!,
     createinputstates
 
 using ParameterSchedulers
@@ -37,9 +37,12 @@ using Random
 Random.seed!(123);
 
 args.programlen = 5
+args.trainsize = 256
 args.maxticks = 10
-args.lr = .05
-opt = Scheduler(Cos(λ0 = args.lr, λ1 = args.lr * 1e2, period = 10), Momentum())
+args.lr = .005
+opt = ADAM(args.lr)
+# opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
+# opt = Scheduler(Cos(λ0 = args.lr, λ1 = args.lr * 1e2, period = 10), Momentum())
 
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -54,13 +57,13 @@ instructions = [
     instr_add!,
     instr_read!,
     instr_write!,
-    instr_sub!,
-    instr_mult!,
-    instr_div!,
-    instr_not!,
-    instr_and!,
-    instr_goto!,
-    instr_gotoif!,
+    # instr_sub!,
+    # instr_mult!,
+    # instr_div!,
+    # instr_not!,
+    # instr_and!,
+    # instr_goto!,
+    # instr_gotoif!,
     # instr_iseq!,
     # instr_isgt!,
     # instr_isge!,
@@ -101,7 +104,7 @@ state =
     VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 @info "Create inputstates"
-inputstates = createinputstates(state, num = 100)
+inputstates = createinputstates(state, num = args.trainsize)
 targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
@@ -122,15 +125,16 @@ first_loss = testoninputs(
 @info "first loss: $(first_loss)"
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
 first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
-@time trainbatch(
+
+@time trainbatch!(
     hiddenprogram,
     instructions,
     args.maxticks,
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 50,
-    epochs = 8,
+    batchsize = 32,
+    epochs = 6,
     opt = opt
 )
 

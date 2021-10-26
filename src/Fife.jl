@@ -21,8 +21,6 @@ import Base: +, -, *, length, ==, show
 using Parameters: @with_kw
 include("utils.jl")
 include("discreteinterpreter.jl")
-# include("types.jl")
-# using .FifeTypes: show
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
     batchsize::Int = 2
@@ -34,7 +32,7 @@ include("discreteinterpreter.jl")
     outputlen::Int = 8
     maxticks::Int = 100
     maxint::Int = 20
-    trainsetsize::Int = 10
+    trainsize::Int = 10
     usegpu::Bool = false
     StackFloatType::Type = Float64
 end
@@ -132,7 +130,7 @@ begin
         createinputstates,
         accuracyonexamples,
         approxoutputaccuracy,
-        trainbatch
+        trainbatch!
 end
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -495,7 +493,7 @@ function createinputstates(state; num = 10)
     inputstates
 end
 
-function trainbatch(
+function trainbatch!(
     hiddenprogram,
     instructions,
     maxticks,
