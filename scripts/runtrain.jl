@@ -36,9 +36,9 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient, onecold, hidden
 using Random
 Random.seed!(123);
 
-args.programlen = 6
-args.trainsize = 256
-args.maxticks = 4
+args.programlen = 2
+args.trainsize = 64
+args.maxticks = 2
 args.lr = .1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
@@ -77,12 +77,12 @@ num_instructions = length(instructions)
 
 
 ##### define program to learn
-discrete_program = create_random_discrete_program(args.programlen, instructions)
-discrete_program[1:2] .= instr_read!
-discrete_program[end-1:end] .= instr_write!
+# discrete_program = create_random_discrete_program(args.programlen, instructions)
+# discrete_program[1:2] .= instr_read!
+# discrete_program[end-1:end] .= instr_write!
 
 # discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
-# discrete_program = [instr_read!, instr_write!]
+discrete_program = [instr_read!, instr_write!]
 # args.programlen = length(discrete_program)
 #####
 
@@ -136,7 +136,7 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     targetstates,
     trainmaskfull,
     batchsize = 32,
-    epochs = 20,
+    epochs = 3,
     opt = opt
 )
 
