@@ -36,10 +36,10 @@ using Flux: onehot, onehotbatch, glorot_uniform, gradient, onecold, hidden
 using Random
 Random.seed!(123);
 
-args.programlen = 5
+args.programlen = 6
 args.trainsize = 256
-args.maxticks = 10
-args.lr = .005
+args.maxticks = 4
+args.lr = .1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
 # opt = Scheduler(Cos(λ0 = args.lr, λ1 = args.lr * 1e2, period = 10), Momentum())
@@ -57,13 +57,13 @@ instructions = [
     instr_add!,
     instr_read!,
     instr_write!,
-    # instr_sub!,
-    # instr_mult!,
-    # instr_div!,
-    # instr_not!,
-    # instr_and!,
-    # instr_goto!,
-    # instr_gotoif!,
+    instr_sub!,
+    instr_mult!,
+    instr_div!,
+    instr_not!,
+    instr_and!,
+    instr_goto!,
+    instr_gotoif!,
     # instr_iseq!,
     # instr_isgt!,
     # instr_isge!,
@@ -77,11 +77,13 @@ num_instructions = length(instructions)
 
 
 ##### define program to learn
-# discrete_program = create_random_discrete_program(args.programlen, instructions)
-# discrete_program[1:2] .= instr_read!
-# discrete_program[end-1:end] .= instr_write!
+discrete_program = create_random_discrete_program(args.programlen, instructions)
+discrete_program[1:2] .= instr_read!
+discrete_program[end-1:end] .= instr_write!
 
-discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+# discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+# discrete_program = [instr_read!, instr_write!]
+# args.programlen = length(discrete_program)
 #####
 
 targetprogram = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
@@ -134,7 +136,7 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     targetstates,
     trainmaskfull,
     batchsize = 32,
-    epochs = 6,
+    epochs = 20,
     opt = opt
 )
 

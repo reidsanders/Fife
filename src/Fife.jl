@@ -504,7 +504,7 @@ function trainbatch!(
     epochs = 5,
     opt = Descent(0.1),
 )
-    testlength = min(length(inputstates), 50)
+    testlength = min(length(inputstates), 32)
     grads = similar(hiddenprogram)
     grads .= 0
     for epoch in 1:epochs
