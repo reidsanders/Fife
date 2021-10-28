@@ -1,5 +1,3 @@
-# using Pkg
-# Pkg.activate(".")
 using Fife
 using Fife:
     valhot,
@@ -28,17 +26,36 @@ using Fife:
 using ParameterSchedulers
 using ParameterSchedulers: Scheduler
 
-
-import Fife: instr_pushval!, args, show
+import Fife: instr_pushval!, args
 using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, gradient, onecold, hidden
 using Random
 Random.seed!(123);
+import Base: show
 
-args.programlen = 3
-args.trainsize = 256
-args.maxticks = 10
+"""
+Show
+"""
+function show(io::IO, x::StackValue)
+    if x.blank
+        print(io, "∅")
+    elseif x.max
+        print(io, "^")
+    elseif x.min
+        print(io, "v")
+    else
+        print(io, x.val)
+    end
+end
+
+
+x = [StackValue(), StackValue(100)]
+@info " StackValue: $(x)"
+
+args.programlen = 2
+args.trainsize = 16
+args.maxticks = 2
 args.lr = .1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
@@ -82,8 +99,8 @@ num_instructions = length(instructions)
 # discrete_program[end-1:end] .= instr_write!
 
 # discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
-# discrete_program = [instr_read!, instr_write!]
-discrete_program = [instr_read!, instr_write!, instr_write!]
+discrete_program = [instr_read!, instr_write!]
+# discrete_program = [instr_read!, instr_write!, instr_write!]
 # args.programlen = length(discrete_program)
 #####
 
@@ -136,8 +153,8 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 32,
-    epochs = 8,
+    batchsize = 4,
+    epochs = 1,
     opt = opt
 )
 

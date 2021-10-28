@@ -3,7 +3,7 @@ using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 include("types.jl")
 using .FifeTypes
-import .FifeTypes: StackValue
+import .FifeTypes: StackValue, show
 # Set type based on arguments
 function StackValue(x)
     StackValue(x, args.maxint, -args.maxint)

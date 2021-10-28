@@ -17,7 +17,7 @@ using Flux:
     gradient
 
 using Memoize
-import Base: +, -, *, length, ==, show
+import Base: +, -, *, length, ==
 using Parameters: @with_kw
 include("utils.jl")
 include("discreteinterpreter.jl")
