@@ -19,10 +19,10 @@ struct VMState
     stackpointer::Array
     inputpointer::Array
     outputpointer::Array
-    input::Array
-    output::Array
-    stack::Array
-    variables::Array
+    input::Matrix
+    output::Matrix
+    stack::Matrix
+    variables::Matrix
     ishalted::Array # [nothalted, halted]
 end
 
