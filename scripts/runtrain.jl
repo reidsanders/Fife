@@ -53,9 +53,9 @@ end
 x = [StackValue(), StackValue(100)]
 @info " StackValue: $(x)"
 
-args.programlen = 2
-args.trainsize = 16
-args.maxticks = 2
+args.programlen = 3
+args.trainsize = 256
+args.maxticks = 10
 args.lr = .1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
@@ -99,8 +99,8 @@ num_instructions = length(instructions)
 # discrete_program[end-1:end] .= instr_write!
 
 # discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
-discrete_program = [instr_read!, instr_write!]
-# discrete_program = [instr_read!, instr_write!, instr_write!]
+# discrete_program = [instr_read!, instr_write!]
+discrete_program = [instr_read!, instr_write!, instr_write!]
 # args.programlen = length(discrete_program)
 #####
 
@@ -153,8 +153,8 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 4,
-    epochs = 1,
+    batchsize = 64,
+    epochs = 20,
     opt = opt
 )
 

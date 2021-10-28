@@ -762,7 +762,59 @@ function test_super_run_program(args)
     blank_state =
         VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
     check_state_asserts(blank_state)
-    target = runprogram(blank_state, target_program, instructions, 1000)
+    target = runprogram(blank_state, target_program, instructions, 30)
+end
+
+function test_runprogram(args)
+    val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+
+    instructions = [
+        [
+            instr_pass!,
+            instr_halt!,
+            # instr_pushval!,
+            instr_pop!,
+            instr_dup!,
+            instr_swap!,
+            instr_add!,
+            instr_sub!,
+            instr_mult!,
+            instr_div!,
+            instr_not!,
+            instr_and!,
+            # instr_goto!,
+            instr_gotoif!,
+            # instr_iseq!,
+            # instr_isgt!,
+            # instr_isge!,
+            # instr_store!,
+            # instr_load!,
+            instr_read!,
+            instr_write!,
+        ]
+        val_instructions
+    ]
+
+    Random.seed!(123)
+    for x = 1:5
+        discretestate = init_random_discretestate(args)
+        contstate = convert_discrete_to_continuous(discretestate)
+        newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+        run_equality_test(newdiscretestate, discretestate)
+
+        discrete_program = create_random_discrete_program(args.programlen, instructions)
+        target_program = convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
+
+        contstate = runprogram(contstate, target_program, instructions, 30)
+        discretestate = runprogram(discretestate, discrete_program, 30)
+
+        contstate = normalize_stackpointer(contstate)
+        contstate = normalize_iopointers(contstate)
+        newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
+        newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
+        run_equality_test(newcontstate, contstate)
+        run_equality_test(newdiscretestate, discretestate)
+    end
 end
 
 function test_train(args)
@@ -1030,6 +1082,7 @@ end
 end
 @testset "Train and Gradient" begin
     test_all_gradient_single_instr(args)
+    test_runprogram(args)
     test_gradient_op_probvec(args)
     # args.programlen = 5
     # args.programlen = 5
