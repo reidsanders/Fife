@@ -15,7 +15,7 @@ using Parameters: @with_kw
 StackFloatType = Float64
 
 struct VMState
-    instrpointer::Array
+    instrpointer::Vector
     stackpointer::Array
     inputpointer::Array
     outputpointer::Array
@@ -74,18 +74,18 @@ a::VMState - b::VMState = VMState(
     a.ishalted - b.ishalted,
 )
 
-length(a::VMSuperStates) = size(a.instrpointers)[3]
+length(a::VMSuperStates) = size(a.instrpointers)[2]
 
-a::Union{Array,CuArray} * b::VMSuperStates = VMSuperStates(
-    a .* b.instrpointers,
-    a .* b.stackpointers,
-    a .* b.inputpointers,
-    a .* b.outputpointers,
-    a .* b.inputs,
-    a .* b.outputs,
-    a .* b.stacks,
-    a .* b.supervariables,
-    a .* b.ishalteds,
+a::Vector * b::VMSuperStates = VMSuperStates(
+    permutedims(a) .* b.instrpointers,
+    permutedims(a) .* b.stackpointers,
+    permutedims(a) .* b.inputpointers,
+    permutedims(a) .* b.outputpointers,
+    reshape(a, (1,1,:)) .* b.inputs,
+    reshape(a, (1,1,:)) .* b.outputs,
+    reshape(a, (1,1,:)) .* b.stacks,
+    reshape(a, (1,1,:)) .* b.supervariables,
+    permutedims(a) .* b.ishalteds,
 )
 
 a::VMSuperStates * b::Union{Array,CuArray} = b * a
@@ -104,15 +104,15 @@ end
 
 function super_step(state::VMState, program, instructions)
     newstates = [instruction(state) for instruction in instructions]
-    instrpointers = cat([x.instrpointer for x in newstates]..., dims = 3)
-    stackpointers = cat([x.stackpointer for x in newstates]..., dims = 3)
-    inputpointers = cat([x.inputpointer for x in newstates]..., dims = 3)
-    outputpointers = cat([x.outputpointer for x in newstates]..., dims = 3)
+    instrpointers = cat([x.instrpointer for x in newstates]..., dims = 2)
+    stackpointers = cat([x.stackpointer for x in newstates]..., dims = 2)
+    inputpointers = cat([x.inputpointer for x in newstates]..., dims = 2)
+    outputpointers = cat([x.outputpointer for x in newstates]..., dims = 2)
     inputs = cat([x.input for x in newstates]..., dims = 3)
     outputs = cat([x.output for x in newstates]..., dims = 3)
     stacks = cat([x.stack for x in newstates]..., dims = 3)
     supervariables = cat([x.variables for x in newstates]..., dims = 3)
-    ishalteds = cat([x.ishalted for x in newstates]..., dims = 3)
+    ishalteds = cat([x.ishalted for x in newstates]..., dims = 2)
 
     states = VMSuperStates(
         instrpointers,
@@ -126,19 +126,18 @@ function super_step(state::VMState, program, instructions)
         ishalteds,
     )
     currentprogram = program .* permutedims(state.instrpointer)
-    summedprogram = sum(currentprogram, dims = 2)
-    summedprogram = reshape(summedprogram, (1, 1, :))
+    summedprogram = dropdims(sum(currentprogram, dims = 2), dims=2)
     scaledstates = summedprogram * states
     reduced = VMState(
-        sum(scaledstates.instrpointers, dims = 3)[:, :, 1],
-        sum(scaledstates.stackpointers, dims = 3)[:, :, 1],
-        sum(scaledstates.inputpointers, dims = 3)[:, :, 1],
-        sum(scaledstates.outputpointers, dims = 3)[:, :, 1],
+        dropdims(sum(scaledstates.instrpointers, dims = 2), dims = 2),
+        dropdims(sum(scaledstates.stackpointers, dims = 2), dims = 2),
+        dropdims(sum(scaledstates.inputpointers, dims = 2), dims = 2),
+        dropdims(sum(scaledstates.outputpointers, dims = 2), dims = 2),
         sum(scaledstates.inputs, dims = 3)[:, :, 1],
         sum(scaledstates.outputs, dims = 3)[:, :, 1],
         sum(scaledstates.stacks, dims = 3)[:, :, 1],
         sum(scaledstates.supervariables, dims = 3)[:, :, 1],
-        sum(scaledstates.ishalteds, dims = 3)[:, :, 1],
+        dropdims(sum(scaledstates.ishalteds, dims = 2), dims = 2),
     )
     normit(reduced)
 end
