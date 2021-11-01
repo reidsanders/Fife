@@ -727,7 +727,7 @@ function test_super_run_program(args)
             instr_div!,
             instr_not!,
             instr_and!,
-            # instr_goto!,
+            instr_goto!,
             instr_gotoif!,
             # instr_iseq!,
             # instr_isgt!,
@@ -782,7 +782,7 @@ function test_runprogram(args)
             instr_div!,
             instr_not!,
             instr_and!,
-            # instr_goto!,
+            instr_goto!,
             instr_gotoif!,
             # instr_iseq!,
             # instr_isgt!,
@@ -1082,11 +1082,11 @@ end
 end
 @testset "Train and Gradient" begin
     test_all_gradient_single_instr(args)
-    # test_runprogram(args)
+    test_runprogram(args)
     test_gradient_op_probvec(args)
+    args.programlen = 5
     # args.programlen = 5
-    # args.programlen = 5
-    # args.maxticks = 10
+    args.maxticks = 10
     # args.lr = .1
     test_train(args)
 end

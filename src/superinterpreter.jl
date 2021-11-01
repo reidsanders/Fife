@@ -179,6 +179,24 @@ function advanceinstrpointer(state::VMState, increment::Int)
     (newinstrpointer, newishalted)
 end
 
+#TODO make ishalted merge state (if state ishalted then don't do anything? just return same state?
+# (with ishalted = true so prob is correct))
+# Make a decorator macro?
+function applyishalted(a::VMState, b::VMState)::VMState
+    # how to calc prob?
+    VMState(
+        a.instrpointer * a.ishalted[1] .+ b.instrpointer * a.ishalted[2],
+        a.stackpointer * a.ishalted[1] .+ b.stackpointer * a.ishalted[2],
+        a.inputpointer * a.ishalted[1] .+ b.inputpointer * a.ishalted[2],
+        a.outputpointer * a.ishalted[1] .+ b.outputpointer * a.ishalted[2],
+        a.input * a.ishalted[1] .+ b.input * a.ishalted[2],
+        a.output * a.ishalted[1] .+ b.output * a.ishalted[2],
+        a.stack * a.ishalted[1] .+ b.stack * a.ishalted[2],
+        a.variables * a.ishalted[1] .+ b.variables * a.ishalted[2],
+        b.ishalted, # TODO is this actually true?
+    )
+end
+
 ###############################
 # Instructions
 ###############################
