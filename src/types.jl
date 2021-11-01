@@ -5,9 +5,7 @@ using Parameters: @with_kw
 using DataStructures: CircularDeque, CircularBuffer, Deque, DefaultDict
 
 begin
-    export StackValue,
-    +,-,*,/,length,convert,==,<,>,
-    show
+    export StackValue, +, -, *, /, length, convert, ==, <, >, show
 end
 
 ####################

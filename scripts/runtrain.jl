@@ -56,7 +56,7 @@ x = [StackValue(), StackValue(100)]
 args.programlen = 3
 args.trainsize = 256
 args.maxticks = 10
-args.lr = .1
+args.lr = 0.1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
 # opt = Scheduler(Cos(λ0 = args.lr, λ1 = args.lr * 1e2, period = 10), Momentum())
@@ -104,7 +104,8 @@ discrete_program = [instr_read!, instr_write!, instr_write!]
 # args.programlen = length(discrete_program)
 #####
 
-targetprogram = convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
+targetprogram =
+    convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(targetprogram)
 hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
@@ -120,12 +121,12 @@ program = softmaxmask(trainmaskfull, hiddenprogram) |> device
 targetprogram = targetprogram |> device
 hiddenprogram = hiddenprogram |> device
 trainmask = trainmask |> device
-state =
-    VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 @info "Create inputstates"
 inputstates = createinputstates(state, num = args.trainsize)
-targetstates = [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
+targetstates =
+    [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
 first_program = deepcopy(program)
@@ -144,7 +145,13 @@ first_loss = testoninputs(
 )
 @info "first loss: $(first_loss)"
 first_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
-first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
+first_exampleaccuracy = accuracyonexamples(
+    hiddenprogram,
+    targetprogram,
+    instructions,
+    discreteinputstates,
+    args.maxticks,
+)
 
 @time trainbatch!(
     hiddenprogram,
@@ -155,7 +162,7 @@ first_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instruc
     trainmaskfull,
     batchsize = 64,
     epochs = 20,
-    opt = opt
+    opt = opt,
 )
 
 second_loss = testoninputs(
@@ -167,8 +174,20 @@ second_loss = testoninputs(
     trainmaskfull,
 )
 second_accuracy = accuracy(hiddenprogram |> cpu, targetprogram |> cpu, trainmask |> cpu)
-second_exampleaccuracy = accuracyonexamples(hiddenprogram, targetprogram, instructions, discreteinputstates, args.maxticks)
-approx_accuracy = approxoutputaccuracy(hiddenprogram, targetprogram, instructions, discreteinputstates[1:10], args.maxticks)
+second_exampleaccuracy = accuracyonexamples(
+    hiddenprogram,
+    targetprogram,
+    instructions,
+    discreteinputstates,
+    args.maxticks,
+)
+approx_accuracy = approxoutputaccuracy(
+    hiddenprogram,
+    targetprogram,
+    instructions,
+    discreteinputstates[1:10],
+    args.maxticks,
+)
 predprogram = instructions[onecold(hiddenprogram)]
 @show second_loss - first_loss
 @show first_accuracy

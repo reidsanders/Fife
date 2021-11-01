@@ -81,10 +81,10 @@ a::Vector * b::VMSuperStates = VMSuperStates(
     permutedims(a) .* b.stackpointers,
     permutedims(a) .* b.inputpointers,
     permutedims(a) .* b.outputpointers,
-    reshape(a, (1,1,:)) .* b.inputs,
-    reshape(a, (1,1,:)) .* b.outputs,
-    reshape(a, (1,1,:)) .* b.stacks,
-    reshape(a, (1,1,:)) .* b.supervariables,
+    reshape(a, (1, 1, :)) .* b.inputs,
+    reshape(a, (1, 1, :)) .* b.outputs,
+    reshape(a, (1, 1, :)) .* b.stacks,
+    reshape(a, (1, 1, :)) .* b.supervariables,
     permutedims(a) .* b.ishalteds,
 )
 
@@ -126,7 +126,7 @@ function super_step(state::VMState, program, instructions)
         ishalteds,
     )
     currentprogram = program .* permutedims(state.instrpointer)
-    summedprogram = dropdims(sum(currentprogram, dims = 2), dims=2)
+    summedprogram = dropdims(sum(currentprogram, dims = 2), dims = 2)
     scaledstates = summedprogram * states
     reduced = VMState(
         dropdims(sum(scaledstates.instrpointers, dims = 2), dims = 2),
@@ -212,16 +212,19 @@ function instr_pop!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -239,16 +242,19 @@ function instr_dup!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -267,16 +273,19 @@ function instr_add!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstate.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstate.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstate.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstate.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -295,16 +304,19 @@ function instr_sub!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstate.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstate.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstate.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstate.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -323,16 +335,19 @@ function instr_mult!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstate.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstate.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstate.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstate.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -351,16 +366,19 @@ function instr_div!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstate.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstate.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstate.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstate.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -380,16 +398,19 @@ function instr_not!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstate.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstate.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstate.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstate.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -410,16 +431,19 @@ function instr_and!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstate.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstate.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstate.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstate.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -437,16 +461,19 @@ function instr_swap!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -510,16 +537,19 @@ function instr_gotoif!(
     newinstrpointer = normit(newinstrpointer) # TODO may be covering up a bug
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.01) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(newishalted), 1, atol = 0.01)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        newishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            newishalted,
+        ),
     )
 end
 
@@ -562,16 +592,19 @@ function instr_goto!(
     newinstrpointer = normit(newinstrpointer) # TODO may be covering up a bug
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.01) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(newishalted), 1, atol = 0.01)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        newishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            newishalted,
+        ),
     )
 end
 
@@ -585,16 +618,19 @@ function instr_pass!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -609,16 +645,19 @@ function instr_halt!(state::VMState)::VMState
     ishalted = [0, 1]# .|> StackFloatType
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -634,16 +673,19 @@ function instr_read!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -659,16 +701,19 @@ function instr_write!(state::VMState)::VMState
     newinstrpointer, ishalted = advanceinstrpointer(state, 1)
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        state.stack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            state.stackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            state.stack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 
@@ -696,16 +741,19 @@ function instr_pushval!(val::StackValue, state::VMState, allvalues::Array)::VMSt
     newstack = stackscaled .+ topscaled
     @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
-    VMState(
-        newinstrpointer,
-        newstackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        state.input,
-        state.output,
-        newstack,
-        state.variables,
-        ishalted,
+    applyishalted(
+        state,
+        VMState(
+            newinstrpointer,
+            newstackpointer,
+            state.inputpointer,
+            state.outputpointer,
+            state.input,
+            state.output,
+            newstack,
+            state.variables,
+            ishalted,
+        ),
     )
 end
 

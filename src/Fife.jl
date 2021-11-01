@@ -332,7 +332,12 @@ function create_examples(hiddenprogram, trainmaskfull; numexamples = 16)
     variablemaskeds
 end
 
-function runprogram(state::VMState, program::Array, instructions::Vector{Function}, maxticks::Int)
+function runprogram(
+    state::VMState,
+    program::Array,
+    instructions::Vector{Function},
+    maxticks::Int,
+)
     for i = 1:maxticks
         state = super_step(state, program, instructions)
     end
@@ -340,7 +345,7 @@ function runprogram(state::VMState, program::Array, instructions::Vector{Functio
 end
 
 function runprogram(state::DiscreteVMState, program::Array{Function}, maxticks::Int)
-    for i in 1:maxticks
+    for i = 1:maxticks
         runnextinstr(state, program)
         if state.ishalted
             break
@@ -358,9 +363,9 @@ function applyprobpointer(x::Matrix, pointer::Array)
     # circular shift for each possibility, mult by prob pointer, then sum
     #TODO very unhelpful types -- why doesn't Vector work?
     #TODO test this!
-    allx = [circshift(x, -i) for i in 1:length(pointer)] .* pointer
-    allx = cat(allx..., dims=3)
-    sum(allx, dims = 3)[:,:,1]
+    allx = [circshift(x, -i) for i = 1:length(pointer)] .* pointer
+    allx = cat(allx..., dims = 3)
+    sum(allx, dims = 3)[:, :, 1]
 end
 
 function loss(ŷ::VMState, y::VMState)
@@ -374,7 +379,13 @@ function accuracy(hidden, target, trainmask)
     result = (sum(samemax) - sum(1 .- trainmask)) / sum(trainmask)
 end
 
-function accuracyonexamples(hidden::Matrix{T}, target::Matrix{T}, instructions, examples, maxticks) where T <: Number
+function accuracyonexamples(
+    hidden::Matrix{T},
+    target::Matrix{T},
+    instructions,
+    examples,
+    maxticks,
+) where {T<:Number}
     # TODO does this need softmaxmask?
     predprogram = instructions[onecold(hidden)]
     targetprogram = instructions[onecold(target)]
@@ -389,7 +400,13 @@ function accuracyonexamples(hidden::Matrix{T}, target::Matrix{T}, instructions, 
     sum(correctexamples) / length(examples)
 end
 
-function approxoutputaccuracy(hidden::Matrix{T}, target::Matrix{T}, instructions::Vector{Function}, examples, maxticks) where T <: Number
+function approxoutputaccuracy(
+    hidden::Matrix{T},
+    target::Matrix{T},
+    instructions::Vector{Function},
+    examples,
+    maxticks,
+) where {T<:Number}
     discretepredprogram = instructions[onecold(hidden)]
     discretetargetprogram = instructions[onecold(target)]
     correctexamples = []
@@ -507,18 +524,19 @@ function trainbatch!(
     testlength = min(length(inputstates), 32)
     grads = similar(hiddenprogram)
     grads .= 0
-    for epoch in 1:epochs
+    for epoch = 1:epochs
         progressbar = Progress(length(inputstates))
         Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
-            grads = grads .+ gradient(
-                forward,
-                startstate,
-                targetstates[i], #TODO awkward
-                instructions,
-                maxticks,
-                hiddenprogram,
-                trainmaskfull,
-            )[end-1]
+            grads =
+                grads .+ gradient(
+                    forward,
+                    startstate,
+                    targetstates[i], #TODO awkward
+                    instructions,
+                    maxticks,
+                    hiddenprogram,
+                    trainmaskfull,
+                )[end-1]
             grads = grads .* trainmaskfull
             if i % batchsize == 0 && i != 0
                 Optimise.update!(opt, hiddenprogram, grads)
