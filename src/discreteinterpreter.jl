@@ -75,15 +75,18 @@ function setinstrpointer!(state::DiscreteVMState, targetinstrpointer)
 end
 
 function instr_pass!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
 end
 
 function instr_halt!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     state.ishalted = true
 end
 
 function instr_pushval!(value::StackValue, state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     pushfirst!(state.stack, value)
 end
@@ -91,11 +94,13 @@ end
 instr_pushval!(val::Int, state::DiscreteVMState) = instr_pushval!(StackValue(val), state)
 
 function instr_pop!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     popfirstreplace!(state.stack)
 end
 
 function instr_dup!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     pushfirst!(state.stack, x)
@@ -103,6 +108,7 @@ function instr_dup!(state::DiscreteVMState)
 end
 
 function instr_swap!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -111,6 +117,7 @@ function instr_swap!(state::DiscreteVMState)
 end
 
 function instr_add!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -118,6 +125,7 @@ function instr_add!(state::DiscreteVMState)
 end
 
 function instr_sub!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -125,6 +133,7 @@ function instr_sub!(state::DiscreteVMState)
 end
 
 function instr_mult!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -132,6 +141,7 @@ function instr_mult!(state::DiscreteVMState)
 end
 
 function instr_div!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -140,6 +150,7 @@ function instr_div!(state::DiscreteVMState)
 end
 
 function instr_not!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     # 0 is false, anything else is true.
     # but if true still set to 1
@@ -149,6 +160,7 @@ function instr_not!(state::DiscreteVMState)
 end
 
 function instr_and!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -157,6 +169,7 @@ function instr_and!(state::DiscreteVMState)
 end
 
 function instr_or!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -165,6 +178,7 @@ function instr_or!(state::DiscreteVMState)
 end
 
 function instr_goto!(state::DiscreteVMState)
+    if state.ishalted return state end
     x = popfirstreplace!(state.stack)
     if x > 0
         setinstrpointer!(state, x)
@@ -174,6 +188,7 @@ function instr_goto!(state::DiscreteVMState)
 end
 
 function instr_gotoif!(state::DiscreteVMState)
+    if state.ishalted return state end
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
     if x == 0 || x.blank || y.blank
@@ -184,6 +199,7 @@ function instr_gotoif!(state::DiscreteVMState)
 end
 
 function instr_iseq!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -195,6 +211,7 @@ function instr_iseq!(state::DiscreteVMState)
 end
 
 function instr_isgt!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -206,6 +223,7 @@ function instr_isgt!(state::DiscreteVMState)
 end
 
 function instr_isge!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -217,6 +235,7 @@ function instr_isge!(state::DiscreteVMState)
 end
 
 function instr_store!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
@@ -224,6 +243,7 @@ function instr_store!(state::DiscreteVMState)
 end
 
 function instr_load!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     if length(state.variables) < 1
         return
@@ -236,12 +256,14 @@ function instr_load!(state::DiscreteVMState)
 end
 
 function instr_read!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.input)
     pushfirst!(state.stack, x)
 end
 
 function instr_write!(state::DiscreteVMState)
+    if state.ishalted return state end
     setinstrpointer!(state, state.instrpointer + 1)
     x = popfirstreplace!(state.stack)
     # setinstrpointer!(state, state.instrpointer + 1)

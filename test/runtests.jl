@@ -35,6 +35,24 @@ CUDA.allowscalar(false)
 using Parameters: @with_kw
 using Profile
 using BenchmarkTools
+import Base: show
+
+"""
+Show
+"""
+function show(io::IO, x::StackValue)
+    if x.blank
+        print(io, "∅")
+    elseif x.max
+        print(io, "^")
+    elseif x.min
+        print(io, "v")
+    else
+        print(io, x.val)
+    end
+end
+
+
 instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues) # TODO remove when types merged?
 instr_pushval!(val::Int, state::VMState, allvalues::Array) =
     instr_pushval!(StackValue(val), state, allvalues)
@@ -1074,19 +1092,19 @@ end
 end
 @testset "Instructions" begin
     test_all_single_instr(args)
-    test_random_programs(args)
+    # test_random_programs(args)
 end
-@testset "Superposition Interpreter steps" begin
-    test_super_step(args)
-    test_super_run_program(args)
-end
-@testset "Train and Gradient" begin
-    test_all_gradient_single_instr(args)
-    test_runprogram(args)
-    test_gradient_op_probvec(args)
-    args.programlen = 5
-    # args.programlen = 5
-    args.maxticks = 10
-    # args.lr = .1
-    test_train(args)
-end
+# @testset "Superposition Interpreter steps" begin
+#     test_super_step(args)
+#     test_super_run_program(args)
+# end
+# @testset "Train and Gradient" begin
+#     test_all_gradient_single_instr(args)
+#     test_runprogram(args)
+#     test_gradient_op_probvec(args)
+#     args.programlen = 5
+#     # args.programlen = 5
+#     args.maxticks = 10
+#     # args.lr = .1
+#     test_train(args)
+# end

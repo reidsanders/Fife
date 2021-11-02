@@ -185,14 +185,14 @@ end
 function applyishalted(a::VMState, b::VMState)::VMState
     # how to calc prob?
     VMState(
-        a.instrpointer * a.ishalted[1] .+ b.instrpointer * a.ishalted[2],
-        a.stackpointer * a.ishalted[1] .+ b.stackpointer * a.ishalted[2],
-        a.inputpointer * a.ishalted[1] .+ b.inputpointer * a.ishalted[2],
-        a.outputpointer * a.ishalted[1] .+ b.outputpointer * a.ishalted[2],
-        a.input * a.ishalted[1] .+ b.input * a.ishalted[2],
-        a.output * a.ishalted[1] .+ b.output * a.ishalted[2],
-        a.stack * a.ishalted[1] .+ b.stack * a.ishalted[2],
-        a.variables * a.ishalted[1] .+ b.variables * a.ishalted[2],
+        a.instrpointer * a.ishalted[2] .+ b.instrpointer * a.ishalted[1],
+        a.stackpointer * a.ishalted[2] .+ b.stackpointer * a.ishalted[1],
+        a.inputpointer * a.ishalted[2] .+ b.inputpointer * a.ishalted[1],
+        a.outputpointer * a.ishalted[2] .+ b.outputpointer * a.ishalted[1],
+        a.input * a.ishalted[2] .+ b.input * a.ishalted[1],
+        a.output * a.ishalted[2] .+ b.output * a.ishalted[1],
+        a.stack * a.ishalted[2] .+ b.stack * a.ishalted[1],
+        a.variables * a.ishalted[2] .+ b.variables * a.ishalted[1],
         b.ishalted, # TODO is this actually true?
     )
 end
@@ -208,21 +208,21 @@ Get top of stack, then push it to stack. Return new state.
 
 """
 function instr_pop!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate, x = popfromstack(state)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
-            state.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
-            state.stack,
-            state.variables,
+            newstate.stackpointer,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
+            newstate.stack,
+            newstate.variables,
             ishalted,
         ),
     )
