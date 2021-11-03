@@ -265,25 +265,25 @@ Pop two values from stack, add them, then push result to stack. Return new state
 
 """
 function instr_add!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
 
     resultvec = op_probvec(+, x, y)
-    newstate = pushtostack(state, resultvec)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate = pushtostack(newstate, resultvec)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
             newstate.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
             newstate.stack,
-            state.variables,
+            newstate.variables,
             ishalted,
         ),
     )
