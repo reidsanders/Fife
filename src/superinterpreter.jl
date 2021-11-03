@@ -296,25 +296,25 @@ Pop two values of stack, subtract second from first, then push result to stack. 
 
 """
 function instr_sub!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
 
     resultvec = op_probvec(-, x, y)
-    newstate = pushtostack(state, resultvec)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate = pushtostack(newstate, resultvec)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
             newstate.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
             newstate.stack,
-            state.variables,
+            newstate.variables,
             ishalted,
         ),
     )
@@ -327,25 +327,25 @@ Pop two values of stack, multiply them, then push result to stack. Return new st
 
 """
 function instr_mult!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
 
     resultvec = op_probvec(*, x, y)
-    newstate = pushtostack(state, resultvec)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate = pushtostack(newstate, resultvec)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
             newstate.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
             newstate.stack,
-            state.variables,
+            newstate.variables,
             ishalted,
         ),
     )
@@ -358,25 +358,25 @@ Pop two values of stack, divide first by second, then push result to stack. Retu
 
 """
 function instr_div!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
 
     resultvec = op_probvec(/, x, y)
-    newstate = pushtostack(state, resultvec)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate = pushtostack(newstate, resultvec)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
             newstate.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
             newstate.stack,
-            state.variables,
+            newstate.variables,
             ishalted,
         ),
     )
@@ -391,24 +391,24 @@ Pop value from stack, apply not, then push result to stack. Return new state.
 
 """
 function instr_not!(state::VMState)::VMState
-    state, x = popfromstack(state)
+    newstate, x = popfromstack(state)
 
     resultvec = op_probvec(op_not, x)
-    newstate = pushtostack(state, resultvec)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate = pushtostack(newstate, resultvec)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
             newstate.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
             newstate.stack,
-            state.variables,
+            newstate.variables,
             ishalted,
         ),
     )
@@ -423,25 +423,25 @@ Pop top two values from stack, apply and, then push result to stack. Return new 
 
 """
 function instr_and!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
 
     resultvec = op_probvec((a, b) -> float(a != 0 && b != 0), x, y)
-    newstate = pushtostack(state, resultvec)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate = pushtostack(newstate, resultvec)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
             newstate.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
             newstate.stack,
-            state.variables,
+            newstate.variables,
             ishalted,
         ),
     )
@@ -489,8 +489,8 @@ function instr_gotoif!(
     numericvalues = numericvalues,
 )::VMState
     check_state_asserts(state)
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
     xb = x[1]
     yb = y[1]
     conditional = [
@@ -508,7 +508,7 @@ function instr_gotoif!(
     maxint = round(Int, (length(numericvalues) - 1) / 2)
     zeroindex = length(allvalues) - maxint
     neginfindex = zeroindex - maxint
-    maxinstrindex = zeroindex + length(state.instrpointer)
+    maxinstrindex = zeroindex + length(newstate.instrpointer)
 
     ### Accumulate prob mass from goto off either end ###
     p_ofgoto =
@@ -527,27 +527,27 @@ function instr_gotoif!(
     @assert p_gotoend <= 1
     @assert sum(jumpvalprobs) <= 1
     ### calculate both nothing goto and just stepping forward
-    currentinstructionforward, ishalted = advanceinstrpointer(state, 1)
+    currentinstructionforward, ishalted = advanceinstrpointer(newstate, 1)
     newinstrpointer =
         (1 - p_ofgoto) * currentinstructionforward .+ p_ofgoto * newinstrpointer
 
-    p_nothalted, p_halted = state.ishalted
+    p_nothalted, p_halted = newstate.ishalted
     p_halted = 1 - p_nothalted * (1 - p_gotopastend)
     newishalted = [1 - p_halted, p_halted]
     newinstrpointer = normit(newinstrpointer) # TODO may be covering up a bug
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.01) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.01) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(newishalted), 1, atol = 0.01)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
-            state.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
-            state.stack,
-            state.variables,
+            newstate.stackpointer,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
+            newstate.stack,
+            newstate.variables,
             newishalted,
         ),
     )
