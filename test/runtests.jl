@@ -836,82 +836,93 @@ function test_runprogram(args)
 end
 
 function test_train(args)
-    discrete_program = create_random_discrete_program(args.programlen, instructions)
+    opt = Descent(args.lr)
 
-    target_program =
-        convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
-    trainmask = create_trainable_mask(args.programlen, args.inputlen)
-    hiddenprogram = deepcopy(target_program)
+    instr_pushval!(val::StackValue, state::VMState) = instr_pushval!(val, state, allvalues)
+    val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
+
+    instructions = [
+        instr_pass!,
+        instr_halt!,
+        # instr_pushval!,
+        instr_pop!,
+        instr_dup!,
+        instr_swap!,
+        instr_add!,
+        instr_read!,
+        instr_write!,
+        instr_sub!,
+        instr_mult!,
+        instr_div!,
+        instr_not!,
+        instr_and!,
+        instr_goto!,
+        instr_gotoif!,
+        # instr_iseq!,
+        # instr_isgt!,
+        # instr_isge!,
+        # instr_store!,
+        # instr_load!
+    ]
+
+
+    @info "Setting up instructions and training data"
+    discrete_program = [instr_read!, instr_write!, instr_write!]
+    args.programlen = length(discrete_program)
+
+    targetprogram =
+        convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
+    trainmask = create_trainable_mask(args.programlen, 0)
+    hiddenprogram = deepcopy(targetprogram)
     hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
     # Initialize
     trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+
     hiddenprogram = hiddenprogram |> device
-    target_program = target_program |> device
+    targetprogram = targetprogram |> device
     hiddenprogram = hiddenprogram |> device
     trainmask = trainmask |> device
+    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
-    # Initialize start state with input
-    state =
-        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
-    startstate = VMState(
-        state.instrpointer,
-        state.stackpointer,
-        state.inputpointer,
-        state.outputpointer,
-        fillinput([2, 5, 3], args.inputlen),
-        state.output,
-        state.stack,
-        state.variables,
-        state.ishalted,
-    )
-    check_state_asserts(startstate)
-    target = runprogram(startstate, target_program, instructions, 10)
-
+    @info "Create inputstates"
+    inputstates = createinputstates(state, num = args.trainsize)
+    targetstates =
+        [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
 
     ######################################
-    # run program train
+    # runprogram program train
     ######################################
-    first_loss = test(
+    first_loss = testoninputs(
         hiddenprogram,
-        target_program,
-        startstate,
+        inputstates,
+        targetstates,
         instructions,
-        args.programlen,
+        args.maxticks,
         trainmaskfull,
     )
-    grads = gradient(
-        forward,
-        startstate,
-        target,
-        instructions,
-        args.programlen,
-        hiddenprogram,
-        trainmaskfull,
-    )
-    opt = Descent(0.000001)
-    @showprogress for i = 1:3
-        grads = gradient(
-            forward,
-            startstate,
-            target,
-            instructions,
-            args.programlen,
-            hiddenprogram,
-            trainmaskfull,
-        )[end-1]
-        grads = grads .* trainmaskfull
-        Optimise.update!(opt, hiddenprogram, grads)
-    end
 
-    second_loss = test(
+    @time trainbatch!(
         hiddenprogram,
-        target_program,
-        startstate,
         instructions,
-        args.programlen,
+        args.maxticks,
+        inputstates,
+        targetstates,
+        trainmaskfull,
+        batchsize = 10,
+        epochs = 1,
+        opt = opt,
+    )
+
+    second_loss = testoninputs(
+        hiddenprogram,
+        inputstates,
+        targetstates,
+        instructions,
+        args.maxticks,
         trainmaskfull,
     )
+
     @info "test train loss improvement" second_loss - first_loss
     @test second_loss < first_loss
 end
@@ -1092,19 +1103,20 @@ end
 end
 @testset "Instructions" begin
     test_all_single_instr(args)
-    # test_random_programs(args)
+    test_random_programs(args)
 end
-# @testset "Superposition Interpreter steps" begin
-#     test_super_step(args)
-#     test_super_run_program(args)
-# end
-# @testset "Train and Gradient" begin
-#     test_all_gradient_single_instr(args)
-#     test_runprogram(args)
-#     test_gradient_op_probvec(args)
-#     args.programlen = 5
-#     # args.programlen = 5
-#     args.maxticks = 10
-#     # args.lr = .1
-#     test_train(args)
-# end
+@testset "Superposition Interpreter steps" begin
+    test_super_step(args)
+    test_super_run_program(args)
+end
+@testset "Train and Gradient" begin
+    test_all_gradient_single_instr(args)
+    test_runprogram(args)
+    test_gradient_op_probvec(args)
+    args.programlen = 5
+    # args.programlen = 5
+    args.maxticks = 10
+    args.trainsize = 10
+    # args.lr = .1
+    test_train(args)
+end
