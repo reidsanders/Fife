@@ -454,24 +454,24 @@ Swap top two values of stack. Returns new state.
 
 """
 function instr_swap!(state::VMState)::VMState
-    state, x = popfromstack(state)
-    state, y = popfromstack(state)
-    state = pushtostack(state, x)
-    state = pushtostack(state, y)
-    newinstrpointer, ishalted = advanceinstrpointer(state, 1)
-    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(state.instrpointer)"
+    newstate, x = popfromstack(state)
+    newstate, y = popfromstack(newstate)
+    newstate = pushtostack(newstate, x)
+    newstate = pushtostack(newstate, y)
+    newinstrpointer, ishalted = advanceinstrpointer(newstate, 1)
+    @assert isapprox(sum(newinstrpointer), 1, atol = 0.001) "instrpointer doesn't sum to 1: $(sum(newinstrpointer))\n $(newinstrpointer)\n Initial: $(newstate.instrpointer)"
     @assert isapprox(sum(ishalted), 1, atol = 0.001)
     applyishalted(
         state,
         VMState(
             newinstrpointer,
-            state.stackpointer,
-            state.inputpointer,
-            state.outputpointer,
-            state.input,
-            state.output,
-            state.stack,
-            state.variables,
+            newstate.stackpointer,
+            newstate.inputpointer,
+            newstate.outputpointer,
+            newstate.input,
+            newstate.output,
+            newstate.stack,
+            newstate.variables,
             ishalted,
         ),
     )
