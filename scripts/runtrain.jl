@@ -53,7 +53,7 @@ end
 x = [StackValue(), StackValue(100)]
 @info " StackValue: $(x)"
 
-args.programlen = 3
+# args.programlen = 5
 args.trainsize = 256
 args.maxticks = 10
 args.lr = 0.1
@@ -98,10 +98,10 @@ num_instructions = length(instructions)
 # discrete_program[1:2] .= instr_read!
 # discrete_program[end-1:end] .= instr_write!
 
-# discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
+discrete_program = [instr_read!, instr_read!, instr_swap!, instr_write!, instr_write!]
 # discrete_program = [instr_read!, instr_write!]
-discrete_program = [instr_read!, instr_write!, instr_write!]
-# args.programlen = length(discrete_program)
+# discrete_program = [instr_read!, instr_write!, instr_write!]
+args.programlen = length(discrete_program)
 #####
 
 targetprogram =
@@ -160,8 +160,8 @@ first_exampleaccuracy = accuracyonexamples(
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 64,
-    epochs = 20,
+    batchsize = 128,
+    epochs = 5,
     opt = opt,
 )
 
