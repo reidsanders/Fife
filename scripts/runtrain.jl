@@ -29,7 +29,7 @@ using ParameterSchedulers: Scheduler
 import Fife: instr_pushval!, args
 using Parameters: @with_kw
 using Flux
-using Flux: onehot, onehotbatch, glorot_uniform, gradient, onecold, hidden
+using Flux: onehot, onehotbatch, glorot_uniform, glorot_normal, gradient, onecold, hidden
 using Random
 Random.seed!(123);
 import Base: show
@@ -54,7 +54,7 @@ x = [StackValue(), StackValue(100)]
 @info " StackValue: $(x)"
 
 # args.programlen = 5
-args.trainsize = 256
+args.trainsize = 64
 args.maxticks = 10
 args.lr = 0.1
 opt = ADAM(args.lr)
@@ -108,7 +108,10 @@ targetprogram =
     convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(targetprogram)
-hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+# hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+hiddenprograms = [glorot_normal(size(hiddenprogram)) for i = 1:256]
+hiddenprogram .= 0
+# hiddenprogram[:, trainmask] .= 0
 
 #TODO run multiple inputs
 #TODO define some basic programs to try instead of randomly
@@ -153,17 +156,27 @@ first_exampleaccuracy = accuracyonexamples(
     args.maxticks,
 )
 
-@time trainbatch!(
-    hiddenprogram,
-    instructions,
-    args.maxticks,
-    inputstates,
-    targetstates,
-    trainmaskfull,
-    batchsize = 128,
-    epochs = 5,
-    opt = opt,
-)
+# @time trainbatch!(
+#     hiddenprogram,
+#     instructions,
+#     args.maxticks,
+#     inputstates,
+#     targetstates,
+#     trainmaskfull,
+#     batchsize = 128,
+#     epochs = 30,
+#     opt = opt,
+# )
+
+# @time hiddenprogram = trainmulti(
+#     hiddenprograms,
+#     instructions,
+#     args.maxticks,
+#     inputstates,
+#     targetstates,
+#     trainmaskfull,
+#     epochs = 1,
+# )
 
 second_loss = testoninputs(
     hiddenprogram,

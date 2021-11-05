@@ -130,7 +130,8 @@ begin
         createinputstates,
         accuracyonexamples,
         approxoutputaccuracy,
-        trainbatch!
+        trainbatch!,
+        trainmulti
 end
 
 val_instructions = [partial(instr_pushval!, i) for i in numericvalues]
@@ -555,4 +556,55 @@ function trainbatch!(
         @info "epoch: $(epoch)/$(epochs) loss: $(loss)"
     end
 end
+
+function trainmulti(
+    hiddenprograms,
+    instructions,
+    maxticks,
+    inputstates,
+    targetstates,
+    trainmaskfull;
+    batchsize = 4,
+    epochs = 5,
+    opt = Descent(0.1),
+)
+    # TODO if its not updating the hidden programs a lot of this is unecessary
+    testlength = min(length(inputstates), 32)
+    grads = similar(hiddenprograms[1])
+    grads .= 0
+    for epoch = 1:epochs
+        progressbar = Progress(length(inputstates))
+        Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
+            for hiddenprogram in hiddenprograms
+                grads =
+                    grads .+ gradient(
+                        forward,
+                        startstate,
+                        targetstates[i], #TODO awkward
+                        instructions,
+                        maxticks,
+                        hiddenprogram,
+                        trainmaskfull,
+                    )[end-1]
+                grads = grads .* trainmaskfull
+                # if i % batchsize == 0 && i != 0
+                #     Optimise.update!(opt, hiddenprogram, grads)
+                #     grads .= 0
+                # end
+            end
+            next!(progressbar)
+        end
+        loss = testoninputs(
+            grads,
+            inputstates[1:testlength],
+            targetstates[1:testlength],
+            instructions,
+            maxticks,
+            trainmaskfull,
+        )
+        @info "epoch: $(epoch)/$(epochs) loss: $(loss)"
+    end
+    return grads
+end
+
 end
