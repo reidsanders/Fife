@@ -521,7 +521,9 @@ function trainbatch!(
     batchsize = 4,
     epochs = 5,
     opt = Descent(0.1),
+    cb = () -> ()
 )
+    cb = Flux.Optimise.runall(cb)
     testlength = min(length(inputstates), 32)
     grads = similar(hiddenprogram)
     grads .= 0
@@ -545,6 +547,7 @@ function trainbatch!(
             end
             next!(progressbar)
         end
+        cb()
         loss = testoninputs(
             hiddenprogram,
             inputstates[1:testlength],

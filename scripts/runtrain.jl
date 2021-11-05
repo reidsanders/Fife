@@ -156,17 +156,18 @@ first_exampleaccuracy = accuracyonexamples(
     args.maxticks,
 )
 
-# @time trainbatch!(
-#     hiddenprogram,
-#     instructions,
-#     args.maxticks,
-#     inputstates,
-#     targetstates,
-#     trainmaskfull,
-#     batchsize = 128,
-#     epochs = 30,
-#     opt = opt,
-# )
+@time trainbatch!(
+    hiddenprogram,
+    instructions,
+    args.maxticks,
+    inputstates,
+    targetstates,
+    trainmaskfull,
+    batchsize = 128,
+    epochs = 30,
+    opt = opt,
+    cb = Flux.throttle(TBCallback, 5),
+)
 
 # @time hiddenprogram = trainmulti(
 #     hiddenprograms,
