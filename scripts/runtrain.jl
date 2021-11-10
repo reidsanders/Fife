@@ -33,6 +33,7 @@ using Parameters: @with_kw
 using Flux
 using Flux: onehot, onehotbatch, glorot_uniform, glorot_normal, gradient, onecold, hidden
 using Random
+using Dates
 Random.seed!(123);
 import Base: show
 
@@ -56,7 +57,8 @@ x = [StackValue(), StackValue(100)]
 @info " StackValue: $(x)"
 
 # args.programlen = 5
-args.trainsize = 64
+args.experimentname = "regular-train"
+args.trainsize = 128
 args.maxticks = 10
 args.lr = 0.1
 opt = ADAM(args.lr)
@@ -134,7 +136,7 @@ discreteinputstates = [convert_continuous_to_discrete(state) for state in inputs
 first_program = deepcopy(program)
 
 #create tensorboard logger
-logdir = "content/log"
+logdir = "logs/runs/$(args.experimentname)_$(Dates.now())"
 logger = TBLogger(logdir, tb_append)
 
 #function to log information after every epoch
@@ -143,14 +145,14 @@ function TBCallback(;step=0)
     testlength = min(length(inputstates), 32)
     with_logger(logger) do
         # @info "model" params=param_dict log_step_increment=0
-        @time exampleaccuracy = accuracyonexamples(
+        exampleaccuracy = accuracyonexamples(
             hiddenprogram,
             targetprogram,
             instructions,
             discreteinputstates[1:testlength],
             args.maxticks,
         )
-        @time loss = testoninputs(
+        loss = testoninputs(
             hiddenprogram,
             inputstates[1:testlength],
             targetstates[1:testlength],

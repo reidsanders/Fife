@@ -34,6 +34,7 @@ include("discreteinterpreter.jl")
     maxint::Int = 20
     trainsize::Int = 10
     usegpu::Bool = false
+    experimentname::String = ""
     StackFloatType::Type = Float64
 end
 args = Args()
