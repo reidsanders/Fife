@@ -25,6 +25,8 @@ using Fife:
 
 using ParameterSchedulers
 using ParameterSchedulers: Scheduler
+using TensorBoardLogger
+using Logging
 
 import Fife: instr_pushval!, args
 using Parameters: @with_kw
@@ -109,12 +111,9 @@ targetprogram =
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(targetprogram)
 # hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
-hiddenprograms = [glorot_normal(size(hiddenprogram)) for i = 1:256]
+hiddenprograms = [glorot_normal(size(hiddenprogram)) for i = 1:512]
 hiddenprogram .= 0
 # hiddenprogram[:, trainmask] .= 0
-
-#TODO run multiple inputs
-#TODO define some basic programs to try instead of randomly
 
 # Initialize
 trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
@@ -133,6 +132,36 @@ targetstates =
 discreteinputstates = [convert_continuous_to_discrete(state) for state in inputstates]
 
 first_program = deepcopy(program)
+
+#create tensorboard logger
+logdir = "content/log"
+logger = TBLogger(logdir, tb_append)
+
+#function to log information after every epoch
+# relative time, separate train and test loss. approx acc. epoch. lr, all args hyperparams. 
+function TBCallback(;step=0)
+    testlength = min(length(inputstates), 32)
+    with_logger(logger) do
+        # @info "model" params=param_dict log_step_increment=0
+        @time exampleaccuracy = accuracyonexamples(
+            hiddenprogram,
+            targetprogram,
+            instructions,
+            discreteinputstates[1:testlength],
+            args.maxticks,
+        )
+        @time loss = testoninputs(
+            hiddenprogram,
+            inputstates[1:testlength],
+            targetstates[1:testlength],
+            instructions,
+            args.maxticks,
+            trainmaskfull,
+        )
+        @info "train" loss=loss accuracy=exampleaccuracy step=step
+        # @info "test" loss=loss(testdata, testlabels) acc=accuracy(testdata, testlabels)
+    end
+end
 
 ######################################
 # runprogram program train
@@ -163,10 +192,10 @@ first_exampleaccuracy = accuracyonexamples(
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 128,
-    epochs = 30,
+    batchsize = 32,
+    epochs = 2,
     opt = opt,
-    cb = Flux.throttle(TBCallback, 5),
+    cb = Flux.throttle(TBCallback, 30),
 )
 
 # @time hiddenprogram = trainmulti(

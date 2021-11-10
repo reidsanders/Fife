@@ -530,6 +530,8 @@ function trainbatch!(
     for epoch = 1:epochs
         progressbar = Progress(length(inputstates))
         Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
+            # TODO use pullback instead to get train loss simulataneously
+            # And just to be sure add test set to callback
             grads =
                 grads .+ gradient(
                     forward,
@@ -544,10 +546,10 @@ function trainbatch!(
             if i % batchsize == 0 && i != 0
                 Optimise.update!(opt, hiddenprogram, grads)
                 grads .= 0
+                cb(step=i + (epoch - 1) * length(inputstates))
             end
             next!(progressbar)
         end
-        cb()
         loss = testoninputs(
             hiddenprogram,
             inputstates[1:testlength],
