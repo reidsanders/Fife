@@ -202,16 +202,6 @@ first_exampleaccuracy = accuracyonexamples(
     cb = Flux.throttle(TBCallback, 30),
 )
 
-# @time hiddenprogram = trainmulti(
-#     hiddenprograms,
-#     instructions,
-#     args.maxticks,
-#     inputstates,
-#     targetstates,
-#     trainmaskfull,
-#     epochs = 1,
-# )
-
 second_loss = testoninputs(
     hiddenprogram,
     inputstates,
