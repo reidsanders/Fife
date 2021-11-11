@@ -14,7 +14,8 @@ using Flux:
     cpu,
     gpu,
     Optimise,
-    gradient
+    gradient,
+    pullback
 
 using Memoize
 import Base: +, -, *, length, ==
@@ -528,14 +529,14 @@ function trainbatch!(
     testlength = min(length(inputstates), 32)
     grads = similar(hiddenprogram)
     grads .= 0
+    batchloss = 0
     for epoch = 1:epochs
         progressbar = Progress(length(inputstates))
         Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
             # TODO use pullback instead to get train loss simulataneously
             # then pass train loss to logger. Also use loss to see if it doesn't decrease
             # And just to be sure add test set to callback
-            grads =
-                grads .+ gradient(
+            yloss, back = pullback(
                     forward,
                     startstate,
                     targetstates[i], #TODO awkward
@@ -543,12 +544,25 @@ function trainbatch!(
                     maxticks,
                     hiddenprogram,
                     trainmaskfull,
-                )[end-1]
-            grads = grads .* trainmaskfull
+                )
+            # grads =
+            #     grads .+ gradient(
+            #         forward,
+            #         startstate,
+            #         targetstates[i], #TODO awkward
+            #         instructions,
+            #         maxticks,
+            #         hiddenprogram,
+            #         trainmaskfull,
+            #     )[end-1]
+            grads = grads .+ back(1)[end-1] # pass a starting gradient of 1
+            grads = grads .* trainmaskfull #TODO inefficient on cpu
+            batchloss += yloss
             if i % batchsize == 0 && i != 0
                 Optimise.update!(opt, hiddenprogram, grads)
                 grads .= 0
-                cb(step=i + (epoch - 1) * length(inputstates))
+                batchloss = 0
+                cb(step=i + (epoch - 1) * length(inputstates), loss=batchloss/batchsize)
             end
             next!(progressbar)
         end

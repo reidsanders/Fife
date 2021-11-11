@@ -59,7 +59,7 @@ x = [StackValue(), StackValue(100)]
 # args.programlen = 5
 args.experimentname = "regular-train"
 args.trainsize = 32
-args.maxticks = 6
+args.maxticks = 10
 args.lr = 0.1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
@@ -144,18 +144,17 @@ end
 
 #function to log information after every epoch
 # relative time, separate train and test loss. approx acc. epoch. lr, all args hyperparams. 
-function TBCallback(;step=0, args=args, opt=opt)
+function TBCallback(;step=0, loss=0, args=args, opt=opt)
     testlength = min(length(inputstates), 32)
     with_logger(logger) do
-        # @info "model" params=param_dict log_step_increment=0
-        exampleaccuracy = accuracyonexamples(
+        trainexampleaccuracy = accuracyonexamples(
             hiddenprogram,
             targetprogram,
             instructions,
             discreteinputstates[1:testlength],
             args.maxticks,
         )
-        loss = testoninputs(
+        testloss = testoninputs(
             hiddenprogram,
             inputstates[1:testlength],
             targetstates[1:testlength],
@@ -163,7 +162,8 @@ function TBCallback(;step=0, args=args, opt=opt)
             args.maxticks,
             trainmaskfull,
         )
-        @info "train" loss=loss accuracy=exampleaccuracy step=step lr=opt.eta
+        @info "train" loss=loss accuracy=trainexampleaccuracy step=step lr=opt.eta
+        @info "test" loss=testloss step=step lr=opt.eta
     end
 end
 
