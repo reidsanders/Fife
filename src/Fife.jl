@@ -24,8 +24,8 @@ include("utils.jl")
 include("discreteinterpreter.jl")
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
-    batchsize::Int = 2
-    lr::Float64 = 1e-3
+    batchsize::Int = 32
+    lr::Float64 = .1
     epochs::Int = 2
     stackdepth::Int = 11
     programlen::Int = 13
@@ -42,10 +42,10 @@ args = Args()
 
 function create_dependent_values(args)
     if args.usegpu
-        device = gpu
+        targetdevice = gpu
         @info "Training on GPU"
     else
-        device = cpu
+        targetdevice = cpu
         @info "Training on CPU"
     end
     # numericvalues = [[-args.maxint]; [i for i = -args.maxint:args.maxint]; [args.maxint]]
@@ -61,7 +61,7 @@ function create_dependent_values(args)
     blankoutput = onehotbatch(outputblanks, allvalues)
 
     (
-        device,
+        targetdevice,
         numericvalues,
         nonnumericvalues,
         allvalues,
@@ -73,7 +73,7 @@ function create_dependent_values(args)
     )
 end
 
-device,
+targetdevice,
 numericvalues,
 nonnumericvalues,
 allvalues,
@@ -184,15 +184,15 @@ function convert_discrete_to_continuous(
 
     contishalted = onehot(discrete.ishalted, [false, true]) * 1.0f0
     VMState(
-        cont_instrpointer |> device,
-        contstate.stackpointer |> device,
-        contstate.inputpointer |> device,
-        contstate.outputpointer |> device,
-        continput |> device,
-        contoutput |> device,
-        contstack |> device,
-        contvariables |> device,
-        contishalted |> device,
+        cont_instrpointer |> targetdevice,
+        contstate.stackpointer |> targetdevice,
+        contstate.inputpointer |> targetdevice,
+        contstate.outputpointer |> targetdevice,
+        continput |> targetdevice,
+        contoutput |> targetdevice,
+        contstack |> targetdevice,
+        contvariables |> targetdevice,
+        contishalted |> targetdevice,
     )
 end
 

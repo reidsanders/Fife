@@ -960,7 +960,7 @@ function fillinput(input::Array{Int}, inputlen::Int)::Array{StackFloatType}
 end
 
 function valhot(val, allvalues)
-    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> device
+    [i == val ? 1.0f0 : 0.0f0 for i in allvalues] |> targetdevice
 end
 
 function check_state_asserts(state::VMState)
@@ -1061,15 +1061,15 @@ function VMState(
     variables[1, :] .= 1.0
     ishalted[1] = 1.0 # set false
     VMState(
-        instrpointer |> device,
-        stackpointer |> device,
-        inputpointer |> device,
-        outputpointer |> device,
-        input |> device,
-        output |> device,
-        stack |> device,
-        variables |> device,
-        ishalted |> device,
+        instrpointer |> targetdevice,
+        stackpointer |> targetdevice,
+        inputpointer |> targetdevice,
+        outputpointer |> targetdevice,
+        input |> targetdevice,
+        output |> targetdevice,
+        stack |> targetdevice,
+        variables |> targetdevice,
+        ishalted |> targetdevice,
     )
 end
 
@@ -1078,15 +1078,15 @@ function normalize_stackpointer(state::VMState)
     stack = circshift(state.stack, (0, 1 - stackpointermax))
     stackpointer = circshift(state.stackpointer, 1 - stackpointermax)
     VMState(
-        state.instrpointer |> device,
-        stackpointer |> device,
-        state.inputpointer |> device,
-        state.outputpointer |> device,
-        state.input |> device,
-        state.output |> device,
-        stack |> device,
-        state.variables |> device,
-        state.ishalted |> device,
+        state.instrpointer |> targetdevice,
+        stackpointer |> targetdevice,
+        state.inputpointer |> targetdevice,
+        state.outputpointer |> targetdevice,
+        state.input |> targetdevice,
+        state.output |> targetdevice,
+        stack |> targetdevice,
+        state.variables |> targetdevice,
+        state.ishalted |> targetdevice,
     )
 end
 
@@ -1100,14 +1100,14 @@ function normalize_iopointers(state::VMState)
     input = circshift(state.input, (0, 1 - inputpointermax))
     inputpointer = circshift(state.inputpointer, 1 - inputpointermax)
     VMState(
-        state.instrpointer |> device,
-        state.stackpointer |> device,
-        inputpointer |> device,
-        outputpointer |> device,
-        input |> device,
-        output |> device,
-        state.stack |> device,
-        state.variables |> device,
-        state.ishalted |> device,
+        state.instrpointer |> targetdevice,
+        state.stackpointer |> targetdevice,
+        inputpointer |> targetdevice,
+        outputpointer |> targetdevice,
+        input |> targetdevice,
+        output |> targetdevice,
+        state.stack |> targetdevice,
+        state.variables |> targetdevice,
+        state.ishalted |> targetdevice,
     )
 end

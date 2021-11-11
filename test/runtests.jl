@@ -13,7 +13,7 @@ using Fife:
     super_step,
     softmaxmask,
     applyfullmask,
-    device,
+    targetdevice,
     StackValue,
     StackFloatType,
     numericvalues,
@@ -97,15 +97,15 @@ function init_random_state(
     outputpointer[1] = 1.0
     ishalted[1] = 1.0 # set false
     VMState(
-        instrpointer |> device,
-        stackpointer |> device,
-        inputpointer |> device,
-        outputpointer |> device,
-        input |> device,
-        output |> device,
-        stack |> device,
-        variables |> device,
-        ishalted |> device,
+        instrpointer |> targetdevice,
+        stackpointer |> targetdevice,
+        inputpointer |> targetdevice,
+        outputpointer |> targetdevice,
+        input |> targetdevice,
+        output |> targetdevice,
+        stack |> targetdevice,
+        variables |> targetdevice,
+        ishalted |> targetdevice,
     )
 end
 
@@ -769,13 +769,13 @@ function test_super_run_program(args)
 
     # Initialize
 
-    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> targetdevice
 
-    hiddenprogram = hiddenprogram |> device
-    program = softmaxmask(trainmaskfull, hiddenprogram) |> device
-    target_program = target_program |> device
-    hiddenprogram = hiddenprogram |> device
-    trainmask = trainmask |> device
+    hiddenprogram = hiddenprogram |> targetdevice
+    program = softmaxmask(trainmaskfull, hiddenprogram) |> targetdevice
+    target_program = target_program |> targetdevice
+    hiddenprogram = hiddenprogram |> targetdevice
+    trainmask = trainmask |> targetdevice
 
     blank_state =
         VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
@@ -877,12 +877,12 @@ function test_train(args)
     hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
 
     # Initialize
-    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+    trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> targetdevice
 
-    hiddenprogram = hiddenprogram |> device
-    targetprogram = targetprogram |> device
-    hiddenprogram = hiddenprogram |> device
-    trainmask = trainmask |> device
+    hiddenprogram = hiddenprogram |> targetdevice
+    targetprogram = targetprogram |> targetdevice
+    hiddenprogram = hiddenprogram |> targetdevice
+    trainmask = trainmask |> targetdevice
     state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
     @info "Create inputstates"

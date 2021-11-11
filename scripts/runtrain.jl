@@ -12,7 +12,7 @@ using Fife:
     softmaxmask,
     applyfullmask,
     allvalues,
-    device,
+    targetdevice,
     numericvalues,
     nonnumericvalues,
     allvalues,
@@ -58,8 +58,9 @@ x = [StackValue(), StackValue(100)]
 
 # args.programlen = 5
 args.experimentname = "regular-train"
-args.trainsize = 32
+args.trainsize = 16
 args.maxticks = 10
+args.epochs = 1
 args.lr = 0.1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
@@ -118,13 +119,13 @@ hiddenprogram .= 0
 # hiddenprogram[:, trainmask] .= 0
 
 # Initialize
-trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> device
+trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> targetdevice
 
-hiddenprogram = hiddenprogram |> device
-program = softmaxmask(trainmaskfull, hiddenprogram) |> device
-targetprogram = targetprogram |> device
-hiddenprogram = hiddenprogram |> device
-trainmask = trainmask |> device
+hiddenprogram = hiddenprogram |> targetdevice
+program = softmaxmask(trainmaskfull, hiddenprogram) |> targetdevice
+targetprogram = targetprogram |> targetdevice
+hiddenprogram = hiddenprogram |> targetdevice
+trainmask = trainmask |> targetdevice
 state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
 @info "Create inputstates"
@@ -162,7 +163,7 @@ function TBCallback(;step=0, loss=0, args=args, opt=opt)
             args.maxticks,
             trainmaskfull,
         )
-        @info "train" loss=loss accuracy=trainexampleaccuracy step=step lr=opt.eta
+        @info "train" loss=loss accuracy=trainexampleaccuracy step=step lr=opt.eta predprogram = instructions[onecold(hiddenprogram)]
         @info "test" loss=testloss step=step lr=opt.eta
     end
 end
@@ -196,8 +197,8 @@ first_exampleaccuracy = accuracyonexamples(
     inputstates,
     targetstates,
     trainmaskfull,
-    batchsize = 32,
-    epochs = 1,
+    batchsize = args.batchsize,
+    epochs = args.epochs,
     opt = opt,
     cb = Flux.throttle(TBCallback, 30),
 )
