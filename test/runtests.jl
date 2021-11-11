@@ -821,7 +821,8 @@ function test_runprogram(args)
         run_equality_test(newdiscretestate, discretestate)
 
         discrete_program = create_random_discrete_program(args.programlen, instructions)
-        target_program = convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
+        target_program =
+            convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
 
         contstate = runprogram(contstate, target_program, instructions, 30)
         discretestate = runprogram(discretestate, discrete_program, 30)
@@ -883,12 +884,15 @@ function test_train(args)
     targetprogram = targetprogram |> targetdevice
     hiddenprogram = hiddenprogram |> targetdevice
     trainmask = trainmask |> targetdevice
-    state = VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
+    state =
+        VMState(args.stackdepth, args.programlen, allvalues, args.inputlen, args.outputlen)
 
     @info "Create inputstates"
     inputstates = createinputstates(state, num = args.trainsize)
-    targetstates =
-        [runprogram(input, targetprogram, instructions, args.maxticks) for input in inputstates]
+    targetstates = [
+        runprogram(input, targetprogram, instructions, args.maxticks) for
+        input in inputstates
+    ]
 
     ######################################
     # runprogram program train
@@ -909,7 +913,7 @@ function test_train(args)
         inputstates,
         targetstates,
         trainmaskfull,
-        batchsize = 10,
+        batchsize = 8,
         epochs = 1,
         opt = opt,
     )
@@ -1117,6 +1121,7 @@ end
     # args.programlen = 5
     args.maxticks = 10
     args.trainsize = 10
+    args.experimentname = "RunTests"
     # args.lr = .1
     test_train(args)
 end

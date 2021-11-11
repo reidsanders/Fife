@@ -24,8 +24,8 @@ include("utils.jl")
 include("discreteinterpreter.jl")
 #TODO remove mutable / make const?
 @with_kw mutable struct Args
-    batchsize::Int = 32
-    lr::Float64 = .1
+    batchsize::Int = 16
+    lr::Float64 = 0.1
     epochs::Int = 2
     stackdepth::Int = 11
     programlen::Int = 13
@@ -523,7 +523,7 @@ function trainbatch!(
     batchsize = 4,
     epochs = 5,
     opt = Descent(0.1),
-    cb = () -> ()
+    cb = () -> (),
 )
     cb = Flux.Optimise.runall(cb)
     testlength = min(length(inputstates), 32)
@@ -533,36 +533,25 @@ function trainbatch!(
     for epoch = 1:epochs
         progressbar = Progress(length(inputstates))
         Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
-            # TODO use pullback instead to get train loss simulataneously
-            # then pass train loss to logger. Also use loss to see if it doesn't decrease
-            # And just to be sure add test set to callback
             yloss, back = pullback(
-                    forward,
-                    startstate,
-                    targetstates[i], #TODO awkward
-                    instructions,
-                    maxticks,
-                    hiddenprogram,
-                    trainmaskfull,
-                )
-            # grads =
-            #     grads .+ gradient(
-            #         forward,
-            #         startstate,
-            #         targetstates[i], #TODO awkward
-            #         instructions,
-            #         maxticks,
-            #         hiddenprogram,
-            #         trainmaskfull,
-            #     )[end-1]
+                forward,
+                startstate,
+                targetstates[i], #TODO awkward
+                instructions,
+                maxticks,
+                hiddenprogram,
+                trainmaskfull,
+            )
             grads = grads .+ back(1)[end-1] # pass a starting gradient of 1
             grads = grads .* trainmaskfull #TODO inefficient on cpu
             batchloss += yloss
             if i % batchsize == 0 && i != 0
                 Optimise.update!(opt, hiddenprogram, grads)
                 grads .= 0
+                currentloss = batchloss/batchsize
+                currentstep = i + (epoch - 1) * length(inputstates),
+                cb()
                 batchloss = 0
-                cb(step=i + (epoch - 1) * length(inputstates), loss=batchloss/batchsize)
             end
             next!(progressbar)
         end

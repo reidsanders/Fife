@@ -140,12 +140,12 @@ first_program = deepcopy(program)
 logdir = "logs/runs/$(args.experimentname)_$(Dates.now())"
 logger = TBLogger(logdir, tb_append)
 with_logger(logger) do
-    @info "hyperparams" batchsize=args.batchsize lr=args.lr epochs=args.epochs stackdepth=args.stackdepth programlen=args.programlen inputlen=args.inputlen outputlen=args.outputlen maxticks=args.maxticks maxint=args.maxint trainsize=args.trainsize usegpu=args.usegpu experimentname=args.experimentname
+    @info "hyperparams" batchsize=args.batchsize lr=args.lr epochs=args.epochs stackdepth=args.stackdepth programlen=args.programlen inputlen=args.inputlen outputlen=args.outputlen maxticks=args.maxticks maxint=args.maxint trainsize=args.trainsize usegpu=args.usegpu
 end
 
 #function to log information after every epoch
 # relative time, separate train and test loss. approx acc. epoch. lr, all args hyperparams. 
-function TBCallback(;step=0, loss=0, args=args, opt=opt)
+function TBCallback()
     testlength = min(length(inputstates), 32)
     with_logger(logger) do
         trainexampleaccuracy = accuracyonexamples(
@@ -163,7 +163,8 @@ function TBCallback(;step=0, loss=0, args=args, opt=opt)
             args.maxticks,
             trainmaskfull,
         )
-        @info "train" loss=loss accuracy=trainexampleaccuracy step=step lr=opt.eta predprogram = instructions[onecold(hiddenprogram)]
+        programprobs = hiddenprogram |> softmax
+        @info "train" loss=currentloss accuracy=trainexampleaccuracy step=currentstep lr=opt.eta programprobs = programprobs
         @info "test" loss=testloss step=step lr=opt.eta
     end
 end
