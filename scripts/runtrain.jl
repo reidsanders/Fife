@@ -58,8 +58,8 @@ x = [StackValue(), StackValue(100)]
 
 # args.programlen = 5
 args.experimentname = "regular-train"
-args.trainsize = 128
-args.maxticks = 10
+args.trainsize = 32
+args.maxticks = 6
 args.lr = 0.1
 opt = ADAM(args.lr)
 # opt = Scheduler(TriangleExp(λ0 = args.lr, λ1 = args.lr * 20, period = 10, γ = .95), Momentum())
@@ -113,7 +113,7 @@ targetprogram =
 trainmask = create_trainable_mask(args.programlen, 0)
 hiddenprogram = deepcopy(targetprogram)
 # hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
-hiddenprograms = [glorot_normal(size(hiddenprogram)) for i = 1:512]
+# hiddenprograms = [glorot_normal(size(hiddenprogram)) for i = 1:512]
 hiddenprogram .= 0
 # hiddenprogram[:, trainmask] .= 0
 
@@ -138,10 +138,13 @@ first_program = deepcopy(program)
 #create tensorboard logger
 logdir = "logs/runs/$(args.experimentname)_$(Dates.now())"
 logger = TBLogger(logdir, tb_append)
+with_logger(logger) do
+    @info "hyperparams" batchsize=args.batchsize lr=args.lr epochs=args.epochs stackdepth=args.stackdepth programlen=args.programlen inputlen=args.inputlen outputlen=args.outputlen maxticks=args.maxticks maxint=args.maxint trainsize=args.trainsize usegpu=args.usegpu experimentname=args.experimentname
+end
 
 #function to log information after every epoch
 # relative time, separate train and test loss. approx acc. epoch. lr, all args hyperparams. 
-function TBCallback(;step=0)
+function TBCallback(;step=0, args=args, opt=opt)
     testlength = min(length(inputstates), 32)
     with_logger(logger) do
         # @info "model" params=param_dict log_step_increment=0
@@ -160,8 +163,7 @@ function TBCallback(;step=0)
             args.maxticks,
             trainmaskfull,
         )
-        @info "train" loss=loss accuracy=exampleaccuracy step=step
-        # @info "test" loss=loss(testdata, testlabels) acc=accuracy(testdata, testlabels)
+        @info "train" loss=loss accuracy=exampleaccuracy step=step lr=opt.eta
     end
 end
 
@@ -195,7 +197,7 @@ first_exampleaccuracy = accuracyonexamples(
     targetstates,
     trainmaskfull,
     batchsize = 32,
-    epochs = 2,
+    epochs = 1,
     opt = opt,
     cb = Flux.throttle(TBCallback, 30),
 )
