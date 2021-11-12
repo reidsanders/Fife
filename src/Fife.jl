@@ -530,6 +530,7 @@ function trainbatch!(
     grads = similar(hiddenprogram)
     grads .= 0
     batchloss = 0
+    batchstarttime = time()
     for epoch = 1:epochs
         progressbar = Progress(length(inputstates))
         Threads.@threads for (i, startstate) in collect(enumerate(inputstates))
@@ -548,10 +549,14 @@ function trainbatch!(
             if i % batchsize == 0 && i != 0
                 Optimise.update!(opt, hiddenprogram, grads)
                 grads .= 0
-                currentloss = batchloss/batchsize
-                currentstep = i + (epoch - 1) * length(inputstates),
-                cb()
+                params = Dict(
+                    "loss" => batchloss / batchsize,
+                    "step" => i + (epoch - 1) * length(inputstates),
+                    "time" => (time() - batchstarttime) / batchsize,
+                )
+                cb(params = params)
                 batchloss = 0
+                batchstarttime = time()
             end
             next!(progressbar)
         end

@@ -58,7 +58,7 @@ x = [StackValue(), StackValue(100)]
 
 # args.programlen = 5
 args.experimentname = "regular-train"
-args.trainsize = 16
+args.trainsize = 32
 args.maxticks = 10
 args.epochs = 1
 args.lr = 0.1
@@ -145,7 +145,7 @@ end
 
 #function to log information after every epoch
 # relative time, separate train and test loss. approx acc. epoch. lr, all args hyperparams. 
-function TBCallback()
+function TBCallback(; params = Dict())
     testlength = min(length(inputstates), 32)
     with_logger(logger) do
         trainexampleaccuracy = accuracyonexamples(
@@ -164,7 +164,13 @@ function TBCallback()
             trainmaskfull,
         )
         programprobs = hiddenprogram |> softmax
-        @info "train" loss=currentloss accuracy=trainexampleaccuracy step=currentstep lr=opt.eta programprobs = programprobs
+        try 
+            @info "train" loss=params["loss"] accuracy=trainexampleaccuracy step=params["step"] steptime=params["time"] lr=opt.eta programprobs = programprobs
+        catch e
+            if isa(e, KeyError)
+                @warn e
+            end
+        end
         @info "test" loss=testloss step=step lr=opt.eta
     end
 end

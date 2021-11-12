@@ -13,6 +13,7 @@ import Base: +, -, *, length
 using ProgressMeter
 using Parameters: @with_kw
 StackFloatType = Float64
+using Memoize
 
 struct VMState
     instrpointer::Vector
@@ -100,7 +101,6 @@ function op_not(x::StackValue)::StackValue
     end
     x.val == 0
 end
-
 
 function super_step(state::VMState, program, instructions)
     newstates = [instruction(state) for instruction in instructions]
@@ -767,7 +767,7 @@ Create table of all combinations of applying op to numericvalues.
 Find optable indexes that correspond to given value in numericvalues. Return this mapping.
 
 """
-function optablepair(op, values)
+@memoize Dict function optablepair(op, values)
     optable = op.(values, permutedims(values))
     [findall(x -> x == val, optable) for val in values]
 end
@@ -779,7 +779,7 @@ Create table of all combinations of applying op to numericvalues.
 Find optable indexes that correspond to given value in numericvalues. Return this mapping.
 
 """
-function optablesingle(op, values)
+@memoize Dict function optablesingle(op, values)
     optable = op.(values)
     [findall(x -> x == val, optable) for val in values]
 end

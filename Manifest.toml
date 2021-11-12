@@ -47,6 +47,12 @@ git-tree-sha1 = "16af9a724cf7cdcf8069b2a44300fba4c25f431b"
 uuid = "6710c13c-97f1-543f-91c5-74e8f7d95b35"
 version = "1.2.4"
 
+[[AutoPreallocation]]
+deps = ["Cassette", "LinearAlgebra"]
+git-tree-sha1 = "815b348aa9385ed7b66b45fd295ed17d1b5d1452"
+uuid = "e7028de2-df94-4053-9fdc-99272086b8d4"
+version = "0.3.1"
+
 [[BFloat16s]]
 deps = ["LinearAlgebra", "Test"]
 git-tree-sha1 = "4af69e205efc343068dc8722b8dfec1ade89254a"

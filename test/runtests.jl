@@ -74,7 +74,7 @@ end
 function init_random_state(
     stackdepth::Int,
     programlen::Int,
-    allvalues::Union{Array,CuArray},
+    allvalues::Array,
     inputlen::Int,
     outputlen::Int,
 )
