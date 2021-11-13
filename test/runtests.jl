@@ -1068,6 +1068,20 @@ function test_stackvaluetype(args)
     @test !(ablank < a)
 end
 
+# function test_speedtest(args)
+#     @btime yloss, back = pullback(
+#         forward,
+#         startstate,
+#         targetstates[i],
+#         instructions,
+#         maxticks,
+#         hiddenprogram,
+#         trainmaskfull,
+#     )
+#     x = back(1)
+# end
+
+
 @testset "StackValue" begin
     test_stackvaluetype(args)
 end
@@ -1125,3 +1139,6 @@ end
     # args.lr = .1
     test_train(args)
 end
+# @testset "Speed" begin
+#     test_speedtest(args)
+# end
