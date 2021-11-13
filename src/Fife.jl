@@ -523,7 +523,7 @@ function trainbatch!(
     batchsize = 4,
     epochs = 5,
     opt = Descent(0.1),
-    cb = (params) -> (),
+    cb = (;params) -> (),
 )
     cb = Flux.Optimise.runall(cb)
     testlength = min(length(inputstates), 32)
