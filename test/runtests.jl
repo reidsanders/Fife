@@ -813,8 +813,8 @@ function test_runprogram(args)
         val_instructions
     ]
 
-    Random.seed!(123)
-    for x = 1:5
+    Random.seed!(2)
+    for x = 1:100
         discretestate = init_random_discretestate(args)
         contstate = convert_discrete_to_continuous(discretestate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
