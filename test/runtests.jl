@@ -617,15 +617,15 @@ function run_equality_test(x::DiscreteVMState, y::DiscreteVMState)
 end
 
 function run_equality_test(x::VMState, y::VMState)
-    @test x.instrpointer ≈ y.instrpointer
-    @test x.stackpointer ≈ y.stackpointer
-    @test x.inputpointer ≈ y.inputpointer
-    @test x.outputpointer ≈ y.outputpointer
-    @test x.stack ≈ y.stack
-    @test x.input ≈ y.input
-    @test x.output ≈ y.output
-    @test x.variables ≈ y.variables
-    @test x.ishalted ≈ y.ishalted
+    @test isapprox(x.instrpointer, y.instrpointer, atol = 1e-6)
+    @test isapprox(x.stackpointer, y.stackpointer, atol = 1e-6)
+    @test isapprox(x.inputpointer, y.inputpointer, atol = 1e-6)
+    @test isapprox(x.outputpointer, y.outputpointer, atol = 1e-6)
+    @test isapprox(x.stack, y.stack, atol = 1e-6)
+    @test isapprox(x.input, y.input, atol = 1e-6)
+    @test isapprox(x.output, y.output, atol = 1e-6)
+    @test isapprox(x.variables, y.variables, atol = 1e-6)
+    @test isapprox(x.ishalted, y.ishalted, atol = 1e-6)
 end
 
 function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
@@ -636,11 +636,11 @@ function run_equality_asserts(x::DiscreteVMState, y::DiscreteVMState)
 end
 
 function run_equality_asserts(x::VMState, y::VMState)
-    @assert x.instrpointer ≈ y.instrpointer "instrpointer Not Equal:\n $(x.instrpointer)\n $(y.instrpointer)"
-    @assert x.variables ≈ y.variables "Variables Not equal\n $(x.variables)\n $(y.variables)"
-    @assert x.ishalted ≈ y.ishalted "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
-    @assert x.stack ≈ y.stack "Stack Not equal\n $(x.stack)\n $(y.stack)"
-    @assert x.stackpointer ≈ y.stackpointer "Stack Not equal\n $(x.stackpointer)\n $(y.stackpointer)"
+    @assert isapprox(x.instrpointer, y.instrpointer, atol = 1e-6) "instrpointer Not Equal:\n $(x.instrpointer)\n $(y.instrpointer)"
+    @assert isapprox(x.variables, y.variables, atol = 1e-6) "Variables Not equal\n $(x.variables)\n $(y.variables)"
+    @assert isapprox(x.ishalted, y.ishalted, atol = 1e-6) "ishalted Not equal\n $(x.ishalted)\n $(y.ishalted)"
+    @assert isapprox(x.stack, y.stack, atol = 1e-6) "Stack Not equal\n $(x.stack)\n $(y.stack)"
+    @assert isapprox(x.stackpointer, y.stackpointer, atol = 1e-6) "Stack Not equal\n $(x.stackpointer)\n $(y.stackpointer)"
 end
 
 function test_all_single_instr(args)
