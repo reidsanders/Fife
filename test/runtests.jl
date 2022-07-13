@@ -765,7 +765,7 @@ function test_super_run_program(args)
         convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
     trainmask = create_trainable_mask(args.programlen, args.inputlen)
     hiddenprogram = deepcopy(target_program)
-    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask])...)
 
     # Initialize
 
