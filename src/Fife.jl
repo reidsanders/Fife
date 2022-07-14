@@ -338,7 +338,7 @@ end
 function runprogram(
     state::VMState,
     program::Array,
-    instructions::Vector{Function},
+    instructions::Vector{<:Function},
     maxticks::Int,
 )
     for i = 1:maxticks
@@ -347,7 +347,7 @@ function runprogram(
     state
 end
 
-function runprogram(state::DiscreteVMState, program::Array{Function}, maxticks::Int)
+function runprogram(state::DiscreteVMState, program::Vector{<:Function}, maxticks::Int)
     for i = 1:maxticks
         runnextinstr(state, program)
         if state.ishalted

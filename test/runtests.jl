@@ -875,7 +875,7 @@ function test_train(args)
         convert(Array{args.StackFloatType}, onehotbatch(discrete_program, instructions))
     trainmask = create_trainable_mask(args.programlen, 0)
     hiddenprogram = deepcopy(targetprogram)
-    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask]))
+    hiddenprogram[:, trainmask] = glorot_uniform(size(hiddenprogram[:, trainmask])...)
 
     # Initialize
     trainmaskfull = repeat(trainmask', outer = (size(hiddenprogram)[1], 1)) |> targetdevice
@@ -1082,51 +1082,51 @@ end
 # end
 
 
-@testset "StackValue" begin
-    test_stackvaluetype(args)
-end
-@testset "Discrete Instructions" begin
-    test_instr_halt(args)
-    test_instr_pushval(args)
-    test_instr_pop(args)
-    test_instr_dup(args)
-    test_instr_swap(args)
-    test_instr_add(args)
-    test_instr_sub(args)
-    test_instr_mult(args)
-    test_instr_div(args)
-    test_instr_not(args)
-    test_instr_and(args)
-    test_instr_goto(args)
-    test_instr_gotoif(args)
-    test_instr_iseq(args)
-    test_instr_isgt(args)
-    test_instr_isge(args)
-    test_instr_store(args)
-    test_instr_load(args)
-    test_instr_read(args)
-    test_instr_write(args)
-end
-@testset "Fife Utilities" begin
-    test_push_vmstate(args)
-    test_pushtooutput(args)
-    test_popfrominput(args)
-    test_pop_vmstate(args)
-    test_add_probvec(args)
-    test_div_probvec(args)
-end
-@testset "Convert VMs" begin
-    test_convert_discrete_to_continuous(args)
-    test_convert_continuous_to_discrete(args)
-end
-@testset "Instructions" begin
-    test_all_single_instr(args)
-    test_random_programs(args)
-end
-@testset "Superposition Interpreter steps" begin
-    test_super_step(args)
-    test_super_run_program(args)
-end
+# @testset "StackValue" begin
+#     test_stackvaluetype(args)
+# end
+# @testset "Discrete Instructions" begin
+#     test_instr_halt(args)
+#     test_instr_pushval(args)
+#     test_instr_pop(args)
+#     test_instr_dup(args)
+#     test_instr_swap(args)
+#     test_instr_add(args)
+#     test_instr_sub(args)
+#     test_instr_mult(args)
+#     test_instr_div(args)
+#     test_instr_not(args)
+#     test_instr_and(args)
+#     test_instr_goto(args)
+#     test_instr_gotoif(args)
+#     test_instr_iseq(args)
+#     test_instr_isgt(args)
+#     test_instr_isge(args)
+#     test_instr_store(args)
+#     test_instr_load(args)
+#     test_instr_read(args)
+#     test_instr_write(args)
+# end
+# @testset "Fife Utilities" begin
+#     test_push_vmstate(args)
+#     test_pushtooutput(args)
+#     test_popfrominput(args)
+#     test_pop_vmstate(args)
+#     test_add_probvec(args)
+#     test_div_probvec(args)
+# end
+# @testset "Convert VMs" begin
+#     test_convert_discrete_to_continuous(args)
+#     test_convert_continuous_to_discrete(args)
+# end
+# @testset "Instructions" begin
+#     test_all_single_instr(args)
+#     test_random_programs(args)
+# end
+# @testset "Superposition Interpreter steps" begin
+#     test_super_step(args)
+#     test_super_run_program(args)
+# end
 @testset "Train and Gradient" begin
     test_all_gradient_single_instr(args)
     test_runprogram(args)
