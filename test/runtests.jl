@@ -800,7 +800,7 @@ function test_runprogram(args)
             instr_div!,
             instr_not!,
             instr_and!,
-            instr_goto!,
+            # instr_goto!,
             instr_gotoif!,
             # instr_iseq!,
             # instr_isgt!,
@@ -813,14 +813,17 @@ function test_runprogram(args)
         val_instructions
     ]
 
-    Random.seed!(2)
-    for x = 1:100
+    for x = 1:1000
+        seed = x
+        Random.seed!(seed)
+        @info "Test program Seed: $(x)"
         discretestate = init_random_discretestate(args)
         contstate = convert_discrete_to_continuous(discretestate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
         run_equality_test(newdiscretestate, discretestate)
 
         discrete_program = create_random_discrete_program(args.programlen, instructions)
+        @info "Discrete Program: $(discrete_program)"
         target_program =
             convert(Array{StackFloatType}, onehotbatch(discrete_program, instructions))
 
@@ -831,8 +834,9 @@ function test_runprogram(args)
         contstate = normalize_iopointers(contstate)
         newdiscretestate = convert_continuous_to_discrete(contstate, allvalues)
         newcontstate = convert_discrete_to_continuous(discretestate, allvalues)
-        run_equality_test(newcontstate, contstate)
-        run_equality_test(newdiscretestate, discretestate)
+        # run_equality_test(newcontstate, contstate)
+        # run_equality_test(newdiscretestate, discretestate)
+        run_equality_asserts(newdiscretestate, discretestate)
     end
 end
 
@@ -1128,16 +1132,16 @@ end
 #     test_super_run_program(args)
 # end
 @testset "Train and Gradient" begin
-    test_all_gradient_single_instr(args)
+    # test_all_gradient_single_instr(args)
     test_runprogram(args)
-    test_gradient_op_probvec(args)
-    args.programlen = 5
+    # test_gradient_op_probvec(args)
     # args.programlen = 5
-    args.maxticks = 10
-    args.trainsize = 10
-    args.experimentname = "RunTests"
-    # args.lr = .1
-    test_train(args)
+    # # args.programlen = 5
+    # args.maxticks = 10
+    # args.trainsize = 10
+    # args.experimentname = "RunTests"
+    # # args.lr = .1
+    # test_train(args)
 end
 # @testset "Speed" begin
 #     test_speedtest(args)

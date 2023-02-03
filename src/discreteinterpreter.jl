@@ -208,11 +208,12 @@ function instr_goto!(state::DiscreteVMState)
         return state
     end
     x = popfirstreplace!(state.stack)
-    if x > 0
-        setinstrpointer!(state, x)
-    else
-        setinstrpointer!(state, state.instrpointer + 1)
-    end
+    setinstrpointer!(state, x)
+    # if x > 0
+    #     setinstrpointer!(state, x)
+    # else
+    #     setinstrpointer!(state, state.instrpointer + 1)
+    # end
 end
 
 function instr_gotoif!(state::DiscreteVMState)
@@ -221,7 +222,8 @@ function instr_gotoif!(state::DiscreteVMState)
     end
     x = popfirstreplace!(state.stack)
     y = popfirstreplace!(state.stack)
-    if x == 0 || x.blank || y.blank
+    # if x == 0 || x.blank || y.blank
+    if x == 0
         setinstrpointer!(state, state.instrpointer + 1)
     else
         setinstrpointer!(state, y)
