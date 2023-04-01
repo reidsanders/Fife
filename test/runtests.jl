@@ -138,15 +138,15 @@ instructions = [
         instr_div!,
         instr_not!,
         instr_and!,
-        # instr_goto!,
+        instr_goto!,
         instr_gotoif!,
         instr_write!,
         instr_read!,
-        # instr_iseq!,
-        # instr_isgt!,
-        # instr_isge!,
-        # instr_store!,
-        # instr_load!,
+        instr_iseq!,
+        instr_isgt!,
+        instr_isge!,
+        instr_store!,
+        instr_load!,
     ]
     val_instructions
 ]
@@ -735,7 +735,7 @@ function test_super_run_program(args)
         [
             instr_pass!,
             instr_halt!,
-            # instr_pushval!,
+            instr_pushval!,
             instr_pop!,
             instr_dup!,
             instr_swap!,
@@ -747,11 +747,11 @@ function test_super_run_program(args)
             instr_and!,
             instr_goto!,
             instr_gotoif!,
-            # instr_iseq!,
-            # instr_isgt!,
-            # instr_isge!,
-            # instr_store!,
-            # instr_load!,
+            instr_iseq!,
+            instr_isgt!,
+            instr_isge!,
+            instr_store!,
+            instr_load!,
             instr_read!,
             instr_write!,
         ]
@@ -790,7 +790,7 @@ function test_runprogram(args)
         [
             instr_pass!,
             instr_halt!,
-            # instr_pushval!,
+            instr_pushval!,
             instr_pop!,
             instr_dup!,
             instr_swap!,
@@ -800,13 +800,13 @@ function test_runprogram(args)
             instr_div!,
             instr_not!,
             instr_and!,
-            # instr_goto!,
+            instr_goto!,
             instr_gotoif!,
-            # instr_iseq!,
-            # instr_isgt!,
-            # instr_isge!,
-            # instr_store!,
-            # instr_load!,
+            instr_iseq!,
+            instr_isgt!,
+            instr_isge!,
+            instr_store!,
+            instr_load!,
             instr_read!,
             instr_write!,
         ]
@@ -849,7 +849,7 @@ function test_train(args)
     instructions = [
         instr_pass!,
         instr_halt!,
-        # instr_pushval!,
+        instr_pushval!,
         instr_pop!,
         instr_dup!,
         instr_swap!,
@@ -863,11 +863,11 @@ function test_train(args)
         instr_and!,
         instr_goto!,
         instr_gotoif!,
-        # instr_iseq!,
-        # instr_isgt!,
-        # instr_isge!,
-        # instr_store!,
-        # instr_load!
+        instr_iseq!,
+        instr_isgt!,
+        instr_isge!,
+        instr_store!,
+        instr_load!
     ]
 
 
@@ -1072,77 +1072,76 @@ function test_stackvaluetype(args)
     @test !(ablank < a)
 end
 
-# function test_speedtest(args)
-#     @btime yloss, back = pullback(
-#         forward,
-#         startstate,
-#         targetstates[i],
-#         instructions,
-#         maxticks,
-#         hiddenprogram,
-#         trainmaskfull,
-#     )
-#     x = back(1)
-# end
-
-
-# @testset "StackValue" begin
-#     test_stackvaluetype(args)
-# end
-# @testset "Discrete Instructions" begin
-#     test_instr_halt(args)
-#     test_instr_pushval(args)
-#     test_instr_pop(args)
-#     test_instr_dup(args)
-#     test_instr_swap(args)
-#     test_instr_add(args)
-#     test_instr_sub(args)
-#     test_instr_mult(args)
-#     test_instr_div(args)
-#     test_instr_not(args)
-#     test_instr_and(args)
-#     test_instr_goto(args)
-#     test_instr_gotoif(args)
-#     test_instr_iseq(args)
-#     test_instr_isgt(args)
-#     test_instr_isge(args)
-#     test_instr_store(args)
-#     test_instr_load(args)
-#     test_instr_read(args)
-#     test_instr_write(args)
-# end
-# @testset "Fife Utilities" begin
-#     test_push_vmstate(args)
-#     test_pushtooutput(args)
-#     test_popfrominput(args)
-#     test_pop_vmstate(args)
-#     test_add_probvec(args)
-#     test_div_probvec(args)
-# end
-# @testset "Convert VMs" begin
-#     test_convert_discrete_to_continuous(args)
-#     test_convert_continuous_to_discrete(args)
-# end
-# @testset "Instructions" begin
-#     test_all_single_instr(args)
-#     test_random_programs(args)
-# end
-# @testset "Superposition Interpreter steps" begin
-#     test_super_step(args)
-#     test_super_run_program(args)
-# end
-@testset "Train and Gradient" begin
-    # test_all_gradient_single_instr(args)
-    test_runprogram(args)
-    # test_gradient_op_probvec(args)
-    # args.programlen = 5
-    # # args.programlen = 5
-    # args.maxticks = 10
-    # args.trainsize = 10
-    # args.experimentname = "RunTests"
-    # # args.lr = .1
-    # test_train(args)
+function test_speedtest(args)
+    @btime yloss, back = pullback(
+        forward,
+        startstate,
+        targetstates[i],
+        instructions,
+        maxticks,
+        hiddenprogram,
+        trainmaskfull,
+    )
+    x = back(1)
 end
-# @testset "Speed" begin
-#     test_speedtest(args)
-# end
+
+
+@testset "StackValue" begin
+    test_stackvaluetype(args)
+end
+@testset "Discrete Instructions" begin
+    test_instr_halt(args)
+    test_instr_pushval(args)
+    test_instr_pop(args)
+    test_instr_dup(args)
+    test_instr_swap(args)
+    test_instr_add(args)
+    test_instr_sub(args)
+    test_instr_mult(args)
+    test_instr_div(args)
+    test_instr_not(args)
+    test_instr_and(args)
+    test_instr_goto(args)
+    test_instr_gotoif(args)
+    test_instr_iseq(args)
+    test_instr_isgt(args)
+    test_instr_isge(args)
+    test_instr_store(args)
+    test_instr_load(args)
+    test_instr_read(args)
+    test_instr_write(args)
+end
+@testset "Fife Utilities" begin
+    test_push_vmstate(args)
+    test_pushtooutput(args)
+    test_popfrominput(args)
+    test_pop_vmstate(args)
+    test_add_probvec(args)
+    test_div_probvec(args)
+end
+@testset "Convert VMs" begin
+    test_convert_discrete_to_continuous(args)
+    test_convert_continuous_to_discrete(args)
+end
+@testset "Instructions" begin
+    test_all_single_instr(args)
+    test_random_programs(args)
+end
+@testset "Superposition Interpreter steps" begin
+    test_super_step(args)
+    test_super_run_program(args)
+end
+@testset "Train and Gradient" begin
+    test_all_gradient_single_instr(args)
+    test_runprogram(args)
+    test_gradient_op_probvec(args)
+    args.programlen = 5
+    args.maxticks = 10
+    args.trainsize = 10
+    args.experimentname = "RunTests"
+    args.lr = .1
+    test_train(args)
+end
+@testset "Speed" begin
+    test_speedtest(args)
+end
